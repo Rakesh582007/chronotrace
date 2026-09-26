@@ -18,7 +18,9 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
+from . import clinical
 from . import dictionary as d
+from . import extra_tests as xt
 from . import identity as ident
 from . import values as v
 
@@ -67,29 +69,38 @@ def register_fonts() -> None:
 @dataclass
 class TestRow:
     row_id: int
-    analyte_id: str
-    synonym: str          # dictionary synonym
-    display: str          # as printed (maybe upper-cased)
-    basis: str            # "primary" or "alternate" (urea printed as BUN)
-    unit_key: str         # dictionary unit
-    unit: str             # as printed
+    analyte_id: str | None  # dictionary analyte, or None for a non-dictionary test
+    extra_id: str | None    # id in extra_tests.EXTRA_TESTS for non-dictionary tests
+    panel: str
+    synonym: str            # name from the dictionary (or the extra test's name list)
+    display: str            # as printed (maybe upper-cased)
+    basis: str              # "primary" or "alternate" (urea printed as BUN)
+    unit_key: str           # unit as spelled in the dictionary
+    unit: str               # as printed
     value: str
-    canonical_value: float
+    canonical_value: float | None   # None for non-dictionary tests
     range: str
     range_format: str
     flag: str
     method: str
-    abnormal: bool
+    value_class: str        # normal, abnormal or extreme
     sex: str
+    age: int
+    profile: str
     flag_column: bool = True   # False when the layout has no flag column (flag is then not printed)
+
+    @property
+    def abnormal(self) -> bool:
+        return self.value_class != "normal"
 
     def truth(self) -> dict:
         return {
-            "synonym": self.synonym, "test": self.display, "basis": self.basis,
-            "unit_key": self.unit_key, "unit": self.unit, "value": self.value,
-            "range": self.range, "range_format": self.range_format,
+            "synonym": self.synonym, "test": self.display, "extra_id": self.extra_id,
+            "panel": self.panel, "basis": self.basis, "unit_key": self.unit_key, "unit": self.unit,
+            "value": self.value, "range": self.range, "range_format": self.range_format,
             "flag": self.flag if self.flag_column else "", "flag_column": self.flag_column,
-            "abnormal": self.abnormal, "sex": self.sex,
+            "value_class": self.value_class, "abnormal": self.abnormal,
+            "sex": self.sex, "age": self.age, "profile": self.profile,
         }
 
 
@@ -104,6 +115,7 @@ class Section:
 class Report:
     report_id: str
     family: str
+    profile: str
     lab: dict
     people: dict
     title: str
@@ -196,72 +208,107 @@ FAMILIES_BY_NAME = {f.name: f for f in FAMILIES}
 
 # ---------------------------------------------------------------- content generation
 
+@dataclass
+class _Print:
+    """Report-level printing choices shared by every row."""
+    two_sided: str
+    high: str
+    p_sex_format: float
+    upper_tests: bool
+    lower_units: bool
+    flag_style: tuple[str, str]
+    group: bool
+
+
+def _unit_text(unit: str, pr: _Print) -> str:
+    return unit.replace("dL", "dl").replace("mol/L", "mol/l") if pr.lower_units else unit
+
+
+def _dictionary_row(rng, a: dict, panel: str, state: dict, printed_creatinine: float | None,
+                    people: dict, profile: str, pr: _Print, row_id: int) -> TestRow:
+    aid, sex, age = a["id"], people["sex"], people["age"]
+    basis = "alternate" if d.basis_synonyms(a) and rng.random() < 0.25 else "primary"
+    synonym = rng.choice(d.basis_synonyms(a) if basis == "alternate" else d.name_pool(a))
+    units = [c["unit"] for c in a["conversions"]]
+    unit_key = a["canonical_unit"] if rng.random() < 0.45 else rng.choice(units)
+
+    canonical = v.egfr_from_creatinine(printed_creatinine, age, sex) if aid == "egfr" else state[aid]
+    value_text = v.format_value(a, unit_key, basis, d.from_canonical(a, canonical, unit_key, basis), pr.group)
+    canonical_value = d.to_canonical(a, v.parse_number(value_text), unit_key, basis)
+    flag = v.flag_for(a, canonical_value, sex)
+    range_text, range_format = v.format_range(
+        rng, a, unit_key, basis, sex, pr.two_sided, pr.high, pr.p_sex_format, pr.group)
+    return TestRow(
+        row_id=row_id, analyte_id=aid, extra_id=None, panel=panel, synonym=synonym,
+        display=synonym.upper() if pr.upper_tests else synonym, basis=basis,
+        unit_key=unit_key, unit=_unit_text(unit_key, pr), value=value_text,
+        canonical_value=round(canonical_value, 6), range=range_text, range_format=range_format,
+        flag={"H": pr.flag_style[0], "L": pr.flag_style[1], "": ""}[flag],
+        method=rng.choice(v.METHODS[aid]), value_class=clinical.value_class(a, canonical_value, sex),
+        sex=sex, age=age, profile=profile,
+    )
+
+
+def _extra_row(rng, t: xt.ExtraTest, panel: str, state: dict, people: dict, profile: str,
+               pr: _Print, row_id: int) -> TestRow:
+    sex = people["sex"]
+    name = rng.choice(t.names)
+    value_text = xt.format_value(t, state[t.id])
+    flag = xt.flag_for(t, v.parse_number(value_text), sex)
+    range_text, range_format = xt.format_range(rng, t, sex, pr.two_sided, pr.high, pr.p_sex_format)
+    return TestRow(
+        row_id=row_id, analyte_id=None, extra_id=t.id, panel=panel, synonym=name,
+        display=name.upper() if pr.upper_tests else name, basis="primary",
+        unit_key=t.unit, unit=_unit_text(t.unit, pr), value=value_text, canonical_value=None,
+        range=range_text, range_format=range_format,
+        flag={"H": pr.flag_style[0], "L": pr.flag_style[1], "": ""}[flag],
+        method=rng.choice(t.methods), value_class="abnormal" if flag else "normal",
+        sex=sex, age=people["age"], profile=profile,
+    )
+
+
 def build_content(rng: random.Random, fake: Faker, family: Family, report_id: str) -> Report:
     analytes = d.analytes()
     people = ident.people(fake, rng)
-    sex, age = people["sex"], people["age"]
+    profile = clinical.choose_profile(rng)
+    state = clinical.patient_state(rng, profile, people["sex"])
 
-    panel_names = list(d.PANELS)
-    chosen = rng.sample(panel_names, rng.randint(1, 4))
+    chosen = clinical.choose_panels(rng, profile)
     if rng.random() < 0.7:
-        chosen.sort(key=panel_names.index)
+        chosen.sort(key=list(d.PANELS).index)
 
-    two_sided_style = rng.choice(["dash", "dash_spaced", "paren"])
-    high_style = rng.choice(["lt", "upto"])
-    p_sex_format = 1.0 if rng.random() < 0.45 else 0.0
-    upper_tests = rng.random() < family.p_upper_tests
-    lower_units = rng.random() < family.p_lower_units
-    flag_style = rng.choice(v.FLAG_STYLES)
+    pr = _Print(
+        two_sided=rng.choice(["dash", "dash_spaced", "paren"]),
+        high=rng.choice(["lt", "upto"]),
+        p_sex_format=1.0 if rng.random() < 0.45 else 0.0,
+        upper_tests=rng.random() < family.p_upper_tests,
+        lower_units=rng.random() < family.p_lower_units,
+        flag_style=rng.choice(v.FLAG_STYLES),
+        group=rng.random() < 0.5,
+    )
 
     sections: list[Section] = []
     row_id = 0
     for panel in chosen:
-        ids = [a for a in d.PANELS[panel] if a != "egfr" and rng.random() < 0.92]
-        if not ids:
-            ids = [rng.choice([a for a in d.PANELS[panel] if a != "egfr"])]
-        # Renal panel: creatinine is always sampled so eGFR can be computed from it.
-        creatinine = None
-        if panel == "RENAL FUNCTION":
-            creatinine = v.sample_canonical(rng, analytes["creatinine"], sex)
-            if "creatinine" in ids and rng.random() < 0.9:
-                ids.insert(ids.index("creatinine") + 1, "egfr")
+        dict_ids = [a for a in d.PANELS[panel] if a != "egfr" and rng.random() < 0.92]
+        if not dict_ids:
+            dict_ids = [rng.choice([a for a in d.PANELS[panel] if a != "egfr"])]
+        if "creatinine" in dict_ids and rng.random() < 0.9:
+            dict_ids.append("egfr")   # eGFR is printed with, and computed from, creatinine
+        order = xt.PANEL_ORDER[panel]
+        ids = sorted(dict_ids + xt.choose_extras(rng, panel, len(dict_ids)), key=order.index)
 
-        rows = []
-        for aid in ids:
-            a = analytes[aid]
-            basis = "alternate" if d.basis_synonyms(a) and rng.random() < 0.25 else "primary"
-            synonym = rng.choice(d.basis_synonyms(a) if basis == "alternate" else d.name_pool(a))
-            units = [c["unit"] for c in a["conversions"]]
-            unit_key = a["canonical_unit"] if rng.random() < 0.45 else rng.choice(units)
-
-            if aid == "egfr":
-                canonical = v.egfr_from_creatinine(creatinine, age, sex)
-            elif aid == "creatinine":
-                canonical = creatinine
+        rows: list[TestRow] = []
+        printed_creatinine = None
+        for tid in ids:
+            if tid in analytes:
+                row = _dictionary_row(rng, analytes[tid], panel, state, printed_creatinine,
+                                      people, profile, pr, row_id)
+                if tid == "creatinine":
+                    printed_creatinine = row.canonical_value
             else:
-                canonical = v.sample_canonical(rng, a, sex)
-            printed = d.from_canonical(a, canonical, unit_key, basis)
-            value_text = v.format_value(rng, a, unit_key, printed)
-            canonical_value = d.to_canonical(a, v.parse_number(value_text), unit_key, basis)
-            if aid == "creatinine":
-                creatinine = canonical_value  # eGFR uses the creatinine as printed
-
-            flag = v.flag_for(a, canonical_value, sex)
-            flag_text = {"H": flag_style[0], "L": flag_style[1], "": ""}[flag]
-            range_text, range_format = v.format_range(
-                rng, a, unit_key, basis, sex, two_sided_style, high_style, p_sex_format)
-            unit_text = unit_key
-            if lower_units:
-                unit_text = unit_text.replace("dL", "dl").replace("mol/L", "mol/l")
-
-            rows.append(TestRow(
-                row_id=row_id, analyte_id=aid, synonym=synonym,
-                display=synonym.upper() if upper_tests else synonym, basis=basis,
-                unit_key=unit_key, unit=unit_text, value=value_text,
-                canonical_value=round(canonical_value, 6), range=range_text,
-                range_format=range_format, flag=flag_text, method=rng.choice(v.METHODS[aid]),
-                abnormal=bool(flag), sex=sex,
-            ))
+                row = _extra_row(rng, xt.EXTRA_TESTS[tid], panel, state, people, profile, pr, row_id)
+            rows.append(row)
             row_id += 1
 
         notes = []
@@ -271,7 +318,8 @@ def build_content(rng: random.Random, fake: Faker, family: Family, report_id: st
                 notes.append(rng.choice(ident.GENERIC_NOTES))
         sections.append(Section(panel, rows, notes))
 
-    return Report(report_id, family.name, ident.lab(rng), people, rng.choice(ident.REPORT_TITLES), sections)
+    return Report(report_id, family.name, profile, ident.lab(rng), people,
+                  rng.choice(ident.REPORT_TITLES), sections)
 
 
 # ---------------------------------------------------------------- style
