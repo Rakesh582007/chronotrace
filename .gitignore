@@ -1,0 +1,39 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Generated data and model weights (kept out of git; models go to Hugging Face Hub)
+ml/generated/
+ml/checkpoints/
+ml/models/
+*.safetensors
+*.bin
+*.pt
+*.onnx
+
+# Real patient reports must never be committed
+data/real_reports/
+
+# Local databases
+*.db
+*.sqlite3
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
