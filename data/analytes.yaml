@@ -34,7 +34,13 @@ analytes:
     reference_ranges:
       - {sex: any, low: 4.0, high: 5.6}
     reference_range_source: ADA Standards of Care 2025, section 2 (normal < 5.7%; 5.7-6.4% prediabetes; >= 6.5% diabetes)
-    rcv: {percent: 6.1, cv_i: 1.6, cv_a: 1.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+    rcv:
+      percent: 6.3
+      cv_i: 1.7
+      cv_a: 1.5
+      status: verified
+      source: "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
+      note: "Diabetic cohorts show ~8% CVi, which includes true glycaemic change, so the healthy CVi is used as the noise estimate"
 
   - id: fasting_glucose
     canonical_name: Fasting Plasma Glucose
@@ -172,7 +178,7 @@ analytes:
       cv_i: 31.0
       cv_a: 5.0
       status: unverified
-      source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
+      source: "EFLM systematic review (Aslan B et al., Clin Chim Acta 2025;566:120032, online Nov 2024, https://www.sciencedirect.com/science/article/abs/pii/S000989812402285X) found no studies eligible for meta-analysis of urine albumin or ACR. CVi 31% comes from older individual studies, not a meta-analysis; CVa assumed"
       note: "High CVi: the symmetric formula understates the downward limit; consider a log-normal (asymmetric) RCV in step 6"
 
   # ---------------------------------------------------------------- Electrolytes

@@ -10,7 +10,9 @@ Where each field in the analyte dictionary comes from, and how far it has been c
 | Unit conversion factors | Derived | From molar masses and standard definitions (see below). Checked by round-trip tests in `tests/test_analytes.py`. |
 | eGFR equation | Verified against paper | CKD-EPI 2021 coefficients from Inker et al., *N Engl J Med* 2021;385:1737-49. Test values match a hand calculation of the equation. |
 | Reference ranges | Partly sourced | Guideline cut-offs where one exists (ADA, KDIGO, NCEP ATP III, WHO). Other ranges are typical Indian lab ranges and are assay- and lab-specific. Each entry names its source. |
-| RCV: CVi (biological variation) | **Unverified** | Values are recalled from the EFLM Biological Variation Database (biologicalvariation.eu). The site is a JavaScript app and could not be read from this environment. Check each CVi there before the demo. |
+| RCV: CVi, HbA1c | **Verified** | Median CVi 1.7% (IQR 1.3–2.2) in healthy subjects, systematic review of 111 studies, [PLOS ONE 2023](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085). Diabetic cohorts show about 8% CVi, which includes true glycaemic change, so the healthy CVi is used as the noise estimate. |
+| RCV: CVi, UACR | **Unverified (no meta-analysis exists)** | The EFLM systematic review ([Aslan et al., *Clin Chim Acta* 2025;566:120032](https://www.sciencedirect.com/science/article/abs/pii/S000989812402285X), online Nov 2024) found no studies eligible for meta-analysis of urine albumin or ACR. The 31% CVi comes from older individual studies. |
+| RCV: CVi, other analytes | **Unverified** | Values are recalled from the EFLM Biological Variation Database (biologicalvariation.eu). The site is a JavaScript app and could not be read from this environment. Check each CVi there before the demo. |
 | RCV: CVa (analytical) | Assumed | Typical analytical CV for each assay type. Should be replaced by the lab's own internal quality control (IQC) CV where known. |
 
 ## Reference change value (RCV)
@@ -27,7 +29,8 @@ Special cases:
 
 - **Postprandial glucose**: `not_established`. There is no biological variation data for post-meal glucose because meal content and timing are not standardised. Step 6 should use slope over 3+ reports only.
 - **eGFR**: derived from creatinine. Its RCV is propagated from the creatinine RCV through the equation's −1.200 exponent: `1 − (1 + RCV_creat)^−1.2` ≈ 15.4%. This is not an independently published RCV.
-- **UACR (87%) and triglycerides (56%)**: CVi is large, so the symmetric formula understates how far a value must *fall* to be significant. Step 6 should consider the log-normal (asymmetric) RCV for these.
+- **UACR (87%)**: no meta-analysed CVi exists (see table above), so this RCV is a rough estimate. It stays `unverified` until a BIVAC-compliant estimate is published.
+- **UACR and triglycerides (56%)**: CVi is large, so the symmetric formula understates how far a value must *fall* to be significant. Step 6 should consider the log-normal (asymmetric) RCV for these.
 
 To verify an RCV: open the analyte in the EFLM database, copy the meta-analysis CVi, set `cv_i`, recompute `percent`, change `status` to `verified` and put the database URL and access date in `source`.
 
