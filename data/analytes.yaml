@@ -1,0 +1,424 @@
+# ChronoTrace analyte dictionary (step 1).
+#
+# One entry per test. Used by extraction (synonym matching), normalisation
+# (LOINC + unit conversion) and the trend engine (reference change value).
+# See data/SOURCES.md for where each field comes from and what is still unverified.
+#
+# Unit conversion: canonical_value = reported_value * factor + offset (offset defaults to 0).
+# Unit lookup is case-insensitive and ignores spaces; "µ" and "μ" are treated as "u".
+#
+# Reference ranges are adult, non-pregnant ranges. They are context only
+# (docs/decisions.md #2); flags come from the patient's own baseline and the RCV.
+#
+# RCV (reference change value, two-sided, 95%):
+#   percent = 1.96 * sqrt(2) * sqrt(cv_i^2 + cv_a^2)
+#   cv_i = within-subject biological variation, cv_a = analytical CV (both in %).
+#   status: verified | unverified | not_established
+
+version: 1
+
+analytes:
+  # ---------------------------------------------------------------- Diabetes
+  - id: hba1c
+    canonical_name: HbA1c
+    synonyms: [Glycated Haemoglobin, Glycated Hemoglobin, Glycosylated Haemoglobin, Glycosylated Hemoglobin, HbA1c, A1C, GHb]
+    loinc: 4548-4
+    loinc_name: Hemoglobin A1c/Hemoglobin.total in Blood
+    specimen: whole blood (EDTA)
+    canonical_unit: "%"
+    conversions:
+      - {unit: "%", factor: 1}
+      - {unit: "% of total Hb", factor: 1}
+      # IFCC -> NGSP master equation: NGSP% = IFCC/10.929 + 2.15
+      - {unit: mmol/mol, factor: 0.0915, offset: 2.15}
+    reference_ranges:
+      - {sex: any, low: 4.0, high: 5.6}
+    reference_range_source: ADA Standards of Care 2025, section 2 (normal < 5.7%; 5.7-6.4% prediabetes; >= 6.5% diabetes)
+    rcv:
+      percent: 6.3
+      cv_i: 1.7
+      cv_a: 1.5
+      status: verified
+      source: "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
+      note: "Diabetic cohorts show ~8% CVi, which includes true glycaemic change, so the healthy CVi is used as the noise estimate"
+
+  - id: fasting_glucose
+    canonical_name: Fasting Plasma Glucose
+    synonyms: [Fasting Blood Sugar, FBS, Glucose Fasting, "Glucose, Fasting", Fasting Plasma Glucose, FPG, FBG, Blood Sugar Fasting]
+    loinc: 1558-6
+    loinc_name: Fasting glucose [Mass/volume] in Serum or Plasma
+    specimen: plasma (fluoride)
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: mmol/L, factor: 18.016}
+    reference_ranges:
+      - {sex: any, low: 70, high: 99}
+    reference_range_source: ADA Standards of Care 2025, section 2 (normal < 100 mg/dL; 100-125 prediabetes; >= 126 diabetes)
+    rcv: {percent: 14.9, cv_i: 5.0, cv_a: 2.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: pp_glucose
+    canonical_name: Postprandial Plasma Glucose (2 h)
+    synonyms: [Post Prandial Blood Sugar, PPBS, PP Sugar, Glucose PP, "Glucose, Post Prandial", Blood Sugar PP, PPBG, 2 Hr Post Prandial Glucose]
+    loinc: 1521-4
+    loinc_name: Glucose [Mass/volume] in Serum or Plasma --2 hours post meal
+    specimen: plasma (fluoride)
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: mmol/L, factor: 18.016}
+    reference_ranges:
+      - {sex: any, low: null, high: 140}
+    reference_range_source: "Common Indian lab cut-off (< 140 mg/dL), aligned with the ADA 2-h OGTT threshold; a post-meal sample is not a standardised OGTT"
+    rcv:
+      percent: null
+      cv_i: null
+      cv_a: null
+      status: not_established
+      source: "No biological variation data found for post-meal glucose; meal content and timing are not standardised"
+      note: "Trend engine should use slope over 3+ reports only, not a single-change RCV flag"
+
+  # ---------------------------------------------------------------- Kidney
+  - id: creatinine
+    canonical_name: Serum Creatinine
+    synonyms: [Serum Creatinine, S. Creatinine, "Creatinine, Serum", Creatinine, S.Creatinine, Sr. Creatinine]
+    loinc: 2160-0
+    loinc_name: Creatinine [Mass/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: µmol/L, factor: 0.011310}
+    reference_ranges:
+      - {sex: male, low: 0.7, high: 1.3}
+      - {sex: female, low: 0.6, high: 1.1}
+    reference_range_source: Typical Indian lab range for IDMS-traceable enzymatic/Jaffe assays; lab-specific
+    rcv: {percent: 15.0, cv_i: 4.5, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: urea
+    canonical_name: Blood Urea
+    synonyms: [Blood Urea, S. Urea, "Urea, Serum", Serum Urea, Urea]
+    loinc: 3091-6
+    loinc_name: Urea [Mass/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: mmol/L, factor: 6.006}
+    # Some labs report urea nitrogen (BUN) instead of urea. When the row matches one of
+    # these synonyms, a mass value is BUN and is multiplied by this factor to get urea
+    # (60.06 / 28.02). mmol/L values need no change (1 mol urea = 1 mol urea nitrogen pair).
+    alternate_basis:
+      synonyms: [BUN, Blood Urea Nitrogen, Urea Nitrogen]
+      loinc: 3094-0
+      mass_factor: 2.1437
+    reference_ranges:
+      - {sex: any, low: 15, high: 40}
+    reference_range_source: Typical Indian lab range (urea, not BUN); lab-specific
+    rcv: {percent: 39.7, cv_i: 14.0, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: egfr
+    canonical_name: eGFR (CKD-EPI 2021)
+    synonyms: [eGFR, Estimated GFR, eGFR (CKD-EPI), Estimated Glomerular Filtration Rate, GFR Estimated]
+    loinc: 98979-8
+    loinc_name: Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI 2021)/1.73 sq M
+    specimen: derived
+    canonical_unit: mL/min/1.73m²
+    conversions:
+      - {unit: mL/min/1.73m², factor: 1}
+      - {unit: mL/min/1.73m2, factor: 1}
+      - {unit: mL/min/1.73 sq m, factor: 1}
+    derived: true
+    # ChronoTrace recomputes eGFR from creatinine so all labs use the same equation.
+    # eGFR = 142 * min(Scr/k, 1)^alpha * max(Scr/k, 1)^-1.200 * 0.9938^age * 1.012 [if female]
+    # Scr in mg/dL, age in years (adults, >= 18).
+    formula:
+      name: CKD-EPI 2021 creatinine (race-free)
+      inputs: [creatinine, age_years, sex]
+      constant: 142
+      kappa: {female: 0.7, male: 0.9}
+      alpha: {female: -0.241, male: -0.302}
+      exponent_above_kappa: -1.200
+      age_base: 0.9938
+      female_factor: 1.012
+      source: "Inker LA et al. N Engl J Med 2021;385:1737-49 (NKF-ASN Task Force)"
+    reference_ranges:
+      - {sex: any, low: 90, high: null}
+    reference_range_source: "KDIGO 2024 CKD guideline, GFR categories (G1 >= 90; G3a starts < 60)"
+    rcv:
+      percent: 15.4
+      cv_i: null
+      cv_a: null
+      status: unverified
+      method: derived_from_creatinine
+      source: "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
+
+  - id: uacr
+    canonical_name: Urine Albumin/Creatinine Ratio
+    synonyms: [Urine Microalbumin/Creatinine Ratio, Microalbumin Creatinine Ratio, UACR, ACR, Urine ACR, Albumin Creatinine Ratio, Urine Albumin Creatinine Ratio]
+    loinc: 9318-7
+    loinc_name: Albumin/Creatinine [Mass Ratio] in Urine
+    specimen: spot urine
+    canonical_unit: mg/g
+    conversions:
+      - {unit: mg/g, factor: 1}
+      - {unit: mg/g creatinine, factor: 1}
+      - {unit: µg/mg, factor: 1}
+      - {unit: µg/mg creatinine, factor: 1}
+      - {unit: mg/mmol, factor: 8.84}
+    reference_ranges:
+      - {sex: any, low: null, high: 30}
+    reference_range_source: "KDIGO 2024 CKD guideline, albuminuria categories (A1 < 30 mg/g; A2 30-300; A3 > 300)"
+    rcv:
+      percent: 87.0
+      cv_i: 31.0
+      cv_a: 5.0
+      status: unverified
+      source: "EFLM systematic review (Aslan B et al., Clin Chim Acta 2025;566:120032, online Nov 2024, https://www.sciencedirect.com/science/article/abs/pii/S000989812402285X) found no studies eligible for meta-analysis of urine albumin or ACR. CVi 31% comes from older individual studies, not a meta-analysis; CVa assumed"
+      note: "High CVi: the symmetric formula understates the downward limit; consider a log-normal (asymmetric) RCV in step 6"
+
+  # ---------------------------------------------------------------- Electrolytes
+  - id: sodium
+    canonical_name: Serum Sodium
+    synonyms: [Serum Sodium, S. Sodium, Sodium, Na+, Na, "Sodium, Serum"]
+    loinc: 2951-2
+    loinc_name: Sodium [Moles/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: mmol/L
+    conversions:
+      - {unit: mmol/L, factor: 1}
+      - {unit: mEq/L, factor: 1}
+    reference_ranges:
+      - {sex: any, low: 136, high: 145}
+    reference_range_source: Typical Indian lab range (ISE); lab-specific
+    rcv: {percent: 2.9, cv_i: 0.5, cv_a: 0.9, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: potassium
+    canonical_name: Serum Potassium
+    synonyms: [Serum Potassium, S. Potassium, Potassium, K+, "Potassium, Serum"]
+    loinc: 2823-3
+    loinc_name: Potassium [Moles/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: mmol/L
+    conversions:
+      - {unit: mmol/L, factor: 1}
+      - {unit: mEq/L, factor: 1}
+    reference_ranges:
+      - {sex: any, low: 3.5, high: 5.1}
+    reference_range_source: Typical Indian lab range (ISE); lab-specific
+    rcv: {percent: 11.8, cv_i: 4.0, cv_a: 1.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  # ---------------------------------------------------------------- Thyroid
+  - id: tsh
+    canonical_name: TSH
+    synonyms: [Thyroid Stimulating Hormone, TSH, TSH (Ultrasensitive), S. TSH, TSH 3rd Generation, Thyrotropin, US-TSH]
+    loinc: 3016-3
+    loinc_name: Thyrotropin [Units/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: mIU/L
+    conversions:
+      - {unit: mIU/L, factor: 1}
+      - {unit: µIU/mL, factor: 1}
+      - {unit: µU/mL, factor: 1}
+    reference_ranges:
+      - {sex: any, low: 0.4, high: 4.0}
+    reference_range_source: Typical adult range; assay- and lab-specific (NHANES III reference population about 0.45-4.12 mIU/L)
+    rcv: {percent: 51.0, cv_i: 17.7, cv_a: 5.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: free_t4
+    canonical_name: Free T4
+    synonyms: [Free T4, FT4, Free Thyroxine, "Thyroxine, Free", F.T4, S. Free T4]
+    loinc: 3024-7
+    loinc_name: Thyroxine (T4) free [Mass/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: ng/dL
+    conversions:
+      - {unit: ng/dL, factor: 1}
+      - {unit: pmol/L, factor: 0.07770}
+    reference_ranges:
+      - {sex: any, low: 0.8, high: 1.8}
+    reference_range_source: Typical adult range; assay- and lab-specific
+    rcv: {percent: 21.0, cv_i: 5.7, cv_a: 5.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  # ---------------------------------------------------------------- Lipids
+  - id: total_cholesterol
+    canonical_name: Total Cholesterol
+    synonyms: [Total Cholesterol, "Cholesterol, Total", S. Cholesterol, Serum Cholesterol, Cholesterol]
+    loinc: 2093-3
+    loinc_name: Cholesterol [Mass/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: mmol/L, factor: 38.67}
+    reference_ranges:
+      - {sex: any, low: null, high: 200}
+    reference_range_source: NCEP ATP III (desirable < 200 mg/dL)
+    rcv: {percent: 15.7, cv_i: 5.3, cv_a: 2.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: ldl
+    canonical_name: LDL Cholesterol
+    synonyms: [LDL Cholesterol, LDL-C, LDL, LDL Cholesterol - Direct, LDL Cholesterol (Calculated), Low Density Lipoprotein, "Cholesterol, LDL"]
+    loinc: 13457-7
+    loinc_name: Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation
+    loinc_alternates:
+      - {code: 18262-6, name: "Cholesterol in LDL [Mass/volume] in Serum or Plasma by Direct assay"}
+    specimen: serum
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: mmol/L, factor: 38.67}
+    reference_ranges:
+      - {sex: any, low: null, high: 100}
+    reference_range_source: NCEP ATP III (optimal < 100 mg/dL); treatment targets are patient-specific
+    rcv: {percent: 24.5, cv_i: 8.3, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: hdl
+    canonical_name: HDL Cholesterol
+    synonyms: [HDL Cholesterol, HDL-C, HDL, HDL Cholesterol - Direct, High Density Lipoprotein, "Cholesterol, HDL"]
+    loinc: 2085-9
+    loinc_name: Cholesterol in HDL [Mass/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: mmol/L, factor: 38.67}
+    reference_ranges:
+      - {sex: male, low: 40, high: null}
+      - {sex: female, low: 50, high: null}
+    reference_range_source: "NCEP ATP III (low HDL: < 40 men, < 50 women)"
+    rcv: {percent: 17.3, cv_i: 5.7, cv_a: 2.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: triglycerides
+    canonical_name: Triglycerides
+    synonyms: [Triglycerides, Triglyceride, TG, S. Triglycerides, Serum Triglycerides, TGL]
+    loinc: 2571-8
+    loinc_name: Triglyceride [Mass/volume] in Serum or Plasma
+    specimen: serum (fasting)
+    canonical_unit: mg/dL
+    conversions:
+      - {unit: mg/dL, factor: 1}
+      - {unit: mg%, factor: 1}
+      - {unit: mmol/L, factor: 88.57}
+    reference_ranges:
+      - {sex: any, low: null, high: 150}
+    reference_range_source: NCEP ATP III (normal < 150 mg/dL)
+    rcv:
+      percent: 56.1
+      cv_i: 20.0
+      cv_a: 3.0
+      status: unverified
+      source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
+      note: "High CVi: consider a log-normal (asymmetric) RCV in step 6"
+
+  # ---------------------------------------------------------------- Liver
+  - id: alt
+    canonical_name: ALT (SGPT)
+    synonyms: [SGPT, SGPT (ALT), ALT, ALT (SGPT), Alanine Aminotransferase, Alanine Transaminase, S.G.P.T]
+    loinc: 1742-6
+    loinc_name: Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: U/L
+    conversions:
+      - {unit: U/L, factor: 1}
+      - {unit: IU/L, factor: 1}
+      - {unit: µkat/L, factor: 60}
+    reference_ranges:
+      - {sex: male, low: null, high: 41}
+      - {sex: female, low: null, high: 33}
+    reference_range_source: Typical Indian lab range (IFCC method without P5P); lab-specific
+    rcv: {percent: 28.1, cv_i: 9.3, cv_a: 4.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: ast
+    canonical_name: AST (SGOT)
+    synonyms: [SGOT, SGOT (AST), AST, AST (SGOT), Aspartate Aminotransferase, Aspartate Transaminase, S.G.O.T]
+    loinc: 1920-8
+    loinc_name: Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma
+    specimen: serum
+    canonical_unit: U/L
+    conversions:
+      - {unit: U/L, factor: 1}
+      - {unit: IU/L, factor: 1}
+      - {unit: µkat/L, factor: 60}
+    reference_ranges:
+      - {sex: male, low: null, high: 40}
+      - {sex: female, low: null, high: 32}
+    reference_range_source: Typical Indian lab range (IFCC method without P5P); lab-specific
+    rcv: {percent: 28.6, cv_i: 9.5, cv_a: 4.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  # ---------------------------------------------------------------- Haematology
+  - id: haemoglobin
+    canonical_name: Haemoglobin
+    synonyms: [Haemoglobin, Hemoglobin, Hb, HGB, Hb%, "Haemoglobin (Hb)"]
+    loinc: 718-7
+    loinc_name: Hemoglobin [Mass/volume] in Blood
+    specimen: whole blood (EDTA)
+    canonical_unit: g/dL
+    conversions:
+      - {unit: g/dL, factor: 1}
+      - {unit: gm/dL, factor: 1}
+      - {unit: g%, factor: 1}
+      - {unit: gm%, factor: 1}
+      - {unit: g/L, factor: 0.1}
+      - {unit: mmol/L, factor: 1.611}
+    reference_ranges:
+      - {sex: male, low: 13.0, high: 17.0}
+      - {sex: female, low: 12.0, high: 15.0}
+    reference_range_source: "Lower limits: WHO anaemia thresholds (13.0 men, 12.0 non-pregnant women); upper limits: typical Indian lab range"
+    rcv: {percent: 8.6, cv_i: 2.7, cv_a: 1.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: platelets
+    canonical_name: Platelet Count
+    synonyms: [Platelet Count, Platelets, PLT, Platelet, Total Platelet Count]
+    loinc: 777-3
+    loinc_name: Platelets [#/volume] in Blood by Automated count
+    specimen: whole blood (EDTA)
+    canonical_unit: 10^3/µL
+    conversions:
+      - {unit: 10^3/µL, factor: 1}
+      - {unit: x10^3/µL, factor: 1}
+      - {unit: 10³/µL, factor: 1}
+      - {unit: 10^9/L, factor: 1}
+      - {unit: thou/mm3, factor: 1}
+      - {unit: thou/µL, factor: 1}
+      - {unit: /cumm, factor: 0.001}
+      - {unit: cells/cumm, factor: 0.001}
+      - {unit: /µL, factor: 0.001}
+      - {unit: /mm3, factor: 0.001}
+      - {unit: lakh/cumm, factor: 100}
+      - {unit: lakhs/cumm, factor: 100}
+      - {unit: lakh/µL, factor: 100}
+    reference_ranges:
+      - {sex: any, low: 150, high: 410}
+    reference_range_source: Typical Indian lab range (1.5-4.1 lakh/cumm); lab-specific
+    rcv: {percent: 21.9, cv_i: 7.3, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
+
+  - id: wbc
+    canonical_name: Total Leucocyte Count (WBC)
+    synonyms: [Total Leucocyte Count, Total Leukocyte Count, TLC, Total WBC Count, WBC Count, WBC, Total Count]
+    loinc: 6690-2
+    loinc_name: Leukocytes [#/volume] in Blood by Automated count
+    specimen: whole blood (EDTA)
+    canonical_unit: 10^3/µL
+    conversions:
+      - {unit: 10^3/µL, factor: 1}
+      - {unit: x10^3/µL, factor: 1}
+      - {unit: 10³/µL, factor: 1}
+      - {unit: 10^9/L, factor: 1}
+      - {unit: thou/mm3, factor: 1}
+      - {unit: thou/µL, factor: 1}
+      - {unit: /cumm, factor: 0.001}
+      - {unit: cells/cumm, factor: 0.001}
+      - {unit: /µL, factor: 0.001}
+      - {unit: /mm3, factor: 0.001}
+    reference_ranges:
+      - {sex: any, low: 4.0, high: 10.0}
+    reference_range_source: Typical Indian lab range (4,000-10,000 /cumm); lab-specific
+    rcv: {percent: 32.4, cv_i: 11.4, cv_a: 2.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}

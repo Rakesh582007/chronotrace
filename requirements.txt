@@ -1,0 +1,5 @@
+# Step 1: analyte dictionary
+pyyaml>=6.0
+
+# Tests
+pytest>=8.0
