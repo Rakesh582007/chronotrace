@@ -34,7 +34,7 @@ Setup instructions will be added as each component lands. Copy `.env.example` to
 
 ## Status
 
-- [ ] Step 1 – Analyte dictionary
+- [x] Step 1 – Analyte dictionary
 - [ ] Step 2 – Synthetic report generator
 - [ ] Step 3 – Model training
 - [ ] Step 4 – Extraction pipeline
