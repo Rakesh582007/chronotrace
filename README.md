@@ -94,7 +94,7 @@ python tests/fixtures/make_fixtures.py                         # rebuild the tes
 - [x] Step 3 – Model training
 - [x] Step 4 – Extraction pipeline
 - [x] Step 5 – Database and normalisation
-- [ ] Step 6 – Trend engine and medication response
+- [x] Step 6 – Trend engine and medication response
 - [ ] Step 7 – LLM summaries
 - [ ] Step 8 – Frontend
 - [ ] Step 9 – Demo patient and real-report evaluation
