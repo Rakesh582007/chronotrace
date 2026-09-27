@@ -74,6 +74,13 @@ def test_non_dictionary_rows_are_tagged_but_unmapped(small):
             assert not any(t.endswith("-UNIT") for t in r["tags"])   # ratios print without a unit
 
 
+def test_flags_appear_after_value_unit_and_range(small):
+    _, _, rows = small
+    before = {r["tags"][r["tags"].index("B-FLAG") - 1][2:] for r in rows if "B-FLAG" in r["tags"]}
+    assert {"VALUE", "UNIT", "RANGE"} <= before
+    assert set(layouts.FLAG_POSITIONS) == {"after_value", "after_unit", "after_range", "column"}
+
+
 def test_ignore_lines_are_all_o(small):
     _, _, rows = small
     other = [r for r in rows if r["truth"] is None]
