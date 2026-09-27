@@ -7,6 +7,10 @@
 # Unit conversion: canonical_value = reported_value * factor + offset (offset defaults to 0).
 # Unit lookup is case-insensitive and ignores spaces; "µ" and "μ" are treated as "u".
 #
+# report_synonyms: names seen on real reports, used for matching extracted test names only.
+# Kept apart from `synonyms` so the synthetic generator's name pool (and the step-2/3
+# training data built from it) does not change. See data/SOURCES.md.
+#
 # Reference ranges are adult, non-pregnant ranges. They are context only
 # (docs/decisions.md #2); flags come from the patient's own baseline and the RCV.
 #
@@ -22,6 +26,7 @@ analytes:
   - id: hba1c
     canonical_name: HbA1c
     synonyms: [Glycated Haemoglobin, Glycated Hemoglobin, Glycosylated Haemoglobin, Glycosylated Hemoglobin, HbA1c, A1C, GHb]
+    report_synonyms: ["HB A1C"]   # seen on a real report (data/SOURCES.md); matching only
     loinc: 4548-4
     loinc_name: Hemoglobin A1c/Hemoglobin.total in Blood
     specimen: whole blood (EDTA)
@@ -45,6 +50,7 @@ analytes:
   - id: fasting_glucose
     canonical_name: Fasting Plasma Glucose
     synonyms: [Fasting Blood Sugar, FBS, Glucose Fasting, "Glucose, Fasting", Fasting Plasma Glucose, FPG, FBG, Blood Sugar Fasting]
+    report_synonyms: ["GLUCOSE (FASTING)"]   # seen on a real report (data/SOURCES.md); matching only
     loinc: 1558-6
     loinc_name: Fasting glucose [Mass/volume] in Serum or Plasma
     specimen: plasma (fluoride)
@@ -84,6 +90,7 @@ analytes:
   - id: creatinine
     canonical_name: Serum Creatinine
     synonyms: [Serum Creatinine, S. Creatinine, "Creatinine, Serum", Creatinine, S.Creatinine, Sr. Creatinine]
+    report_synonyms: ["CREATININE - SERUM"]   # seen on a real report (data/SOURCES.md); matching only
     loinc: 2160-0
     loinc_name: Creatinine [Mass/volume] in Serum or Plasma
     specimen: serum
@@ -101,6 +108,7 @@ analytes:
   - id: urea
     canonical_name: Blood Urea
     synonyms: [Blood Urea, S. Urea, "Urea, Serum", Serum Urea, Urea]
+    report_synonyms: ["UREA - SERUM"]   # seen on a real report (data/SOURCES.md); matching only
     loinc: 3091-6
     loinc_name: Urea [Mass/volume] in Serum or Plasma
     specimen: serum
@@ -248,6 +256,7 @@ analytes:
   - id: total_cholesterol
     canonical_name: Total Cholesterol
     synonyms: [Total Cholesterol, "Cholesterol, Total", S. Cholesterol, Serum Cholesterol, Cholesterol]
+    report_synonyms: ["CHOLESTEROL - SERUM"]   # seen on a real report (data/SOURCES.md); matching only
     loinc: 2093-3
     loinc_name: Cholesterol [Mass/volume] in Serum or Plasma
     specimen: serum
@@ -264,6 +273,7 @@ analytes:
   - id: ldl
     canonical_name: LDL Cholesterol
     synonyms: [LDL Cholesterol, LDL-C, LDL, LDL Cholesterol - Direct, LDL Cholesterol (Calculated), Low Density Lipoprotein, "Cholesterol, LDL"]
+    report_synonyms: ["LDL CHOLESTEROL (DIRECT)"]   # seen on a real report (data/SOURCES.md); matching only
     loinc: 13457-7
     loinc_name: Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation
     loinc_alternates:
@@ -282,6 +292,7 @@ analytes:
   - id: hdl
     canonical_name: HDL Cholesterol
     synonyms: [HDL Cholesterol, HDL-C, HDL, HDL Cholesterol - Direct, High Density Lipoprotein, "Cholesterol, HDL"]
+    report_synonyms: ["HDL CHOLESTEROL (DIRECT)"]   # seen on a real report (data/SOURCES.md); matching only
     loinc: 2085-9
     loinc_name: Cholesterol in HDL [Mass/volume] in Serum or Plasma
     specimen: serum

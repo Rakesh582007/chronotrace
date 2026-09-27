@@ -90,7 +90,11 @@ def validate(data: dict) -> list[str]:
         synonyms = a.get("synonyms") or []
         if len(synonyms) < 2:
             errors.append(f"{where} needs at least 2 synonyms, has {len(synonyms)}")
-        all_names = [a.get("canonical_name", "")] + list(synonyms)
+        report_synonyms = a.get("report_synonyms", [])
+        if not isinstance(report_synonyms, list) or not all(isinstance(n, str) and n for n in report_synonyms):
+            errors.append(f"{where} report_synonyms must be a list of names")
+            report_synonyms = []
+        all_names = [a.get("canonical_name", "")] + list(synonyms) + list(report_synonyms)
         all_names += (a.get("alternate_basis") or {}).get("synonyms", [])
         for name in {norm_text(n) for n in all_names if n}:
             if name in names and names[name] != aid:
@@ -194,14 +198,33 @@ def validate(data: dict) -> list[str]:
 
 # ---------------------------------------------------------------- helpers
 
+def primary_names(analyte: dict) -> list[str]:
+    """Names that mean the analyte on its own basis: canonical name, synonyms, report synonyms."""
+    return [analyte["canonical_name"], *analyte["synonyms"], *analyte.get("report_synonyms", [])]
+
+
+def basis_names(analyte: dict) -> list[str]:
+    """Names that mean the value is on the alternate basis (urea printed as BUN)."""
+    return list((analyte.get("alternate_basis") or {}).get("synonyms", []))
+
+
 def find_analyte(data: dict, name: str) -> dict | None:
     """Look up an analyte by any synonym (case-insensitive, exact after normalising)."""
     key = norm_text(name)
     for a in data["analytes"]:
-        pool = [a["canonical_name"], *a["synonyms"], *(a.get("alternate_basis") or {}).get("synonyms", [])]
-        if key in {norm_text(n) for n in pool}:
+        if key in {norm_text(n) for n in primary_names(a) + basis_names(a)}:
             return a
     return None
+
+
+def is_mass_unit(unit: str) -> bool:
+    return "mol" not in norm_unit(unit)
+
+
+def alternate_basis_factor(analyte: dict, unit: str) -> float:
+    """Multiplier from the alternate basis to the analyte in a mass unit (BUN mg/dL x 2.1437 = urea
+    mg/dL). Molar units need no factor: one mole of urea carries one mole of urea nitrogen pairs."""
+    return analyte["alternate_basis"]["mass_factor"] if is_mass_unit(unit) else 1.0
 
 
 def to_canonical(analyte: dict, value: float, unit: str) -> float:
