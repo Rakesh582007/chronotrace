@@ -1,6 +1,6 @@
 """Upload the trained NER model to the Hugging Face Hub with a model card.
 
-Usage:  python ml/push_to_hub.py [--repo Rakesh582007/chronotrace-report-ner] [--private]
+Usage:  python ml/push_to_hub.py [--repo Rip-Shadw/chronotrace-report-ner] [--private]
 
 Reads HF_TOKEN from .env at the repo root (or the environment). The model card's numbers
 come from ml/results/step3_metrics.json, so run evaluate_ner.py first.
@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_DIR = ROOT / "ml" / "models" / "chronotrace-ner"
 METRICS = ROOT / "ml" / "results" / "step3_metrics.json"
-DEFAULT_REPO = "Rakesh582007/chronotrace-report-ner"
+DEFAULT_REPO = "Rip-Shadw/chronotrace-report-ner"
 
 
 def read_token() -> str:
