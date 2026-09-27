@@ -98,6 +98,21 @@ PANEL_ORDER: dict[str, list[str]] = {
     "THYROID PROFILE": ["tsh", "free_t4"],
 }
 
+# A calculated test is printed only with the tests it is computed from (clinical.py).
+REQUIRES: dict[str, set[str]] = {
+    "direct_bilirubin": {"total_bilirubin"},
+    "globulin": {"total_protein", "albumin"},
+    "ag_ratio": {"albumin", "globulin"},
+    "vldl": {"triglycerides"},
+    "non_hdl": {"total_cholesterol", "hdl"},
+    "tc_hdl_ratio": {"total_cholesterol", "hdl"},
+    "ldl_hdl_ratio": {"ldl", "hdl"},
+    # Analysers measure PCV, so it may print without MCHC; {hb, mchc} would be circular (MCHC needs PCV).
+    "pcv": {"haemoglobin"},
+    "mch": {"haemoglobin", "rbc"},
+    "mchc": {"haemoglobin", "pcv"},
+}
+
 # CBC and LFT: extras make up about 30-40% of the panel's rows. Other panels: each extra
 # appears with this probability.
 SHARE_PANELS = ("CBC", "LFT")
@@ -112,6 +127,20 @@ def choose_extras(rng: random.Random, panel: str, n_dictionary_rows: int) -> lis
         k = max(1, round(n_dictionary_rows * rng.uniform(0.43, 0.67)))
         return rng.sample(pool, min(k, len(pool)))
     return [t for t in pool if rng.random() < P_OTHER_EXTRA]
+
+
+def prune_orphans(ids: list[str]) -> list[str]:
+    """Drop calculated tests whose inputs are not printed.
+
+    Repeats until nothing changes, since dropping one test can orphan another.
+    """
+    kept = list(ids)
+    while True:
+        present = set(kept)
+        drop = {t for t in kept if not REQUIRES.get(t, set()) <= present}
+        if not drop:
+            return kept
+        kept = [t for t in kept if t not in drop]
 
 
 def flag_for(test: ExtraTest, value: float, sex: str) -> str:

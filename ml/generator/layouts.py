@@ -296,7 +296,7 @@ def build_content(rng: random.Random, fake: Faker, family: Family, report_id: st
         if "creatinine" in dict_ids and rng.random() < 0.9:
             dict_ids.append("egfr")   # eGFR is printed with, and computed from, creatinine
         order = xt.PANEL_ORDER[panel]
-        ids = sorted(dict_ids + xt.choose_extras(rng, panel, len(dict_ids)), key=order.index)
+        ids = sorted(xt.prune_orphans(dict_ids + xt.choose_extras(rng, panel, len(dict_ids))), key=order.index)
 
         rows: list[TestRow] = []
         printed_creatinine = None
