@@ -75,6 +75,24 @@ def run_scenario(client, patient: dict = PATIENT) -> dict:
     edge = _upload(client, p2["id"], "edge_cases.pdf").json()
     keep("confirm-needs-review", client.post(f"/reports/{edge['report']['id']}/confirm", json={}), {})
     keep("validation-error", client.post("/patients", json={**patient, "sex": "unknown"}))
+
+    # Step 6: the demo patient K. Selvam, seeded through the same upload + confirm endpoints, then R10.
+    import tempfile
+
+    from backend.demo import data as demo
+    from backend.demo.seed import seed
+
+    ids = seed(client, Path(tempfile.mkdtemp(prefix="chronotrace-demo-")), upto="R10")
+    sid = ids["patient_id"]
+    statin = {"drug": "Atorvastatin", "change": "start", "dose_text": "10 mg OD", "date": "2024-08-01"}
+    keep("add-medication", client.post(f"/patients/{sid}/medications", json=statin), statin)
+    keep("list-medications", client.get(f"/patients/{sid}/medications"))
+    keep("trends", client.get(f"/patients/{sid}/trends"))
+    keep("flags", client.get(f"/patients/{sid}/flags"))
+    keep("medication-response", client.get(f"/medications/{ids['event_ids']['Empagliflozin']}/response"))
+    bad = {**statin, "date": "2999-01-01"}
+    keep("medication-bad-date", client.post(f"/patients/{sid}/medications", json=bad), bad)
+    assert demo.PATIENT["name"] == "K. Selvam"
     return out
 
 
