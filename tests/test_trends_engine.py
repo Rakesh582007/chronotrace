@@ -46,7 +46,7 @@ def test_rcv_percent_matches_the_formula():
     checked = 0
     for a in va.load()["analytes"]:
         r = a["rcv"]
-        if r.get("cv_i") and r.get("cv_a") and r.get("method") != "derived_from_creatinine":
+        if r.get("cv_i") and r.get("cv_a") and r.get("method") not in ("derived_from_creatinine", "guideline"):
             assert r["percent"] == pytest.approx(1.96 * math.sqrt(2) * math.hypot(r["cv_i"], r["cv_a"]), abs=0.1), a["id"]
             checked += 1
     assert checked >= 15
@@ -203,7 +203,8 @@ def test_female_patient_two_reports_censored_uacr_unknown_drug():
     assert by["uacr"]["status"] == "insufficient data" and by["uacr"]["points"][0]["censored"] is True
     assert by["hba1c"]["status"] == "ok" and by["creatinine"]["slope"]["status"] == "not enough points"
     got = sorted((f["rule_id"], f["analyte_id"], f["direction"], f["change_percent"]) for f in flags)
-    assert got == [("RCV_PREV", "creatinine", "rise", 16.7), ("RCV_PREV", "egfr", "fall", -16.9)]
+    # eGFR fell 16.9%: within KDIGO's 20% (PP 2.1.3), so only creatinine (+16.7% > RCV 15.0%) flags
+    assert got == [("RCV_PREV", "creatinine", "rise", 16.7)]
     assert all(f["expected_effect"] is None for f in flags)
     assert E.response(statin, INFO, points, [statin])["note"].startswith("drug not in the ChronoTrace catalogue")
 
@@ -254,7 +255,8 @@ def test_demo_ramipril_response():
     assert c["rcv_percent"] == 15.0 and c["confounders"] == [] and c["cross_lab"] is True
     assert c["expected_effect"]["note"] == "within the ≤30% rise expected after ACEi/ARB start"
     e = r["egfr"]
-    assert e["change_percent"] == -16.2 and e["expected_effect"] is not None      # mean(76.76, 78.42, 77.94) -> 65.08
+    # mean(76.76, 78.42, 77.94) -> 65.08: -16.2%, within KDIGO's 20%; the expected-fall note stays
+    assert e["change_percent"] == -16.2 and e["beyond_rcv"] is False and e["expected_effect"] is not None
     assert r["potassium"]["beyond_rcv"] is False
 
 
@@ -294,7 +296,7 @@ def test_demo_after_r10_the_trend_fires_the_kdigo_flag():
     assert len(k) == 1 and k[0]["level"] == "guideline" and k[0]["threshold"]["value"] == -5.0
     assert k[0]["dates"] == [D("2024-10-15"), D("2025-03-10"), D("2025-09-01"), D("2026-03-02")]
     steps = [f for f in flags if f["rule_id"] == "RCV_PREV" and f["analyte_id"] == "egfr" and f["date"] >= D("2024-10-15")]
-    assert steps == []                                                    # no single step beyond RCV 15.4%
+    assert steps == []                                                    # no single step beyond 20%
     egfr = [v["value"] for v in next(t for t in trends if t["analyte_id"] == "egfr")["points"]][6:]
     assert [round((b / a - 1) * 100, 1) for a, b in zip(egfr, egfr[1:])] == [-4.1, -5.1, -7.0]
 
@@ -311,7 +313,7 @@ def test_demo_engine_does_not_report_the_naive_slope():
 # ---------------------------------------------------------------- guardrail review (cross-lab, before, baseline)
 
 def test_demo_flag_counts_with_baseline_flags_only_for_the_latest_result():
-    for upto, n in (("R9", 6), ("R10", 7)):
+    for upto, n in (("R9", 5), ("R10", 6)):
         points, events = demo_patient(upto)
         trends, flags = E.analyse_patient(list(analyte_infos()), points, events)
         assert len(flags) == n, upto
@@ -358,3 +360,8 @@ def test_every_start_carries_the_regression_to_the_mean_caveat():
     assert E.response(stop, INFO, points, [start, stop])["caveat"] is None
     h = E.response(start, INFO, points, [start])["analytes"][0]
     assert h["before_note"] == "single prior value"
+
+
+def test_egfr_threshold_is_kdigo_20_percent():
+    assert (INFO["egfr"].rcv_percent, INFO["egfr"].rcv_status) == (20.0, "verified")
+    assert "Practice Point 2.1.3" in INFO["egfr"].rcv_source

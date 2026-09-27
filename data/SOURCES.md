@@ -28,7 +28,7 @@ The validator recomputes this from `cv_i` and `cv_a` and fails if `percent` does
 Special cases:
 
 - **Postprandial glucose**: `not_established`. There is no biological variation data for post-meal glucose because meal content and timing are not standardised. Step 6 should use slope over 3+ reports only.
-- **eGFR**: derived from creatinine. Its RCV is propagated from the creatinine RCV through the equation's −1.200 exponent: `1 − (1 + RCV_creat)^−1.2` ≈ 15.4%. This is not an independently published RCV.
+- **eGFR**: the change threshold is **20%**, from KDIGO 2024 Practice Point 2.1.3 ("For people with CKD, a change in eGFR of >20% on a subsequent test exceeds the expected variability and warrants evaluation."), checked against the KDIGO 2024 summary of recommendations and practice points (`method: guideline`, `status: verified`). It replaced an RCV propagated from the creatinine RCV through the equation's −1.200 exponent (`1 − (1 + RCV_creat)^−1.2` ≈ 15.4%), which was not an independently published value.
 - **UACR (87%)**: no meta-analysed CVi exists (see table above), so this RCV is a rough estimate. It stays `unverified` until a BIVAC-compliant estimate is published.
 - **UACR and triglycerides (56%)**: CVi is large, so the symmetric formula understates how far a value must *fall* to be significant. Step 6 should consider the log-normal (asymmetric) RCV for these.
 
