@@ -28,7 +28,10 @@ def test_classes_as_specified(data):
                        ("acei_arb", "potassium", "rise"), ("sglt2i", "egfr", "fall"), ("sglt2i", "creatinine", "rise"),
                        ("biguanide", "hba1c", "fall")}
     assert next(e for e in by["acei_arb"]["effects"] if e["analyte"] == "creatinine")["max_expected_percent"] == 30
-    assert all(c["status"] == "unverified" and c["source"] for c in data["classes"])
+    assert {c["id"]: c["status"] for c in data["classes"]} == {
+        "acei_arb": "verified", "sglt2i": "verified", "biguanide": "unverified"}
+    assert "Practice Point 3.6.4" in by["acei_arb"]["source"] and "Practice Point 3.7.3" in by["sglt2i"]["source"]
+    assert all("Practice Point 2.1.4" in by[c]["source"] for c in ("acei_arb", "sglt2i"))
 
 
 @pytest.mark.parametrize("text, cid, generic", [

@@ -52,8 +52,10 @@ def catalogue_texts():
         {e["note"] for c in data["classes"] for e in c["effects"]}
 
 
-# Guideline terms quoted as a citation, as the guardrail review asked; not a statement about the patient.
-CITATIONS = {E.KDIGO_SOURCE}
+# Guideline text quoted word for word as a citation (KDIGO 2012 definition; KDIGO 2024 practice points
+# 3.6.4 and 3.7.3), as the guardrail review asked. Notes and messages are still checked.
+_CLASSES = {c["id"]: c for c in yaml.safe_load(open("data/drugs.yaml", encoding="utf-8"))["classes"]}
+CITATIONS = {E.KDIGO_SOURCE} | {" ".join(_CLASSES[c]["source"].split()) for c in ("acei_arb", "sglt2i")}
 
 
 def test_no_advice_scores_or_diagnosis_words():
