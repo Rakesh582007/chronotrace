@@ -32,6 +32,29 @@ Built for BME Ignite Hackfest 2026, Track II (BME x AI). Decision support only: 
 
 Setup instructions will be added as each component lands. Copy `.env.example` to `.env` and fill in your keys; never commit `.env`.
 
+## Training
+
+The extraction model is DistilBERT fine-tuned on synthetic reports (step 3). Install torch first,
+then the ML requirements:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu128   # GPU (CUDA 12.8)
+pip install torch --index-url https://download.pytorch.org/whl/cpu     # or CPU only
+pip install -r requirements.txt -r requirements-ml.txt
+```
+
+Then generate the data, check it, train, and evaluate against the rule baseline:
+
+```bash
+python ml/generator/generate_reports.py --n 1000 --seed 42   # -> ml/generated/ (git-ignored)
+python ml/check_dataset.py                                   # must pass 16/16
+python ml/train_ner.py                                       # -> ml/models/chronotrace-ner/ (git-ignored)
+python ml/evaluate_ner.py                                    # -> ml/results/step3_metrics.json
+python ml/push_to_hub.py                                     # optional: upload with model card (needs HF_TOKEN in .env)
+```
+
+Training takes about 4 minutes on an RTX 3050 (6 GB, 1.6 GB peak VRAM). Results: [`ml/results/step3_metrics.json`](ml/results/step3_metrics.json).
+
 ## Status
 
 - [x] Step 1 – Analyte dictionary
