@@ -18,6 +18,7 @@ Built for BME Ignite Hackfest 2026, Track II (BME x AI). Decision support only: 
 | --- | --- |
 | `backend/` | FastAPI app, database, normalisation, trend engine |
 | `ml/` | Synthetic report generator, training notebook, evaluation |
+| `shared/` | PDF row reading and model tag decoding used by both `ml/` and `backend/` |
 | `frontend/` | React + Vite + Recharts doctor interface |
 | `data/` | Analyte dictionary and condition packs (small config files only) |
 | `docs/` | Architecture and decision log |
@@ -54,6 +55,37 @@ python ml/push_to_hub.py                                     # optional: upload 
 ```
 
 Training takes about 4 minutes on an RTX 3050 (6 GB, 1.6 GB peak VRAM). Results: [`ml/results/step3_metrics.json`](ml/results/step3_metrics.json).
+
+## Backend (extraction, normalisation, API)
+
+```bash
+pip install -r requirements.txt -r requirements-ml.txt       # plus torch (see Training)
+uvicorn backend.main:app --reload                            # http://127.0.0.1:8000, docs at /docs
+```
+
+The API is documented for the frontend in [`docs/api.md`](docs/api.md) (checked against the running
+API by `tests/test_api_contract.py`). Settings (environment variables, all optional):
+
+| Variable | Default |
+| --- | --- |
+| `CHRONOTRACE_MODEL` | `ml/models/chronotrace-ner` if present, else the Hub model `Rip-Shadw/chronotrace-report-ner` |
+| `CHRONOTRACE_DB` | `sqlite:///backend/chronotrace.db` (git-ignored) |
+| `CHRONOTRACE_CORS` | `http://localhost:5173` |
+
+How a report is read: pdfplumber rows (the same code that built the training data, `shared/pdf_rows.py`)
+are tagged by the model; the table's column-header line then decides which rows are results (a
+model-tagged value in the value column) and which are continuation lines (method, specimen, extra
+range lines). Test names are matched to `data/analytes.yaml`, values converted to canonical units, and
+eGFR recomputed from creatinine. Nothing is dropped silently: every line with a value is a result, a
+continuation, or listed as skipped with the reason. Scanned PDFs (no text layer) are not supported yet.
+
+End-to-end check on the held-out synthetic reports (and a table for any PDF in the git-ignored
+`data/real_reports/`):
+
+```bash
+python ml/evaluate_pipeline.py --real --pages 3-5              # -> ml/results/step45_pipeline.json
+python tests/fixtures/make_fixtures.py                         # rebuild the test-fixture PDFs
+```
 
 ## Status
 
