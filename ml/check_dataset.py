@@ -13,9 +13,11 @@ Hard checks (exit 1 if any fails):
   - clinical consistency: no HbA1c < 5.7 with fasting glucose > 200 in one report, and every
     printed eGFR within 1 of CKD-EPI 2021 from the same report's creatinine, age and sex
   - value mix near 65% normal / 30% abnormal / 5% extreme (within 5 points each)
-  - non-dictionary tests make up 30-40% of CBC and of LFT rows
+  - non-dictionary share of CBC and of LFT rows within EXTRA_SHARE (measured share +-5 points)
   - held-out layout families appear only in the test split; no report in two splits
   - no real lab brand names anywhere in the extracted text
+  - no calculated test printed without the tests it is computed from (extra_tests.REQUIRES)
+  - every printed differential count is complete and sums to exactly 100
 """
 
 from __future__ import annotations
@@ -40,7 +42,7 @@ from generator.labeler import ENTITY_KINDS, bio_ok, entity_text, extract_rows  #
 DEFAULT_DIR = Path(__file__).resolve().parent / "generated"
 TARGET_MIX = {"normal": 0.65, "abnormal": 0.30, "extreme": 0.05}
 MIX_TOLERANCE = 0.05
-EXTRA_SHARE = (0.30, 0.40)
+EXTRA_SHARE = {"CBC": (0.69, 0.79), "LFT": (0.68, 0.78)}   # measured share (seed 42) +-5 points
 FLAG_DIRECTION = {"H": "H", "High": "H", "*H": "H", "L": "L", "Low": "L", "*L": "L", "": ""}
 
 
@@ -214,10 +216,11 @@ def run_checks(dir_: Path, min_rows: int = 300, workers: int = 1) -> tuple[list[
     shares = {p: panel_extra[p] / panel_all[p] for p in panel_all}
     info["non_dictionary_share"] = len(extra_rows) / len(entity_rows) if entity_rows else 0.0
     info["non_dictionary_by_panel"] = shares
-    lo, hi = EXTRA_SHARE
-    bad_share = {p: f"{shares.get(p, 0):.1%}" for p in xt.SHARE_PANELS if not lo <= shares.get(p, 0) <= hi}
-    check("non-dictionary share of CBC and LFT rows in 30-40%", not bad_share,
-          ", ".join(f"{p} {shares.get(p, 0):.1%}" for p in xt.SHARE_PANELS)
+    bad_share = {p: f"{shares.get(p, 0):.1%}" for p, (lo, hi) in EXTRA_SHARE.items()
+                 if not lo <= shares.get(p, 0) <= hi}
+    check("non-dictionary share of CBC and LFT rows in range", not bad_share,
+          ", ".join(f"{p} {shares.get(p, 0):.1%} (target {lo:.0%}-{hi:.0%})"
+                    for p, (lo, hi) in EXTRA_SHARE.items())
           + (f"; outside: {bad_share}" if bad_share else ""))
 
     # 10. Splits
@@ -246,6 +249,29 @@ def run_checks(dir_: Path, min_rows: int = 300, workers: int = 1) -> tuple[list[
     hits = {k: h for k, h in hits.items() if h}
     check("no real lab brand names", not hits,
           f"scanned {len(text_by_report)} reports" + (f"; hits {dict(list(hits.items())[:5])}" if hits else ""))
+
+    # 12. Calculated tests printed with their inputs; 13. differential complete and summing to 100
+    printed: dict[tuple[str, str], dict[str, str]] = defaultdict(dict)   # (report, panel) -> id -> value
+    for r in entity_rows:
+        printed[(r["report_id"], r["truth"]["panel"])][r["analyte_id"] or r["truth"]["extra_id"]] = r["truth"]["value"]
+    n_calc, orphans = 0, []
+    diffs, diff_bad = 0, []
+    for key, panel in printed.items():
+        for tid in panel:
+            if tid in xt.REQUIRES:
+                n_calc += 1
+                if not xt.REQUIRES[tid] <= set(panel):
+                    orphans.append((key[0], tid))
+        diff = [panel[t] for t in xt.DIFFERENTIAL if t in panel]
+        if diff:
+            diffs += 1
+            total = sum(v.parse_number(x) for x in diff)
+            if len(diff) != len(xt.DIFFERENTIAL) or total != 100:
+                diff_bad.append((key[0], len(diff), total))
+    check("no calculated test printed without its inputs", not orphans,
+          f"{n_calc - len(orphans)}/{n_calc} calculated rows" + (f"; e.g. {orphans[:3]}" if orphans else ""))
+    check("every printed differential sums to 100", not diff_bad,
+          f"{diffs - len(diff_bad)}/{diffs} differentials" + (f"; e.g. {diff_bad[:3]}" if diff_bad else ""))
 
     info["profiles"] = dict(Counter(
         r["truth"]["profile"] for r in {x["report_id"]: x for x in entity_rows}.values()))

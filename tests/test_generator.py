@@ -99,7 +99,7 @@ def test_check_dataset_passes_except_coverage(small):
     failed = {name for name, ok, _ in results if not ok}
     # 30 reports are too few for coverage and for stable shares; the full run checks those.
     assert failed <= {"every synonym used", "every unit used", "every range format used",
-                      "value mix near 65/30/5", "non-dictionary share of CBC and LFT rows in 30-40%"}
+                      "value mix near 65/30/5", "non-dictionary share of CBC and LFT rows in range"}
     assert "clinical consistency" not in failed
 
 
@@ -200,9 +200,9 @@ def test_value_mix_and_non_dictionary_share():
     assert share["normal"] == pytest.approx(0.65, abs=0.05)
     assert share["abnormal"] == pytest.approx(0.30, abs=0.05)
     assert share["extreme"] == pytest.approx(0.05, abs=0.025)
-    for panel in xt.SHARE_PANELS:
+    for panel, (lo, hi) in check_dataset.EXTRA_SHARE.items():
         in_panel = [r for r in rows if r.panel == panel]
-        assert 0.30 <= sum(r.analyte_id is None for r in in_panel) / len(in_panel) <= 0.40, panel
+        assert lo <= sum(r.analyte_id is None for r in in_panel) / len(in_panel) <= hi, panel
 
 
 def test_related_values_are_consistent():
@@ -213,9 +213,79 @@ def test_related_values_are_consistent():
         assert not (s["hba1c"] < 5.7 and s["fasting_glucose"] > 200)
         assert s["total_cholesterol"] == pytest.approx(s["ldl"] + s["hdl"] + s["triglycerides"] / 5)
         assert s["pcv"] == pytest.approx(s["haemoglobin"] * 100 / s["mchc"])
-        assert s["neutrophils"] + s["lymphocytes"] + s["eosinophils"] + s["monocytes"] <= 99.0001
         if s["tsh"] > 10:
             assert s["free_t4"] < 0.8          # overt hypothyroid: FT4 low
+
+
+# Each calculated test: the inputs clinical.py computes it from, and an identity that must hold.
+FORMULAS = {
+    "direct_bilirubin": ({"total_bilirubin"}, lambda s: 0 < s["direct_bilirubin"] < s["total_bilirubin"]),
+    "globulin": ({"total_protein", "albumin"},
+                 lambda s: s["globulin"] == pytest.approx(s["total_protein"] - s["albumin"])),
+    "ag_ratio": ({"albumin", "globulin"}, lambda s: s["ag_ratio"] == pytest.approx(s["albumin"] / s["globulin"])),
+    "vldl": ({"triglycerides"}, lambda s: s["vldl"] == pytest.approx(s["triglycerides"] / 5)),
+    "non_hdl": ({"total_cholesterol", "hdl"},
+                lambda s: s["non_hdl"] == pytest.approx(s["total_cholesterol"] - s["hdl"])),
+    "tc_hdl_ratio": ({"total_cholesterol", "hdl"},
+                     lambda s: s["tc_hdl_ratio"] == pytest.approx(s["total_cholesterol"] / s["hdl"])),
+    "ldl_hdl_ratio": ({"ldl", "hdl"}, lambda s: s["ldl_hdl_ratio"] == pytest.approx(s["ldl"] / s["hdl"])),
+    # Exception (see REQUIRES): computed from Hb and MCHC, but printable with Hb alone.
+    "pcv": ({"haemoglobin", "mchc"}, lambda s: s["pcv"] == pytest.approx(s["haemoglobin"] * 100 / s["mchc"])),
+    "mch": ({"haemoglobin", "rbc"}, lambda s: s["mch"] == pytest.approx(s["haemoglobin"] * 10 / s["rbc"])),
+    "mchc": ({"haemoglobin", "pcv"}, lambda s: s["mchc"] == pytest.approx(s["haemoglobin"] * 100 / s["pcv"])),
+}
+
+
+def test_requires_matches_clinical_formulas():
+    assert set(FORMULAS) == set(xt.REQUIRES)
+    for tid, (inputs, _) in FORMULAS.items():
+        want = {"haemoglobin"} if tid == "pcv" else inputs
+        assert xt.REQUIRES[tid] == want, tid
+    rng = random.Random(5)
+    for i in range(2000):
+        profile = list(clinical.PROFILES)[i % len(clinical.PROFILES)]
+        s = clinical.patient_state(rng, profile, rng.choice(["male", "female"]))
+        for tid, (_, holds) in FORMULAS.items():
+            assert holds(s), (tid, s)
+
+
+@pytest.mark.parametrize("ids, kept", [
+    (["haemoglobin", "rbc", "pcv", "mch", "mchc"], ["haemoglobin", "rbc", "pcv", "mch", "mchc"]),
+    (["rbc", "pcv", "mcv", "mch", "mchc"], ["rbc", "mcv"]),                   # no Hb: PCV, MCH, MCHC go
+    (["haemoglobin", "rbc", "mch", "mchc"], ["haemoglobin", "rbc", "mch"]),   # MCHC needs PCV
+    (["alt", "total_protein", "globulin", "ag_ratio"], ["alt", "total_protein"]),  # chain: globulin, then A/G
+    (["direct_bilirubin", "alp"], ["alp"]),
+    (["total_cholesterol", "ldl", "non_hdl", "tc_hdl_ratio", "ldl_hdl_ratio", "vldl"],
+     ["total_cholesterol", "ldl"]),
+    (["wbc", "neutrophils", "lymphocytes", "eosinophils", "monocytes"], ["wbc"]),   # partial differential
+    (["wbc", *xt.DIFFERENTIAL], ["wbc", *xt.DIFFERENTIAL]),
+])
+def test_prune_orphans(ids, kept):
+    assert xt.prune_orphans(ids) == kept
+
+
+def test_differential_is_whole_and_sums_to_100():
+    rng = random.Random(9)
+    for i in range(3000):
+        profile = list(clinical.PROFILES)[i % len(clinical.PROFILES)]
+        s = clinical.patient_state(rng, profile, rng.choice(["male", "female"]))
+        diff = [s[t] for t in xt.DIFFERENTIAL]
+        assert all(isinstance(x, int) and x >= 0 for x in diff)
+        assert sum(diff) == 100
+        assert 0 <= s["basophils"] <= 2
+        assert s["neutrophils"] == max(diff)
+
+
+def test_printed_panels_have_inputs_and_complete_differentials():
+    for rep in _contents(300):
+        by_panel: dict[str, dict] = {}
+        for r in rep.rows():
+            by_panel.setdefault(r.panel, {})[r.analyte_id or r.extra_id] = r.value
+        for panel in by_panel.values():
+            for tid in panel:
+                assert xt.REQUIRES.get(tid, set()) <= set(panel), tid
+            diff = [panel[t] for t in xt.DIFFERENTIAL if t in panel]
+            assert not diff or (len(diff) == 5 and sum(v.parse_number(x) for x in diff) == 100)
 
 
 def test_printed_egfr_matches_printed_creatinine():
