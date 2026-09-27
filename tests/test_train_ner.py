@@ -1,6 +1,9 @@
 import pytest
 
-from train_ner import is_better
+pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
+from train_ner import is_better  # noqa: E402
 
 BEST = {"epoch": 1, "val_f1": 0.999, "val_loss": 0.01}
 
