@@ -184,7 +184,7 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T16:27:02Z",
+    "uploaded_at": "2026-09-27T16:34:09Z",
     "confirmed_at": null
   },
   "counts": {
@@ -476,7 +476,7 @@ Same body as the upload response. Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T16:27:02Z",
+    "uploaded_at": "2026-09-27T16:34:09Z",
     "confirmed_at": null
   },
   "counts": {
@@ -807,8 +807,8 @@ Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "confirmed",
-    "uploaded_at": "2026-09-27T16:27:02Z",
-    "confirmed_at": "2026-09-27T16:27:02Z"
+    "uploaded_at": "2026-09-27T16:34:09Z",
+    "confirmed_at": "2026-09-27T16:34:09Z"
   },
   "counts": {
     "extracted": 0,
@@ -3116,7 +3116,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "2025-09-01",
         "2026-03-02"
       ],
-      "message": "eGFR is falling by 7.1 mL/min/1.73m² per year over 503 days (4 results), faster than the KDIGO threshold of 5 per year.",
+      "message": "eGFR fell by 7.1 mL/min/1.73m² per year over 503 days (4 results since the last drug window), faster than the KDIGO threshold of 5 per year.",
       "expected_effect": null,
       "drug_events_since_baseline": [],
       "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD: a sustained eGFR decline of more than 5 mL/min/1.73 m2 per year is a rapid decline."
@@ -3991,7 +3991,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "drug": "Empagliflozin",
         "drug_class": "sglt2i",
         "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): the initial eGFR dip after starting an SGLT2 inhibitor is expected and is not a reason to stop it.",
+        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
         "window": {
           "start": "2024-05-13",
           "end": "2024-08-04"
@@ -4156,7 +4156,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "drug": "Ramipril",
         "drug_class": "acei_arb",
         "note": "an eGFR fall is expected after starting an ACE inhibitor or ARB (the creatinine rise seen through the eGFR formula)",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): continue ACEi/ARB unless serum creatinine rises by more than 30% within 4 weeks of starting or increasing the dose.",
+        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
         "window": {
           "start": "2024-03-11",
           "end": "2024-05-03"
@@ -4226,7 +4226,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "drug": "Ramipril",
         "drug_class": "acei_arb",
         "note": "within the ≤30% rise expected after ACEi/ARB start",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): continue ACEi/ARB unless serum creatinine rises by more than 30% within 4 weeks of starting or increasing the dose.",
+        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
         "window": {
           "start": "2024-03-11",
           "end": "2024-05-03"
@@ -4382,7 +4382,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "drug": "Ramipril",
         "drug_class": "acei_arb",
         "note": "an eGFR fall is expected after starting an ACE inhibitor or ARB (the creatinine rise seen through the eGFR formula)",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): continue ACEi/ARB unless serum creatinine rises by more than 30% within 4 weeks of starting or increasing the dose.",
+        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
         "window": {
           "start": "2024-03-11",
           "end": "2024-05-03"
@@ -4472,7 +4472,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "drug": "Ramipril",
         "drug_class": "acei_arb",
         "note": "within the ≤30% rise expected after ACEi/ARB start",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): continue ACEi/ARB unless serum creatinine rises by more than 30% within 4 weeks of starting or increasing the dose.",
+        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
         "window": {
           "start": "2024-03-11",
           "end": "2024-05-03"
@@ -4550,7 +4550,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "drug": "Metformin",
         "drug_class": "biguanide",
         "note": "an HbA1c fall is expected about 3 months after starting metformin",
-        "source": "ADA Standards of Care in Diabetes (section 6, Glycemic Goals): reassess HbA1c about 3 months after a change in glucose-lowering therapy.",
+        "source": "ADA Standards of Care in Diabetes (section 6, Glycemic Goals): HbA1c reflects about the previous 3 months, so the effect of a change in glucose-lowering therapy shows in HbA1c about 3 months later.",
         "window": {
           "start": "2023-12-31",
           "end": "2024-03-30"
@@ -4626,7 +4626,7 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         "drug": "Metformin",
         "drug_class": "biguanide",
         "note": "an HbA1c fall is expected about 3 months after starting metformin",
-        "source": "ADA Standards of Care in Diabetes (section 6, Glycemic Goals): reassess HbA1c about 3 months after a change in glucose-lowering therapy.",
+        "source": "ADA Standards of Care in Diabetes (section 6, Glycemic Goals): HbA1c reflects about the previous 3 months, so the effect of a change in glucose-lowering therapy shows in HbA1c about 3 months later.",
         "window": {
           "start": "2023-12-31",
           "end": "2024-03-30"
@@ -4679,7 +4679,7 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
       "expected": {
         "direction": "fall",
         "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): the initial eGFR dip after starting an SGLT2 inhibitor is expected and is not a reason to stop it.",
+        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
         "status": "unverified",
         "applies": true
       },
@@ -4717,7 +4717,7 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
         "drug": "Empagliflozin",
         "drug_class": "sglt2i",
         "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): the initial eGFR dip after starting an SGLT2 inhibitor is expected and is not a reason to stop it.",
+        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
         "window": {
           "start": "2024-05-13",
           "end": "2024-08-04"

@@ -310,8 +310,9 @@ def slope_flags(a: AnalyteInfo, s: dict, days: list[DayValue]) -> list[dict]:
         "change_abs": None, "change_percent": None,
         "observation_ids": s["observation_ids"], "report_ids": sorted({i for d in used for i in d.report_ids}),
         "dates": [d.date for d in used],
-        "message": (f"eGFR is falling by {abs(s['per_year']):.1f} {a.unit} per year over {s['span_days']} days "
-                    f"({s['n_points']} results), faster than the KDIGO threshold of 5 per year."),
+        "message": (f"eGFR fell by {abs(s['per_year']):.1f} {a.unit} per year over {s['span_days']} days "
+                    f"({s['n_points']} results since the last drug window), faster than the KDIGO threshold "
+                    f"of 5 per year."),
         "expected_effect": None, "drug_events_since_baseline": [], "source": KDIGO_SOURCE,
     }]
 
