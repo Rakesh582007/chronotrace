@@ -10,6 +10,7 @@ state so they agree with each other:
 - lipids follow Friedewald: TC = LDL + HDL + TG/5; VLDL and ratios derive from them
 - free T4 moves opposite to TSH
 - red-cell indices derive from Hb, MCV and MCHC (PCV = Hb x 100 / MCHC, RBC = PCV x 10 / MCV)
+- the differential count (neutrophils ... basophils) is whole numbers summing to 100
 
 These numbers only shape synthetic training data. They are not clinical rules and are not
 used by the trend engine.
@@ -223,17 +224,18 @@ def cbc(rng, cls, sex) -> dict:
     else:
         neut, lymph = _u(rng, 45, 70), _u(rng, 22, 40)
     eos, mono = _u(rng, 1, 5), _u(rng, 2, 8)
-    total = neut + lymph + eos + mono
-    if total > 99:
-        scale = 99 / total
-        neut, lymph, eos, mono = neut * scale, lymph * scale, eos * scale, mono * scale
+    baso = _u(rng, 0.1, 1.9)
+    scale = (100 - baso) / (neut + lymph + eos + mono)
+    # Printed with 0 decimals: round, then give the rounding remainder to the largest (neutrophils)
+    lymph, eos, mono, baso = (round(x) for x in (lymph * scale, eos * scale, mono * scale, baso))
+    neut = 100 - lymph - eos - mono - baso
 
     plt = {N: _u(rng, 165, 395),
            A: _u(rng, 80, 145) if rng.random() < 0.6 else _u(rng, 420, 600),
            X: _u(rng, 15, 45) if rng.random() < 0.6 else _u(rng, 760, 1000)}[parts["plt"]]
     return {"haemoglobin": hb, "wbc": wbc, "platelets": plt, "rbc": rbc, "pcv": pcv, "mcv": mcv,
             "mch": mch, "mchc": mchc, "neutrophils": neut, "lymphocytes": lymph,
-            "eosinophils": eos, "monocytes": mono}
+            "eosinophils": eos, "monocytes": mono, "basophils": baso}
 
 
 def liver(rng, cls, sex) -> dict:
