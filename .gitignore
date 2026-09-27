@@ -37,3 +37,6 @@ data/real_reports/
 Thumbs.db
 .vscode/
 .idea/
+
+# Demo seed output (generated PDFs)
+backend/demo/generated/
