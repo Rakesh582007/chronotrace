@@ -2,8 +2,8 @@
 
 Usage:  python ml/train_ner.py [--labels ml/generated/labels.jsonl] [--out ml/models/chronotrace-ner]
 
-Trains on the "train" split, evaluates entity F1 (seqeval, strict IOB2) on "val" after each
-epoch and keeps the best epoch. The "test" split (held-out layout families) is not touched
+Trains on the "train" split, evaluates entity F1 (seqeval, strict IOB2) and loss on "val" after
+each epoch and keeps the best epoch: highest val entity F1, ties broken by lower val loss. The "test" split (held-out layout families) is not touched
 here; evaluate_ner.py reports it. Sized for a 6 GB RTX 3050: fp16, batch 32, 64 sub-tokens.
 """
 
@@ -37,6 +37,26 @@ def val_f1(model, tokenizer, rows, device) -> float:
     return f1_score([r["tags"] for r in rows], pred, mode="strict", scheme=IOB2)
 
 
+def val_loss(model, loader, device, use_fp16: bool) -> float:
+    """Mean cross-entropy per labelled word (first sub-tokens) over the val split."""
+    model.eval()
+    total, n = 0.0, 0
+    with torch.no_grad():
+        for batch in loader:
+            batch = {k: v.to(device) for k, v in batch.items()}
+            with torch.autocast(device.type, dtype=torch.float16, enabled=use_fp16):
+                loss = model(**batch).loss
+            k = int((batch["labels"] != nd.IGNORE).sum())
+            total += loss.float().item() * k
+            n += k
+    return total / n
+
+
+def is_better(f1: float, loss: float, best: dict) -> bool:
+    """Higher val entity F1 wins; on a tie, lower val loss."""
+    return f1 > best["val_f1"] or (f1 == best["val_f1"] and loss < best["val_loss"])
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Train the report-row NER model.")
     ap.add_argument("--labels", type=Path, default=nd.DEFAULT_LABELS)
@@ -59,6 +79,8 @@ def main(argv: list[str] | None = None) -> int:
     loader = DataLoader(nd.NerDataset(tokenizer, train_rows, hp["max_length"]), batch_size=hp["batch_size"],
                         shuffle=True, num_workers=0, collate_fn=DataCollatorForTokenClassification(tokenizer),
                         generator=torch.Generator().manual_seed(hp["seed"]))
+    val_loader = DataLoader(nd.NerDataset(tokenizer, val_rows, hp["max_length"]), batch_size=64, shuffle=False,
+                            num_workers=0, collate_fn=DataCollatorForTokenClassification(tokenizer))
 
     no_decay = ("bias", "LayerNorm.weight")
     params = [
@@ -74,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
     start = time.perf_counter()
-    epochs, best = [], {"epoch": 0, "val_f1": -1.0}
+    epochs, best = [], {"epoch": 0, "val_f1": -1.0, "val_loss": float("inf")}
     for epoch in range(1, hp["epochs"] + 1):
         model.train()
         t0, total_loss = time.perf_counter(), 0.0
@@ -91,28 +113,32 @@ def main(argv: list[str] | None = None) -> int:
             scheduler.step()
             total_loss += loss.item()
         f1 = val_f1(model, tokenizer, val_rows, device)
-        ep = {"epoch": epoch, "train_loss": round(total_loss / len(loader), 5), "val_entity_f1": round(f1, 5),
-              "seconds": round(time.perf_counter() - t0, 1)}
+        vloss = val_loss(model, val_loader, device, use_fp16)
+        ep = {"epoch": epoch, "train_loss": round(total_loss / len(loader), 5), "val_loss": round(vloss, 6),
+              "val_entity_f1": round(f1, 5), "seconds": round(time.perf_counter() - t0, 1)}
         epochs.append(ep)
-        kept = f1 > best["val_f1"]
+        kept = is_better(f1, vloss, best)
         if kept:
-            best = {"epoch": epoch, "val_f1": f1}
+            best = {"epoch": epoch, "val_f1": f1, "val_loss": vloss}
             model.save_pretrained(args.out)
             tokenizer.save_pretrained(args.out)
-        print(f"epoch {epoch}/{hp['epochs']}: train loss {ep['train_loss']:.4f}  val entity F1 {f1:.4f}  "
-              f"({ep['seconds']:.0f} s){'  <- saved' if kept else ''}")
+        print(f"epoch {epoch}/{hp['epochs']}: train loss {ep['train_loss']:.4f}  val loss {vloss:.6f}  "
+              f"val entity F1 {f1:.4f}  ({ep['seconds']:.0f} s){'  <- saved' if kept else ''}")
 
     log = {
         "hyperparameters": hp,
         "device": torch.cuda.get_device_name(0) if device.type == "cuda" else "cpu",
         "train_rows": len(train_rows), "val_rows": len(val_rows), "steps": steps,
-        "epochs": epochs, "best_epoch": best["epoch"], "best_val_entity_f1": round(best["val_f1"], 5),
+        "epochs": epochs, "selection": "highest val entity F1, ties broken by lower val loss",
+        "best_epoch": best["epoch"], "best_val_entity_f1": round(best["val_f1"], 5),
+        "best_val_loss": round(best["val_loss"], 6),
         "peak_vram_mb": round(torch.cuda.max_memory_allocated() / 2**20, 1) if device.type == "cuda" else None,
         "train_seconds": round(time.perf_counter() - start, 1),
         "torch": torch.__version__,
     }
     (args.out / "training_log.json").write_text(json.dumps(log, indent=2), encoding="utf-8")
-    print(f"best epoch {best['epoch']} (val entity F1 {best['val_f1']:.4f}); saved to {args.out}")
+    print(f"best epoch {best['epoch']} (val entity F1 {best['val_f1']:.4f}, val loss {best['val_loss']:.6f}); "
+          f"saved to {args.out}")
     print(f"peak VRAM {log['peak_vram_mb']} MB; training time {log['train_seconds']:.0f} s")
     return 0
 
