@@ -184,7 +184,7 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T16:43:37Z",
+    "uploaded_at": "2026-09-27T17:23:48Z",
     "confirmed_at": null
   },
   "counts": {
@@ -476,7 +476,7 @@ Same body as the upload response. Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T16:43:37Z",
+    "uploaded_at": "2026-09-27T17:23:48Z",
     "confirmed_at": null
   },
   "counts": {
@@ -807,8 +807,8 @@ Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "confirmed",
-    "uploaded_at": "2026-09-27T16:43:37Z",
-    "confirmed_at": "2026-09-27T16:43:37Z"
+    "uploaded_at": "2026-09-27T17:23:48Z",
+    "confirmed_at": "2026-09-27T17:23:48Z"
   },
   "counts": {
     "extracted": 0,
@@ -2203,8 +2203,8 @@ ramipril and empagliflozin starts), after the latest report:
       "analyte_id": "egfr",
       "name": "eGFR (CKD-EPI 2021)",
       "canonical_unit": "mL/min/1.73m²",
-      "rcv_percent": 15.4,
-      "rcv_status": "unverified",
+      "rcv_percent": 20.0,
+      "rcv_status": "verified",
       "status": "ok",
       "baseline": 78.42,
       "baseline_note": null,
@@ -2937,8 +2937,8 @@ alternate between three labs, so every comparison here is `cross_lab`:
       "date": "2026-03-02",
       "threshold": {
         "type": "rcv_percent",
-        "value": 15.4,
-        "rcv_status": "unverified"
+        "value": 20.0,
+        "rcv_status": "verified"
       },
       "compared": {
         "from": {
@@ -3000,7 +3000,7 @@ alternate between three labs, so every comparison here is `cross_lab`:
         "2023-11-16",
         "2026-03-02"
       ],
-      "message": "eGFR (CKD-EPI 2021) fell 31.1% from the baseline (78.42 → 54.06 mL/min/1.73m²), more than its reference change value of 15.4%.",
+      "message": "eGFR (CKD-EPI 2021) fell 31.1% from the baseline (78.42 → 54.06 mL/min/1.73m²), more than its reference change value of 20%.",
       "expected_effect": null,
       "drug_events_since_baseline": [
         {
@@ -3018,7 +3018,7 @@ alternate between three labs, so every comparison here is `cross_lab`:
           "date": "2024-05-06"
         }
       ],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV",
+      "source": "KDIGO 2024 CKD guideline, Practice Point 2.1.3: \"For people with CKD, a change in eGFR of >20% on a subsequent test exceeds the expected variability and warrants evaluation.\"",
       "cross_lab": true,
       "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
     },
@@ -3171,84 +3171,6 @@ alternate between three labs, so every comparison here is `cross_lab`:
       "cross_lab_note": "values from different labs; between-lab variation adds uncertainty to the slope"
     },
     {
-      "id": "RCV_PREV:egfr:2024-04-01",
-      "rule_id": "RCV_PREV",
-      "level": "change",
-      "analyte_id": "egfr",
-      "analyte_name": "eGFR (CKD-EPI 2021)",
-      "unit": "mL/min/1.73m²",
-      "direction": "fall",
-      "date": "2024-04-01",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.4,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "previous result",
-          "value": 77.94,
-          "dates": [
-            "2024-02-15"
-          ],
-          "observation_ids": [
-            54
-          ],
-          "report_ids": [
-            8
-          ],
-          "labs": [
-            "Varnika Clinical Labs"
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-04-01",
-          "value": 65.08,
-          "observation_ids": [
-            60
-          ],
-          "report_ids": [
-            9
-          ],
-          "labs": [
-            "ASTERLANE DIAGNOSTICS"
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -12.86,
-      "change_percent": -16.5,
-      "observation_ids": [
-        54,
-        60
-      ],
-      "report_ids": [
-        8,
-        9
-      ],
-      "dates": [
-        "2024-02-15",
-        "2024-04-01"
-      ],
-      "message": "eGFR (CKD-EPI 2021) fell 16.5% from the previous result (77.94 → 65.08 mL/min/1.73m²), more than its reference change value of 15.4%.",
-      "expected_effect": {
-        "event_id": 2,
-        "drug": "Ramipril",
-        "drug_class": "acei_arb",
-        "note": "an eGFR fall is expected after starting an ACE inhibitor or ARB (the creatinine rise seen through the eGFR formula)",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
-        "window": {
-          "start": "2024-03-11",
-          "end": "2024-05-03"
-        }
-      },
-      "drug_events_since_baseline": [],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV",
-      "cross_lab": true,
-      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
-    },
-    {
       "id": "RCV_PREV:creatinine:2024-04-01",
       "rule_id": "RCV_PREV",
       "level": "change",
@@ -3315,7 +3237,7 @@ alternate between three labs, so every comparison here is `cross_lab`:
         "drug": "Ramipril",
         "drug_class": "acei_arb",
         "note": "within the ≤30% rise expected after ACEi/ARB start",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
+        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314), Practice Point 3.6.4: \"Continue ACEi or ARB therapy unless serum creatinine rises by more than 30% within 4 weeks following initiation of treatment or an increase in dose.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies).",
         "window": {
           "start": "2024-03-11",
           "end": "2024-05-03"
@@ -3414,8 +3336,9 @@ For each value the drug's class is expected to move: `before` is the **mean of t
 on or before the event date, at most 180 days earlier and after any earlier drug event that affects
 the same value (`before_values` lists them; `before_note: "single prior value"` when there was only
 one). `after` is the first result inside the class's window. `cross_lab` marks a before/after pair
-from different labs. Every drug start carries `caveat` ("Some change is expected after a treatment
-started for a high value (regression to the mean); adherence is not recorded."). `status`:
+from different labs. Every drug start carries `caveat` ("If this treatment was started
+because of a high value, some change is expected anyway (regression to the mean). Adherence is not
+recorded."). `status`:
 `assessed`, `too early to assess` (no result yet past the window start), `no baseline` (no `before`)
 or `no result in window`. `confounders` are the other medication events from 90 days before this one
 up to the `after` result. A drug not in the catalogue returns an empty `analytes` list and a `note`.
@@ -3436,7 +3359,7 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
     "drug_class_name": "SGLT2 inhibitor"
   },
   "note": null,
-  "caveat": "Some change is expected after a treatment started for a high value (regression to the mean); adherence is not recorded.",
+  "caveat": "If this treatment was started because of a high value, some change is expected anyway (regression to the mean). Adherence is not recorded.",
   "analytes": [
     {
       "analyte_id": "egfr",
@@ -3445,8 +3368,8 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
       "expected": {
         "direction": "fall",
         "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
-        "status": "unverified",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
+        "status": "verified",
         "applies": true
       },
       "window": {
@@ -3501,8 +3424,8 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
       },
       "change_abs": -3.46,
       "change_percent": -5.3,
-      "rcv_percent": 15.4,
-      "rcv_status": "unverified",
+      "rcv_percent": 20.0,
+      "rcv_status": "verified",
       "beyond_rcv": false,
       "cross_lab": true,
       "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
@@ -3511,7 +3434,7 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
         "drug": "Empagliflozin",
         "drug_class": "sglt2i",
         "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
         "window": {
           "start": "2024-05-13",
           "end": "2024-08-04"
@@ -3536,8 +3459,8 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
       "expected": {
         "direction": "rise",
         "note": "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
-        "status": "unverified",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
+        "status": "verified",
         "applies": true
       },
       "window": {
@@ -3602,7 +3525,7 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
         "drug": "Empagliflozin",
         "drug_class": "sglt2i",
         "note": "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
         "window": {
           "start": "2024-05-13",
           "end": "2024-08-04"

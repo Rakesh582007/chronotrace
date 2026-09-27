@@ -56,8 +56,8 @@ CROSS_LAB_NOTE = "values from different labs; between-lab variation is larger th
 CROSS_LAB_SLOPE_NOTE = "values from different labs; between-lab variation adds uncertainty to the slope"
 SINGLE_PRIOR_NOTE = "single prior value"
 BEFORE_MAX_VALUES = 3
-REGRESSION_CAVEAT = ("Some change is expected after a treatment started for a high value (regression to the mean); "
-                     "adherence is not recorded.")
+REGRESSION_CAVEAT = ("If this treatment was started because of a high value, some change is expected anyway "
+                     "(regression to the mean). Adherence is not recorded.")
 
 
 # ---------------------------------------------------------------- inputs

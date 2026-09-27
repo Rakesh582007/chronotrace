@@ -355,8 +355,8 @@ def test_every_start_carries_the_regression_to_the_mean_caveat():
     points = {"hba1c": lab_points([("2023-01-01", 9.0, "A"), ("2023-05-01", 7.5, "A")])}
     start, stop = ev(1, "Metformin", "2023-01-10"), ev(2, "Metformin", "2023-03-01", change="stop")
     assert E.response(start, INFO, points, [start, stop])["caveat"] == (
-        "Some change is expected after a treatment started for a high value (regression to the mean); "
-        "adherence is not recorded.")
+        "If this treatment was started because of a high value, some change is expected anyway "
+        "(regression to the mean). Adherence is not recorded.")
     assert E.response(stop, INFO, points, [start, stop])["caveat"] is None
     h = E.response(start, INFO, points, [start])["analytes"][0]
     assert h["before_note"] == "single prior value"
