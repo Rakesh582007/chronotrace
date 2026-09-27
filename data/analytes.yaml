@@ -158,12 +158,14 @@ analytes:
       - {sex: any, low: 90, high: null}
     reference_range_source: "KDIGO 2024 CKD guideline, GFR categories (G1 >= 90; G3a starts < 60)"
     rcv:
-      percent: 15.4
+      # Before: 15.4%, propagated from the creatinine RCV (1 - (1 + RCV_creatinine)^-1.200, Scr above
+      # kappa; status unverified, method derived_from_creatinine). Replaced by the KDIGO 2024 threshold.
+      percent: 20.0
       cv_i: null
       cv_a: null
-      status: unverified
-      method: derived_from_creatinine
-      source: "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
+      status: verified
+      method: guideline
+      source: "KDIGO 2024 CKD guideline, Practice Point 2.1.3: \"For people with CKD, a change in eGFR of >20% on a subsequent test exceeds the expected variability and warrants evaluation.\""
 
   - id: uacr
     canonical_name: Urine Albumin/Creatinine Ratio

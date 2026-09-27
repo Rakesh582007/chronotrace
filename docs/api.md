@@ -32,6 +32,9 @@ types as the running API, so this file and the code cannot drift apart.
 5. **Timeline**: `GET /patients/{id}/timeline` returns confirmed values per analyte. Each point
    carries `report_id`, `lab`, `date`, `page` and `line`, so every point links back to where it was
    printed.
+6. **Medications**: `POST /patients/{id}/medications` (start, stop, dose change), `GET`, `DELETE`.
+7. **Trends and flags**: `GET /patients/{id}/trends`, `GET /patients/{id}/flags` and
+   `GET /medications/{id}/response`, all recomputed from confirmed data on each request.
 
 ## Statuses and fields
 
@@ -181,7 +184,7 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T15:38:03Z",
+    "uploaded_at": "2026-09-27T17:23:48Z",
     "confirmed_at": null
   },
   "counts": {
@@ -473,7 +476,7 @@ Same body as the upload response. Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T15:38:03Z",
+    "uploaded_at": "2026-09-27T17:23:48Z",
     "confirmed_at": null
   },
   "counts": {
@@ -804,8 +807,8 @@ Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "confirmed",
-    "uploaded_at": "2026-09-27T15:38:03Z",
-    "confirmed_at": "2026-09-27T15:38:03Z"
+    "uploaded_at": "2026-09-27T17:23:48Z",
+    "confirmed_at": "2026-09-27T17:23:48Z"
   },
   "counts": {
     "extracted": 0,
@@ -1404,6 +1407,2141 @@ confirmation. The point keeps `"comparator": ">"` (the true value is above 300):
           "line": 19
         }
       ]
+    }
+  ]
+}
+```
+
+## Medications and trends (step 6)
+
+Trends and flags are **computed on every request** from the patient's confirmed values (the same data
+as the timeline) and medication events. Nothing is stored, so an edit, a newly confirmed report or a
+deleted medication changes them immediately. All the maths is in code; thresholds come from
+`data/analytes.yaml` (reference change values) and `data/drugs.yaml` (expected drug effects). Flags
+describe an observed change and where it came from; they never say what to do.
+
+Rules the UI should explain to the doctor:
+
+- **Censored values** (`comparator` set, e.g. UACR `>300`) are shown (`censored: true`) but never used
+  in a calculation.
+- **Baseline**: median of the patient's first (up to 3) results before the first medication event that
+  affects the analyte. If fewer than 2 exist, the first 3 results overall (`baseline_note: "includes
+  on-treatment results"`).
+- **RCV flags** (`level: "change"`): `RCV_PREV` (change from the previous result, for every result) and
+  `RCV_BASELINE` (change of the **latest** result from the baseline) beyond the analyte's reference change
+  value (RCV). The baseline itself is in `/trends` for the chart. Analytes without an RCV
+  (post-prandial glucose, `rcv_status: "not established"`) get a trend but no RCV flags; an
+  `rcv_status` of `unverified` means the RCV's source is not yet checked (show it).
+- **Expected effect**: a change inside the window after a drug start whose class is expected to move
+  that value in that direction carries `expected_effect` (drug, note, source). `RCV_BASELINE` flags
+  also list `drug_events_since_baseline`.
+- **Slope** (per year): only on results after the last drug's expected-effect window, so a planned
+  drug dip is not counted as a trend. It needs 3 results over at least 365 days (`status: "ok"`);
+  otherwise `"not enough span"` / `"not enough points"`.
+- **KDIGO_RAPID_EGFR** (`level: "guideline"`, the only guideline rule): eGFR slope below -5
+  mL/min/1.73 m² per year (KDIGO 2012 definition of rapid progression).
+- **Different labs**: when the compared values come from different labs, the flag or comparison has
+  `cross_lab: true` and `cross_lab_note` ("values from different labs; between-lab variation is larger
+  than the RCV assumes"). The threshold is not changed; show the note next to the flag.
+- Every flag lists the `observation_ids`, `report_ids` and `dates` it was computed from, its
+  `threshold` and the values `compared`, so each one links back to the printed reports.
+
+### `POST /patients/{patient_id}/medications`: record a drug start, stop or dose change
+
+`change` is `start`, `stop` or `dose_change`; `date` must lie between the patient's birth year and
+today. The drug name is matched (generic or brand, case-insensitive) to a class in `data/drugs.yaml`;
+unlisted drugs get `drug_class: "unknown"` (kept, and counted as a confounder, but with no expected
+effect).
+
+<!-- example: add-medication request -->
+```json
+{
+  "drug": "Atorvastatin",
+  "change": "start",
+  "dose_text": "10 mg OD",
+  "date": "2024-08-01"
+}
+```
+
+Response `201`:
+
+<!-- example: add-medication response 201 -->
+```json
+{
+  "id": 4,
+  "patient_id": 3,
+  "drug": "Atorvastatin",
+  "generic": null,
+  "drug_class": "unknown",
+  "drug_class_name": null,
+  "change": "start",
+  "dose_text": "10 mg OD",
+  "date": "2024-08-01"
+}
+```
+
+A date in the future or before the birth year:
+
+<!-- example: medication-bad-date request -->
+```json
+{
+  "drug": "Atorvastatin",
+  "change": "start",
+  "dose_text": "10 mg OD",
+  "date": "2999-01-01"
+}
+```
+
+<!-- example: medication-bad-date response 422 -->
+```json
+{
+  "detail": {
+    "message": "date must be between the patient's birth year and today"
+  }
+}
+```
+
+### `GET /patients/{patient_id}/medications`: medication events, oldest first
+
+<!-- example: list-medications response 200 -->
+```json
+[
+  {
+    "id": 1,
+    "patient_id": 3,
+    "drug": "Metformin",
+    "generic": "metformin",
+    "drug_class": "biguanide",
+    "drug_class_name": "Biguanide",
+    "change": "start",
+    "dose_text": "500 mg BD",
+    "date": "2023-10-02"
+  },
+  {
+    "id": 2,
+    "patient_id": 3,
+    "drug": "Ramipril",
+    "generic": "ramipril",
+    "drug_class": "acei_arb",
+    "drug_class_name": "ACE inhibitor / angiotensin receptor blocker",
+    "change": "start",
+    "dose_text": "2.5 mg OD",
+    "date": "2024-03-04"
+  },
+  {
+    "id": 3,
+    "patient_id": 3,
+    "drug": "Empagliflozin",
+    "generic": "empagliflozin",
+    "drug_class": "sglt2i",
+    "drug_class_name": "SGLT2 inhibitor",
+    "change": "start",
+    "dose_text": "10 mg OD",
+    "date": "2024-05-06"
+  },
+  {
+    "id": 4,
+    "patient_id": 3,
+    "drug": "Atorvastatin",
+    "generic": null,
+    "drug_class": "unknown",
+    "drug_class_name": null,
+    "change": "start",
+    "dose_text": "10 mg OD",
+    "date": "2024-08-01"
+  }
+]
+```
+
+### `DELETE /medications/{medication_id}`: delete a medication event
+
+Response `204` with no body (`404` if it does not exist). Trends and flags change accordingly.
+
+### `GET /patients/{patient_id}/trends`: one trend per analyte
+
+Analytes with at least one confirmed value, in dictionary order. `status` is `ok`, `insufficient data`
+(fewer than 2 usable results) or `censored values only`. Each point is a timeline point plus
+`censored` and `in_window` (ids of the medication events whose expected-effect window contains its
+date). `slope.excluded_points` says which results were left out of the slope and why.
+
+Example: the demo patient K. Selvam (type 2 diabetes + CKD, 10 reports from 3 labs, metformin,
+ramipril and empagliflozin starts), after the latest report:
+
+<!-- example: trends response 200 -->
+```json
+{
+  "patient": {
+    "id": 3,
+    "name": "K. Selvam",
+    "sex": "male",
+    "birth_year": 1968,
+    "conditions": [
+      "type 2 diabetes",
+      "chronic kidney disease"
+    ]
+  },
+  "analytes": [
+    {
+      "analyte_id": "hba1c",
+      "name": "HbA1c",
+      "canonical_unit": "%",
+      "rcv_percent": 6.3,
+      "rcv_status": "verified",
+      "status": "ok",
+      "baseline": 8.8,
+      "baseline_note": null,
+      "baseline_dates": [
+        "2023-06-12",
+        "2023-09-14"
+      ],
+      "baseline_observation_ids": [
+        34,
+        40
+      ],
+      "points": [
+        {
+          "observation_id": 34,
+          "report_id": 5,
+          "date": "2023-06-12",
+          "value": 8.9,
+          "comparator": null,
+          "value_text": "8.9",
+          "unit_text": "%",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 11,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 40,
+          "report_id": 6,
+          "date": "2023-09-14",
+          "value": 8.7,
+          "comparator": null,
+          "value_text": "8.7",
+          "unit_text": "%",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 6,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 46,
+          "report_id": 7,
+          "date": "2023-11-16",
+          "value": 8.6,
+          "comparator": null,
+          "value_text": "8.6",
+          "unit_text": "%",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 11,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 52,
+          "report_id": 8,
+          "date": "2024-02-15",
+          "value": 7.4,
+          "comparator": null,
+          "value_text": "7.4",
+          "unit_text": "%",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 12,
+          "censored": false,
+          "in_window": [
+            1
+          ]
+        },
+        {
+          "observation_id": 58,
+          "report_id": 9,
+          "date": "2024-04-01",
+          "value": 7.2,
+          "comparator": null,
+          "value_text": "7.2",
+          "unit_text": "%",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 11,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 64,
+          "report_id": 10,
+          "date": "2024-06-10",
+          "value": 7.0,
+          "comparator": null,
+          "value_text": "7.0",
+          "unit_text": "%",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 6,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 70,
+          "report_id": 11,
+          "date": "2024-10-15",
+          "value": 6.9,
+          "comparator": null,
+          "value_text": "6.9",
+          "unit_text": "%",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 12,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 76,
+          "report_id": 12,
+          "date": "2025-03-10",
+          "value": 7.0,
+          "comparator": null,
+          "value_text": "7.0",
+          "unit_text": "%",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 11,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 82,
+          "report_id": 13,
+          "date": "2025-09-01",
+          "value": 6.9,
+          "comparator": null,
+          "value_text": "6.9",
+          "unit_text": "%",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 6,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 88,
+          "report_id": 14,
+          "date": "2026-03-02",
+          "value": 7.1,
+          "comparator": null,
+          "value_text": "7.1",
+          "unit_text": "%",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 11,
+          "censored": false,
+          "in_window": []
+        }
+      ],
+      "slope": {
+        "per_year": -0.032,
+        "unit": "% per year",
+        "n_points": 6,
+        "span_days": 700,
+        "first_date": "2024-04-01",
+        "last_date": "2026-03-02",
+        "observation_ids": [
+          58,
+          64,
+          70,
+          76,
+          82,
+          88
+        ],
+        "excluded_points": [
+          {
+            "date": "2023-06-12",
+            "observation_ids": [
+              34
+            ],
+            "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+          },
+          {
+            "date": "2023-09-14",
+            "observation_ids": [
+              40
+            ],
+            "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+          },
+          {
+            "date": "2023-11-16",
+            "observation_ids": [
+              46
+            ],
+            "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+          },
+          {
+            "date": "2024-02-15",
+            "observation_ids": [
+              52
+            ],
+            "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+          }
+        ],
+        "status": "ok"
+      }
+    },
+    {
+      "analyte_id": "fasting_glucose",
+      "name": "Fasting Plasma Glucose",
+      "canonical_unit": "mg/dL",
+      "rcv_percent": 14.9,
+      "rcv_status": "unverified",
+      "status": "ok",
+      "baseline": 148.0,
+      "baseline_note": null,
+      "baseline_dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2023-11-16"
+      ],
+      "baseline_observation_ids": [
+        33,
+        39,
+        45
+      ],
+      "points": [
+        {
+          "observation_id": 33,
+          "report_id": 5,
+          "date": "2023-06-12",
+          "value": 152.0,
+          "comparator": null,
+          "value_text": "152",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 39,
+          "report_id": 6,
+          "date": "2023-09-14",
+          "value": 148.0,
+          "comparator": null,
+          "value_text": "148",
+          "unit_text": "mg/dL",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 5,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 45,
+          "report_id": 7,
+          "date": "2023-11-16",
+          "value": 146.0,
+          "comparator": null,
+          "value_text": "146",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 51,
+          "report_id": 8,
+          "date": "2024-02-15",
+          "value": 136.0,
+          "comparator": null,
+          "value_text": "136",
+          "unit_text": "mg/dL",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 11,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 57,
+          "report_id": 9,
+          "date": "2024-04-01",
+          "value": 134.0,
+          "comparator": null,
+          "value_text": "134",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 63,
+          "report_id": 10,
+          "date": "2024-06-10",
+          "value": 131.0,
+          "comparator": null,
+          "value_text": "131",
+          "unit_text": "mg/dL",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 5,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 69,
+          "report_id": 11,
+          "date": "2024-10-15",
+          "value": 130.0,
+          "comparator": null,
+          "value_text": "130",
+          "unit_text": "mg/dL",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 11,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 75,
+          "report_id": 12,
+          "date": "2025-03-10",
+          "value": 132.0,
+          "comparator": null,
+          "value_text": "132",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 81,
+          "report_id": 13,
+          "date": "2025-09-01",
+          "value": 130.0,
+          "comparator": null,
+          "value_text": "130",
+          "unit_text": "mg/dL",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 5,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 87,
+          "report_id": 14,
+          "date": "2026-03-02",
+          "value": 133.0,
+          "comparator": null,
+          "value_text": "133",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        }
+      ],
+      "slope": {
+        "per_year": -7.022,
+        "unit": "mg/dL per year",
+        "n_points": 10,
+        "span_days": 994,
+        "first_date": "2023-06-12",
+        "last_date": "2026-03-02",
+        "observation_ids": [
+          33,
+          39,
+          45,
+          51,
+          57,
+          63,
+          69,
+          75,
+          81,
+          87
+        ],
+        "excluded_points": [],
+        "status": "ok"
+      }
+    },
+    {
+      "analyte_id": "creatinine",
+      "name": "Serum Creatinine",
+      "canonical_unit": "mg/dL",
+      "rcv_percent": 15.0,
+      "rcv_status": "unverified",
+      "status": "ok",
+      "baseline": 1.11,
+      "baseline_note": null,
+      "baseline_dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2023-11-16"
+      ],
+      "baseline_observation_ids": [
+        35,
+        41,
+        47
+      ],
+      "points": [
+        {
+          "observation_id": 35,
+          "report_id": 5,
+          "date": "2023-06-12",
+          "value": 1.1,
+          "comparator": null,
+          "value_text": "1.10",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 14,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 41,
+          "report_id": 6,
+          "date": "2023-09-14",
+          "value": 1.13,
+          "comparator": null,
+          "value_text": "1.13",
+          "unit_text": "mg/dL",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 7,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 47,
+          "report_id": 7,
+          "date": "2023-11-16",
+          "value": 1.11,
+          "comparator": null,
+          "value_text": "1.11",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 14,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 53,
+          "report_id": 8,
+          "date": "2024-02-15",
+          "value": 1.11,
+          "comparator": null,
+          "value_text": "1.11",
+          "unit_text": "mg/dL",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 15,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 59,
+          "report_id": 9,
+          "date": "2024-04-01",
+          "value": 1.29,
+          "comparator": null,
+          "value_text": "1.29",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 14,
+          "censored": false,
+          "in_window": [
+            2
+          ]
+        },
+        {
+          "observation_id": 65,
+          "report_id": 10,
+          "date": "2024-06-10",
+          "value": 1.35,
+          "comparator": null,
+          "value_text": "1.35",
+          "unit_text": "mg/dL",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 7,
+          "censored": false,
+          "in_window": [
+            3
+          ]
+        },
+        {
+          "observation_id": 71,
+          "report_id": 11,
+          "date": "2024-10-15",
+          "value": 1.31,
+          "comparator": null,
+          "value_text": "1.31",
+          "unit_text": "mg/dL",
+          "lab": "Varnika Clinical Labs",
+          "page": 2,
+          "line": 7,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 77,
+          "report_id": 12,
+          "date": "2025-03-10",
+          "value": 1.35,
+          "comparator": null,
+          "value_text": "1.35",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 14,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 83,
+          "report_id": 13,
+          "date": "2025-09-01",
+          "value": 1.41,
+          "comparator": null,
+          "value_text": "1.41",
+          "unit_text": "mg/dL",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 7,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 89,
+          "report_id": 14,
+          "date": "2026-03-02",
+          "value": 1.49,
+          "comparator": null,
+          "value_text": "1.49",
+          "unit_text": "mg/dl",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 14,
+          "censored": false,
+          "in_window": []
+        }
+      ],
+      "slope": {
+        "per_year": 0.131,
+        "unit": "mg/dL per year",
+        "n_points": 4,
+        "span_days": 503,
+        "first_date": "2024-10-15",
+        "last_date": "2026-03-02",
+        "observation_ids": [
+          71,
+          77,
+          83,
+          89
+        ],
+        "excluded_points": [
+          {
+            "date": "2023-06-12",
+            "observation_ids": [
+              35
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2023-09-14",
+            "observation_ids": [
+              41
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2023-11-16",
+            "observation_ids": [
+              47
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2024-02-15",
+            "observation_ids": [
+              53
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2024-04-01",
+            "observation_ids": [
+              59
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2024-06-10",
+            "observation_ids": [
+              65
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          }
+        ],
+        "status": "ok"
+      }
+    },
+    {
+      "analyte_id": "egfr",
+      "name": "eGFR (CKD-EPI 2021)",
+      "canonical_unit": "mL/min/1.73m²",
+      "rcv_percent": 20.0,
+      "rcv_status": "verified",
+      "status": "ok",
+      "baseline": 78.42,
+      "baseline_note": null,
+      "baseline_dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2023-11-16"
+      ],
+      "baseline_observation_ids": [
+        36,
+        42,
+        48
+      ],
+      "points": [
+        {
+          "observation_id": 36,
+          "report_id": 5,
+          "date": "2023-06-12",
+          "value": 79.28,
+          "comparator": null,
+          "value_text": "79",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 16,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 42,
+          "report_id": 6,
+          "date": "2023-09-14",
+          "value": 76.76,
+          "comparator": null,
+          "value_text": "77",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 8,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 48,
+          "report_id": 7,
+          "date": "2023-11-16",
+          "value": 78.42,
+          "comparator": null,
+          "value_text": "78",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 16,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 54,
+          "report_id": 8,
+          "date": "2024-02-15",
+          "value": 77.94,
+          "comparator": null,
+          "value_text": "78",
+          "unit_text": "mL/min/1.73m²",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 16,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 60,
+          "report_id": 9,
+          "date": "2024-04-01",
+          "value": 65.08,
+          "comparator": null,
+          "value_text": "65",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 16,
+          "censored": false,
+          "in_window": [
+            2
+          ]
+        },
+        {
+          "observation_id": 66,
+          "report_id": 10,
+          "date": "2024-06-10",
+          "value": 61.62,
+          "comparator": null,
+          "value_text": "62",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 8,
+          "censored": false,
+          "in_window": [
+            3
+          ]
+        },
+        {
+          "observation_id": 72,
+          "report_id": 11,
+          "date": "2024-10-15",
+          "value": 63.88,
+          "comparator": null,
+          "value_text": "64",
+          "unit_text": "mL/min/1.73m²",
+          "lab": "Varnika Clinical Labs",
+          "page": 2,
+          "line": 8,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 78,
+          "report_id": 12,
+          "date": "2025-03-10",
+          "value": 61.24,
+          "comparator": null,
+          "value_text": "61",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 16,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 84,
+          "report_id": 13,
+          "date": "2025-09-01",
+          "value": 58.12,
+          "comparator": null,
+          "value_text": "58",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 8,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 90,
+          "report_id": 14,
+          "date": "2026-03-02",
+          "value": 54.06,
+          "comparator": null,
+          "value_text": "54",
+          "unit_text": "mL/min/1.73m2",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 16,
+          "censored": false,
+          "in_window": []
+        }
+      ],
+      "slope": {
+        "per_year": -7.081,
+        "unit": "mL/min/1.73m² per year",
+        "n_points": 4,
+        "span_days": 503,
+        "first_date": "2024-10-15",
+        "last_date": "2026-03-02",
+        "observation_ids": [
+          72,
+          78,
+          84,
+          90
+        ],
+        "excluded_points": [
+          {
+            "date": "2023-06-12",
+            "observation_ids": [
+              36
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2023-09-14",
+            "observation_ids": [
+              42
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2023-11-16",
+            "observation_ids": [
+              48
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2024-02-15",
+            "observation_ids": [
+              54
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2024-04-01",
+            "observation_ids": [
+              60
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2024-06-10",
+            "observation_ids": [
+              66
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          }
+        ],
+        "status": "ok"
+      }
+    },
+    {
+      "analyte_id": "uacr",
+      "name": "Urine Albumin/Creatinine Ratio",
+      "canonical_unit": "mg/g",
+      "rcv_percent": 87.0,
+      "rcv_status": "unverified",
+      "status": "ok",
+      "baseline": 122.0,
+      "baseline_note": null,
+      "baseline_dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2023-11-16"
+      ],
+      "baseline_observation_ids": [
+        38,
+        44,
+        50
+      ],
+      "points": [
+        {
+          "observation_id": 38,
+          "report_id": 5,
+          "date": "2023-06-12",
+          "value": 118.0,
+          "comparator": null,
+          "value_text": "118",
+          "unit_text": "mg/g",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 21,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 44,
+          "report_id": 6,
+          "date": "2023-09-14",
+          "value": 126.0,
+          "comparator": null,
+          "value_text": "126",
+          "unit_text": "mg/g",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 10,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 50,
+          "report_id": 7,
+          "date": "2023-11-16",
+          "value": 122.0,
+          "comparator": null,
+          "value_text": "122",
+          "unit_text": "mg/g",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 21,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 56,
+          "report_id": 8,
+          "date": "2024-02-15",
+          "value": 131.0,
+          "comparator": null,
+          "value_text": "131",
+          "unit_text": "mg/g",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 18,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 62,
+          "report_id": 9,
+          "date": "2024-04-01",
+          "value": 148.0,
+          "comparator": null,
+          "value_text": "148",
+          "unit_text": "mg/g",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 21,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 68,
+          "report_id": 10,
+          "date": "2024-06-10",
+          "value": 142.0,
+          "comparator": null,
+          "value_text": "142",
+          "unit_text": "mg/g",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 10,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 74,
+          "report_id": 11,
+          "date": "2024-10-15",
+          "value": 139.0,
+          "comparator": null,
+          "value_text": "139",
+          "unit_text": "mg/g",
+          "lab": "Varnika Clinical Labs",
+          "page": 2,
+          "line": 10,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 80,
+          "report_id": 12,
+          "date": "2025-03-10",
+          "value": 151.0,
+          "comparator": null,
+          "value_text": "151",
+          "unit_text": "mg/g",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 21,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 86,
+          "report_id": 13,
+          "date": "2025-09-01",
+          "value": 160.0,
+          "comparator": null,
+          "value_text": "160",
+          "unit_text": "mg/g",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 10,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 92,
+          "report_id": 14,
+          "date": "2026-03-02",
+          "value": 172.0,
+          "comparator": null,
+          "value_text": "172",
+          "unit_text": "mg/g",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 21,
+          "censored": false,
+          "in_window": []
+        }
+      ],
+      "slope": {
+        "per_year": 18.599,
+        "unit": "mg/g per year",
+        "n_points": 10,
+        "span_days": 994,
+        "first_date": "2023-06-12",
+        "last_date": "2026-03-02",
+        "observation_ids": [
+          38,
+          44,
+          50,
+          56,
+          62,
+          68,
+          74,
+          80,
+          86,
+          92
+        ],
+        "excluded_points": [],
+        "status": "ok"
+      }
+    },
+    {
+      "analyte_id": "potassium",
+      "name": "Serum Potassium",
+      "canonical_unit": "mmol/L",
+      "rcv_percent": 11.8,
+      "rcv_status": "unverified",
+      "status": "ok",
+      "baseline": 4.5,
+      "baseline_note": null,
+      "baseline_dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2023-11-16"
+      ],
+      "baseline_observation_ids": [
+        37,
+        43,
+        49
+      ],
+      "points": [
+        {
+          "observation_id": 37,
+          "report_id": 5,
+          "date": "2023-06-12",
+          "value": 4.5,
+          "comparator": null,
+          "value_text": "4.5",
+          "unit_text": "mmol/l",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 18,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 43,
+          "report_id": 6,
+          "date": "2023-09-14",
+          "value": 4.6,
+          "comparator": null,
+          "value_text": "4.6",
+          "unit_text": "mmol/L",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 49,
+          "report_id": 7,
+          "date": "2023-11-16",
+          "value": 4.5,
+          "comparator": null,
+          "value_text": "4.5",
+          "unit_text": "mmol/l",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 18,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 55,
+          "report_id": 8,
+          "date": "2024-02-15",
+          "value": 4.6,
+          "comparator": null,
+          "value_text": "4.6",
+          "unit_text": "mmol/L",
+          "lab": "Varnika Clinical Labs",
+          "page": 1,
+          "line": 17,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 61,
+          "report_id": 9,
+          "date": "2024-04-01",
+          "value": 4.9,
+          "comparator": null,
+          "value_text": "4.9",
+          "unit_text": "mmol/l",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 18,
+          "censored": false,
+          "in_window": [
+            2
+          ]
+        },
+        {
+          "observation_id": 67,
+          "report_id": 10,
+          "date": "2024-06-10",
+          "value": 4.9,
+          "comparator": null,
+          "value_text": "4.9",
+          "unit_text": "mmol/L",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 73,
+          "report_id": 11,
+          "date": "2024-10-15",
+          "value": 4.8,
+          "comparator": null,
+          "value_text": "4.8",
+          "unit_text": "mmol/L",
+          "lab": "Varnika Clinical Labs",
+          "page": 2,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 79,
+          "report_id": 12,
+          "date": "2025-03-10",
+          "value": 4.9,
+          "comparator": null,
+          "value_text": "4.9",
+          "unit_text": "mmol/l",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 18,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 85,
+          "report_id": 13,
+          "date": "2025-09-01",
+          "value": 5.0,
+          "comparator": null,
+          "value_text": "5.0",
+          "unit_text": "mmol/L",
+          "lab": "Kestrelline Labs",
+          "page": 1,
+          "line": 9,
+          "censored": false,
+          "in_window": []
+        },
+        {
+          "observation_id": 91,
+          "report_id": 14,
+          "date": "2026-03-02",
+          "value": 5.0,
+          "comparator": null,
+          "value_text": "5.0",
+          "unit_text": "mmol/l",
+          "lab": "ASTERLANE DIAGNOSTICS",
+          "page": 1,
+          "line": 18,
+          "censored": false,
+          "in_window": []
+        }
+      ],
+      "slope": {
+        "per_year": 0.095,
+        "unit": "mmol/L per year",
+        "n_points": 5,
+        "span_days": 630,
+        "first_date": "2024-06-10",
+        "last_date": "2026-03-02",
+        "observation_ids": [
+          67,
+          73,
+          79,
+          85,
+          91
+        ],
+        "excluded_points": [
+          {
+            "date": "2023-06-12",
+            "observation_ids": [
+              37
+            ],
+            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+          },
+          {
+            "date": "2023-09-14",
+            "observation_ids": [
+              43
+            ],
+            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+          },
+          {
+            "date": "2023-11-16",
+            "observation_ids": [
+              49
+            ],
+            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+          },
+          {
+            "date": "2024-02-15",
+            "observation_ids": [
+              55
+            ],
+            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+          },
+          {
+            "date": "2024-04-01",
+            "observation_ids": [
+              61
+            ],
+            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+          }
+        ],
+        "status": "ok"
+      }
+    }
+  ]
+}
+```
+
+### `GET /patients/{patient_id}/flags`: all flags, newest first
+
+`compared.from` / `compared.to` hold the values compared (`from.label` is `previous result` or
+`baseline`); for the slope rule `compared.slope` holds the slope instead. `change_percent` is rounded
+to 1 decimal and is the number compared with the threshold. `message` is a plain sentence for the UI.
+In this example the last report's eGFR is only 7% below the one before (within the RCV), but the
+slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` fires. The demo's reports
+alternate between three labs, so every comparison here is `cross_lab`:
+
+<!-- example: flags response 200 -->
+```json
+{
+  "patient_id": 3,
+  "flags": [
+    {
+      "id": "RCV_BASELINE:hba1c:2026-03-02",
+      "rule_id": "RCV_BASELINE",
+      "level": "change",
+      "analyte_id": "hba1c",
+      "analyte_name": "HbA1c",
+      "unit": "%",
+      "direction": "fall",
+      "date": "2026-03-02",
+      "threshold": {
+        "type": "rcv_percent",
+        "value": 6.3,
+        "rcv_status": "verified"
+      },
+      "compared": {
+        "from": {
+          "label": "baseline",
+          "value": 8.8,
+          "dates": [
+            "2023-06-12",
+            "2023-09-14"
+          ],
+          "observation_ids": [
+            34,
+            40
+          ],
+          "report_ids": [
+            5,
+            6
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS",
+            "Kestrelline Labs"
+          ],
+          "note": null
+        },
+        "to": {
+          "date": "2026-03-02",
+          "value": 7.1,
+          "observation_ids": [
+            88
+          ],
+          "report_ids": [
+            14
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        },
+        "slope": null
+      },
+      "change_abs": -1.7,
+      "change_percent": -19.3,
+      "observation_ids": [
+        34,
+        40,
+        88
+      ],
+      "report_ids": [
+        5,
+        6,
+        14
+      ],
+      "dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2026-03-02"
+      ],
+      "message": "HbA1c fell 19.3% from the baseline (8.8 → 7.1 %), more than its reference change value of 6.3%.",
+      "expected_effect": null,
+      "drug_events_since_baseline": [
+        {
+          "event_id": 1,
+          "drug": "Metformin",
+          "drug_class": "biguanide",
+          "change": "start",
+          "date": "2023-10-02"
+        }
+      ],
+      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+    },
+    {
+      "id": "RCV_BASELINE:egfr:2026-03-02",
+      "rule_id": "RCV_BASELINE",
+      "level": "change",
+      "analyte_id": "egfr",
+      "analyte_name": "eGFR (CKD-EPI 2021)",
+      "unit": "mL/min/1.73m²",
+      "direction": "fall",
+      "date": "2026-03-02",
+      "threshold": {
+        "type": "rcv_percent",
+        "value": 20.0,
+        "rcv_status": "verified"
+      },
+      "compared": {
+        "from": {
+          "label": "baseline",
+          "value": 78.42,
+          "dates": [
+            "2023-06-12",
+            "2023-09-14",
+            "2023-11-16"
+          ],
+          "observation_ids": [
+            36,
+            42,
+            48
+          ],
+          "report_ids": [
+            5,
+            6,
+            7
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS",
+            "Kestrelline Labs"
+          ],
+          "note": null
+        },
+        "to": {
+          "date": "2026-03-02",
+          "value": 54.06,
+          "observation_ids": [
+            90
+          ],
+          "report_ids": [
+            14
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        },
+        "slope": null
+      },
+      "change_abs": -24.36,
+      "change_percent": -31.1,
+      "observation_ids": [
+        36,
+        42,
+        48,
+        90
+      ],
+      "report_ids": [
+        5,
+        6,
+        7,
+        14
+      ],
+      "dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2023-11-16",
+        "2026-03-02"
+      ],
+      "message": "eGFR (CKD-EPI 2021) fell 31.1% from the baseline (78.42 → 54.06 mL/min/1.73m²), more than its reference change value of 20%.",
+      "expected_effect": null,
+      "drug_events_since_baseline": [
+        {
+          "event_id": 2,
+          "drug": "Ramipril",
+          "drug_class": "acei_arb",
+          "change": "start",
+          "date": "2024-03-04"
+        },
+        {
+          "event_id": 3,
+          "drug": "Empagliflozin",
+          "drug_class": "sglt2i",
+          "change": "start",
+          "date": "2024-05-06"
+        }
+      ],
+      "source": "KDIGO 2024 CKD guideline, Practice Point 2.1.3: \"For people with CKD, a change in eGFR of >20% on a subsequent test exceeds the expected variability and warrants evaluation.\"",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+    },
+    {
+      "id": "RCV_BASELINE:creatinine:2026-03-02",
+      "rule_id": "RCV_BASELINE",
+      "level": "change",
+      "analyte_id": "creatinine",
+      "analyte_name": "Serum Creatinine",
+      "unit": "mg/dL",
+      "direction": "rise",
+      "date": "2026-03-02",
+      "threshold": {
+        "type": "rcv_percent",
+        "value": 15.0,
+        "rcv_status": "unverified"
+      },
+      "compared": {
+        "from": {
+          "label": "baseline",
+          "value": 1.11,
+          "dates": [
+            "2023-06-12",
+            "2023-09-14",
+            "2023-11-16"
+          ],
+          "observation_ids": [
+            35,
+            41,
+            47
+          ],
+          "report_ids": [
+            5,
+            6,
+            7
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS",
+            "Kestrelline Labs"
+          ],
+          "note": null
+        },
+        "to": {
+          "date": "2026-03-02",
+          "value": 1.49,
+          "observation_ids": [
+            89
+          ],
+          "report_ids": [
+            14
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        },
+        "slope": null
+      },
+      "change_abs": 0.38,
+      "change_percent": 34.2,
+      "observation_ids": [
+        35,
+        41,
+        47,
+        89
+      ],
+      "report_ids": [
+        5,
+        6,
+        7,
+        14
+      ],
+      "dates": [
+        "2023-06-12",
+        "2023-09-14",
+        "2023-11-16",
+        "2026-03-02"
+      ],
+      "message": "Serum Creatinine rose 34.2% from the baseline (1.11 → 1.49 mg/dL), more than its reference change value of 15%.",
+      "expected_effect": null,
+      "drug_events_since_baseline": [
+        {
+          "event_id": 2,
+          "drug": "Ramipril",
+          "drug_class": "acei_arb",
+          "change": "start",
+          "date": "2024-03-04"
+        },
+        {
+          "event_id": 3,
+          "drug": "Empagliflozin",
+          "drug_class": "sglt2i",
+          "change": "start",
+          "date": "2024-05-06"
+        }
+      ],
+      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+    },
+    {
+      "id": "KDIGO_RAPID_EGFR:egfr:2026-03-02",
+      "rule_id": "KDIGO_RAPID_EGFR",
+      "level": "guideline",
+      "analyte_id": "egfr",
+      "analyte_name": "eGFR (CKD-EPI 2021)",
+      "unit": "mL/min/1.73m²",
+      "direction": "fall",
+      "date": "2026-03-02",
+      "threshold": {
+        "type": "slope_per_year",
+        "value": -5.0,
+        "rcv_status": null
+      },
+      "compared": {
+        "from": null,
+        "to": null,
+        "slope": {
+          "per_year": -7.081,
+          "n_points": 4,
+          "span_days": 503,
+          "first_date": "2024-10-15",
+          "last_date": "2026-03-02"
+        }
+      },
+      "change_abs": null,
+      "change_percent": null,
+      "observation_ids": [
+        72,
+        78,
+        84,
+        90
+      ],
+      "report_ids": [
+        11,
+        12,
+        13,
+        14
+      ],
+      "dates": [
+        "2024-10-15",
+        "2025-03-10",
+        "2025-09-01",
+        "2026-03-02"
+      ],
+      "message": "eGFR fell by 7.1 mL/min/1.73m² per year over 503 days (4 results since the last drug window), faster than the KDIGO threshold of 5 per year.",
+      "expected_effect": null,
+      "drug_events_since_baseline": [],
+      "source": "KDIGO 2012 definition of rapid progression (> 5 mL/min/1.73 m²/yr)",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation adds uncertainty to the slope"
+    },
+    {
+      "id": "RCV_PREV:creatinine:2024-04-01",
+      "rule_id": "RCV_PREV",
+      "level": "change",
+      "analyte_id": "creatinine",
+      "analyte_name": "Serum Creatinine",
+      "unit": "mg/dL",
+      "direction": "rise",
+      "date": "2024-04-01",
+      "threshold": {
+        "type": "rcv_percent",
+        "value": 15.0,
+        "rcv_status": "unverified"
+      },
+      "compared": {
+        "from": {
+          "label": "previous result",
+          "value": 1.11,
+          "dates": [
+            "2024-02-15"
+          ],
+          "observation_ids": [
+            53
+          ],
+          "report_ids": [
+            8
+          ],
+          "labs": [
+            "Varnika Clinical Labs"
+          ],
+          "note": null
+        },
+        "to": {
+          "date": "2024-04-01",
+          "value": 1.29,
+          "observation_ids": [
+            59
+          ],
+          "report_ids": [
+            9
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        },
+        "slope": null
+      },
+      "change_abs": 0.18,
+      "change_percent": 16.2,
+      "observation_ids": [
+        53,
+        59
+      ],
+      "report_ids": [
+        8,
+        9
+      ],
+      "dates": [
+        "2024-02-15",
+        "2024-04-01"
+      ],
+      "message": "Serum Creatinine rose 16.2% from the previous result (1.11 → 1.29 mg/dL), more than its reference change value of 15%.",
+      "expected_effect": {
+        "event_id": 2,
+        "drug": "Ramipril",
+        "drug_class": "acei_arb",
+        "note": "within the ≤30% rise expected after ACEi/ARB start",
+        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314), Practice Point 3.6.4: \"Continue ACEi or ARB therapy unless serum creatinine rises by more than 30% within 4 weeks following initiation of treatment or an increase in dose.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies).",
+        "window": {
+          "start": "2024-03-11",
+          "end": "2024-05-03"
+        }
+      },
+      "drug_events_since_baseline": [],
+      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+    },
+    {
+      "id": "RCV_PREV:hba1c:2024-02-15",
+      "rule_id": "RCV_PREV",
+      "level": "change",
+      "analyte_id": "hba1c",
+      "analyte_name": "HbA1c",
+      "unit": "%",
+      "direction": "fall",
+      "date": "2024-02-15",
+      "threshold": {
+        "type": "rcv_percent",
+        "value": 6.3,
+        "rcv_status": "verified"
+      },
+      "compared": {
+        "from": {
+          "label": "previous result",
+          "value": 8.6,
+          "dates": [
+            "2023-11-16"
+          ],
+          "observation_ids": [
+            46
+          ],
+          "report_ids": [
+            7
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ],
+          "note": null
+        },
+        "to": {
+          "date": "2024-02-15",
+          "value": 7.4,
+          "observation_ids": [
+            52
+          ],
+          "report_ids": [
+            8
+          ],
+          "labs": [
+            "Varnika Clinical Labs"
+          ]
+        },
+        "slope": null
+      },
+      "change_abs": -1.2,
+      "change_percent": -14.0,
+      "observation_ids": [
+        46,
+        52
+      ],
+      "report_ids": [
+        7,
+        8
+      ],
+      "dates": [
+        "2023-11-16",
+        "2024-02-15"
+      ],
+      "message": "HbA1c fell 14.0% from the previous result (8.6 → 7.4 %), more than its reference change value of 6.3%.",
+      "expected_effect": {
+        "event_id": 1,
+        "drug": "Metformin",
+        "drug_class": "biguanide",
+        "note": "an HbA1c fall is expected about 3 months after starting metformin",
+        "source": "ADA Standards of Care in Diabetes (section 6, Glycemic Goals): HbA1c reflects about the previous 3 months, so the effect of a change in glucose-lowering therapy shows in HbA1c about 3 months later.",
+        "window": {
+          "start": "2023-12-31",
+          "end": "2024-03-30"
+        }
+      },
+      "drug_events_since_baseline": [],
+      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+    }
+  ]
+}
+```
+
+### `GET /medications/{medication_id}/response`: lab values before and after one medication event
+
+For each value the drug's class is expected to move: `before` is the **mean of the last 2-3 results**
+on or before the event date, at most 180 days earlier and after any earlier drug event that affects
+the same value (`before_values` lists them; `before_note: "single prior value"` when there was only
+one). `after` is the first result inside the class's window. `cross_lab` marks a before/after pair
+from different labs. Every drug start carries `caveat` ("If this treatment was started
+because of a high value, some change is expected anyway (regression to the mean). Adherence is not
+recorded."). `status`:
+`assessed`, `too early to assess` (no result yet past the window start), `no baseline` (no `before`)
+or `no result in window`. `confounders` are the other medication events from 90 days before this one
+up to the `after` result. A drug not in the catalogue returns an empty `analytes` list and a `note`.
+
+Example: empagliflozin, where ramipril had been started 63 days earlier:
+
+<!-- example: medication-response response 200 -->
+```json
+{
+  "event": {
+    "event_id": 3,
+    "drug": "Empagliflozin",
+    "drug_class": "sglt2i",
+    "change": "start",
+    "date": "2024-05-06",
+    "generic": "empagliflozin",
+    "dose_text": "10 mg OD",
+    "drug_class_name": "SGLT2 inhibitor"
+  },
+  "note": null,
+  "caveat": "If this treatment was started because of a high value, some change is expected anyway (regression to the mean). Adherence is not recorded.",
+  "analytes": [
+    {
+      "analyte_id": "egfr",
+      "name": "eGFR (CKD-EPI 2021)",
+      "unit": "mL/min/1.73m²",
+      "expected": {
+        "direction": "fall",
+        "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
+        "status": "verified",
+        "applies": true
+      },
+      "window": {
+        "start": "2024-05-13",
+        "end": "2024-08-04"
+      },
+      "before": {
+        "label": "mean before the event",
+        "value": 65.08,
+        "dates": [
+          "2024-04-01"
+        ],
+        "observation_ids": [
+          60
+        ],
+        "report_ids": [
+          9
+        ],
+        "labs": [
+          "ASTERLANE DIAGNOSTICS"
+        ],
+        "note": null
+      },
+      "before_values": [
+        {
+          "date": "2024-04-01",
+          "value": 65.08,
+          "observation_ids": [
+            60
+          ],
+          "report_ids": [
+            9
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        }
+      ],
+      "before_note": "single prior value",
+      "after": {
+        "date": "2024-06-10",
+        "value": 61.62,
+        "observation_ids": [
+          66
+        ],
+        "report_ids": [
+          10
+        ],
+        "labs": [
+          "Kestrelline Labs"
+        ]
+      },
+      "change_abs": -3.46,
+      "change_percent": -5.3,
+      "rcv_percent": 20.0,
+      "rcv_status": "verified",
+      "beyond_rcv": false,
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "expected_effect": {
+        "event_id": 3,
+        "drug": "Empagliflozin",
+        "drug_class": "sglt2i",
+        "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
+        "window": {
+          "start": "2024-05-13",
+          "end": "2024-08-04"
+        }
+      },
+      "confounders": [
+        {
+          "event_id": 2,
+          "drug": "Ramipril",
+          "drug_class": "acei_arb",
+          "change": "start",
+          "date": "2024-03-04",
+          "days_from_event": -63
+        }
+      ],
+      "status": "assessed"
+    },
+    {
+      "analyte_id": "creatinine",
+      "name": "Serum Creatinine",
+      "unit": "mg/dL",
+      "expected": {
+        "direction": "rise",
+        "note": "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
+        "status": "verified",
+        "applies": true
+      },
+      "window": {
+        "start": "2024-05-13",
+        "end": "2024-08-04"
+      },
+      "before": {
+        "label": "mean before the event",
+        "value": 1.29,
+        "dates": [
+          "2024-04-01"
+        ],
+        "observation_ids": [
+          59
+        ],
+        "report_ids": [
+          9
+        ],
+        "labs": [
+          "ASTERLANE DIAGNOSTICS"
+        ],
+        "note": null
+      },
+      "before_values": [
+        {
+          "date": "2024-04-01",
+          "value": 1.29,
+          "observation_ids": [
+            59
+          ],
+          "report_ids": [
+            9
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        }
+      ],
+      "before_note": "single prior value",
+      "after": {
+        "date": "2024-06-10",
+        "value": 1.35,
+        "observation_ids": [
+          65
+        ],
+        "report_ids": [
+          10
+        ],
+        "labs": [
+          "Kestrelline Labs"
+        ]
+      },
+      "change_abs": 0.06,
+      "change_percent": 4.7,
+      "rcv_percent": 15.0,
+      "rcv_status": "unverified",
+      "beyond_rcv": false,
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "expected_effect": {
+        "event_id": 3,
+        "drug": "Empagliflozin",
+        "drug_class": "sglt2i",
+        "note": "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)",
+        "source": "KDIGO 2024 CKD guideline, Practice Point 3.7.3: \"...the reversible decrease in eGFR on initiation is generally not an indication to discontinue therapy.\" See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials: DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27).",
+        "window": {
+          "start": "2024-05-13",
+          "end": "2024-08-04"
+        }
+      },
+      "confounders": [
+        {
+          "event_id": 2,
+          "drug": "Ramipril",
+          "drug_class": "acei_arb",
+          "change": "start",
+          "date": "2024-03-04",
+          "days_from_event": -63
+        }
+      ],
+      "status": "assessed"
     }
   ]
 }

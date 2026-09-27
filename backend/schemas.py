@@ -144,3 +144,206 @@ class TimelineSeries(BaseModel):
 class Timeline(BaseModel):
     patient: PatientOut
     analytes: list[TimelineSeries]
+
+
+class MedicationIn(BaseModel):
+    drug: str = Field(min_length=1, max_length=200)
+    change: Literal["start", "stop", "dose_change"]
+    dose_text: str = ""
+    date: dt.date
+
+
+class MedicationOut(BaseModel):
+    id: int
+    patient_id: int
+    drug: str
+    generic: str | None               # generic name when the drug is in the catalogue
+    drug_class: str                   # class id from data/drugs.yaml, or "unknown"
+    drug_class_name: str | None
+    change: str
+    dose_text: str
+    date: dt.date
+
+
+# ---------------------------------------------------------------- trends, flags, medication response
+
+class DayRef(BaseModel):
+    """A value used in a calculation: the mean of one date's confirmed, non-censored results."""
+    date: dt.date
+    value: float
+    observation_ids: list[int]
+    report_ids: list[int]
+    labs: list[str]                   # lab of each result ("unknown lab" when the report shows none)
+
+
+class FlagFrom(BaseModel):
+    label: str                        # "previous result", "baseline" or "mean before the event"
+    value: float
+    dates: list[dt.date]
+    observation_ids: list[int]
+    report_ids: list[int]
+    labs: list[str]
+    note: str | None                  # baseline note, e.g. "includes on-treatment results"
+
+
+class SlopeSummary(BaseModel):
+    per_year: float
+    n_points: int
+    span_days: int
+    first_date: dt.date
+    last_date: dt.date
+
+
+class Compared(BaseModel):
+    from_: FlagFrom | None = Field(alias="from", serialization_alias="from")
+    to: DayRef | None
+    slope: SlopeSummary | None
+
+    model_config = {"populate_by_name": True}
+
+
+class Threshold(BaseModel):
+    type: str                         # "rcv_percent" or "slope_per_year"
+    value: float
+    rcv_status: str | None            # verified | unverified (RCV flags only)
+
+
+class EventRef(BaseModel):
+    event_id: int
+    drug: str
+    drug_class: str
+    change: str
+    date: dt.date
+
+
+class DateWindow(BaseModel):
+    start: dt.date
+    end: dt.date
+
+
+class ExpectedEffect(BaseModel):
+    event_id: int
+    drug: str
+    drug_class: str
+    note: str
+    source: str
+    window: DateWindow
+
+
+class Flag(BaseModel):
+    id: str
+    rule_id: str                      # RCV_PREV | RCV_BASELINE | KDIGO_RAPID_EGFR
+    level: str                        # "change" | "guideline"
+    analyte_id: str
+    analyte_name: str
+    unit: str
+    direction: str                    # "rise" | "fall"
+    date: dt.date
+    threshold: Threshold
+    compared: Compared
+    change_abs: float | None
+    change_percent: float | None
+    observation_ids: list[int]
+    report_ids: list[int]
+    dates: list[dt.date]
+    message: str
+    expected_effect: ExpectedEffect | None
+    drug_events_since_baseline: list[EventRef]
+    source: str | None
+    cross_lab: bool                   # the compared values come from different labs
+    cross_lab_note: str | None
+
+
+class Flags(BaseModel):
+    patient_id: int
+    flags: list[Flag]
+
+
+class TrendPoint(TimelinePoint):
+    censored: bool
+    in_window: list[int]              # medication event ids whose expected-effect window contains the date
+
+
+class ExcludedPoint(BaseModel):
+    date: dt.date
+    observation_ids: list[int]
+    reason: str
+
+
+class Slope(BaseModel):
+    per_year: float | None
+    unit: str
+    n_points: int
+    span_days: int
+    first_date: dt.date | None
+    last_date: dt.date | None
+    observation_ids: list[int]
+    excluded_points: list[ExcludedPoint]
+    status: str                       # "ok" | "not enough span" | "not enough points"
+
+
+class AnalyteTrend(BaseModel):
+    analyte_id: str
+    name: str
+    canonical_unit: str
+    rcv_percent: float | None
+    rcv_status: str                   # verified | unverified | not established
+    status: str                       # "ok" | "insufficient data" | "censored values only"
+    baseline: float | None
+    baseline_note: str | None
+    baseline_dates: list[dt.date]
+    baseline_observation_ids: list[int]
+    points: list[TrendPoint]
+    slope: Slope | None
+
+
+class Trends(BaseModel):
+    patient: PatientOut
+    analytes: list[AnalyteTrend]
+
+
+class Expected(BaseModel):
+    direction: str
+    note: str
+    source: str
+    status: str                       # catalogue status: verified | unverified
+    applies: bool                     # expected effects are for drug starts
+
+
+class Confounder(EventRef):
+    days_from_event: int
+
+
+class ResponseEntry(BaseModel):
+    analyte_id: str
+    name: str
+    unit: str
+    expected: Expected
+    window: DateWindow
+    before: FlagFrom | None           # mean of the last 2-3 results before the event
+    before_values: list[DayRef]       # the results that mean was taken over
+    before_note: str | None           # "single prior value"
+    after: DayRef | None
+    change_abs: float | None
+    change_percent: float | None
+    rcv_percent: float | None
+    rcv_status: str
+    beyond_rcv: bool | None
+    cross_lab: bool | None            # before and after values come from different labs
+    cross_lab_note: str | None
+    expected_effect: ExpectedEffect | None
+    confounders: list[Confounder]
+    status: str                       # assessed | too early to assess | no baseline | no result in window
+
+
+class ResponseEvent(EventRef):
+    generic: str | None
+    dose_text: str
+    drug_class_name: str | None
+
+
+class MedicationResponse(BaseModel):
+    event: ResponseEvent
+    note: str | None
+    caveat: str | None                # on every drug start: regression to the mean, adherence not recorded
+    analytes: list[ResponseEntry]

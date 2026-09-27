@@ -13,7 +13,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pdfplumber.utils.exceptions import PdfminerException
 from sqlalchemy.exc import IntegrityError
@@ -21,11 +21,14 @@ from sqlmodel import Session, select
 
 from . import normalise as nm
 from .db import get_session
-from .db.models import Observation, Patient, Report
+from .db.models import MedicationEvent, Observation, Patient, Report
 from .extraction import ScannedReportError, extract_report
 from .extraction.tagger import Tagger, get_tagger
 from .normalise.names import name_index
-from .schemas import (ConfirmIn, Counts, ObservationOut, PatientIn, PatientOut, ReportDetail, ReportOut,
+from .trends import catalogue, engine
+from .trends.dictionary import analyte_infos, infos_by_id
+from .schemas import (ConfirmIn, Counts, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
+                      PatientIn, PatientOut, ReportDetail, ReportOut, Trends,
                       SkippedOut, Timeline, TimelinePoint, TimelineSeries)
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -286,23 +289,110 @@ def confirm_report(report_id: int, body: ConfirmIn, session: Session = Depends(g
 @app.get("/patients/{patient_id}/timeline", response_model=Timeline)
 def timeline(patient_id: int, session: Session = Depends(get_session)) -> Timeline:
     patient = _patient_or_404(session, patient_id)
-    rows = session.exec(
-        select(Observation, Report).join(Report, Observation.report_id == Report.id)
-        .where(Report.patient_id == patient.id, Report.status == "confirmed",
-               Observation.status == nm.CONFIRMED, Observation.canonical_value.is_not(None),
-               Observation.analyte_id.is_not(None))
-    ).all()
-    by_analyte: dict[str, list[TimelinePoint]] = {}
-    for o, r in rows:
-        by_analyte.setdefault(o.analyte_id, []).append(TimelinePoint(
-            observation_id=o.id, report_id=r.id, date=r.collected_at, value=o.canonical_value,
-            comparator=o.comparator, value_text=o.value_text, unit_text=o.unit_text, lab=r.lab,
-            page=o.page, line=o.line))
+    by_analyte = _confirmed_points(session, patient.id)
     index = name_index()
     series = []
     for aid, a in index.analytes.items():          # dictionary order
         if aid in by_analyte:
-            pts = sorted(by_analyte[aid], key=lambda p: (p.date, p.report_id, p.page, p.line))
+            pts = [TimelinePoint(**vars(p)) for p in by_analyte[aid]]
             series.append(TimelineSeries(analyte_id=aid, name=a["canonical_name"], canonical_unit=a["canonical_unit"],
                                          loinc=a["loinc"], points=pts))
     return Timeline(patient=_patient_out(patient), analytes=series)
+
+
+def _confirmed_points(session: Session, patient_id: int) -> dict[str, list[engine.Point]]:
+    """Confirmed values of confirmed reports, per analyte, sorted by collected date. The timeline, trends,
+    flags and medication responses all read the patient's data through this one query."""
+    rows = session.exec(
+        select(Observation, Report).join(Report, Observation.report_id == Report.id)
+        .where(Report.patient_id == patient_id, Report.status == "confirmed",
+               Observation.status == nm.CONFIRMED, Observation.canonical_value.is_not(None),
+               Observation.analyte_id.is_not(None))
+    ).all()
+    out: dict[str, list[engine.Point]] = {}
+    for o, r in rows:
+        out.setdefault(o.analyte_id, []).append(engine.Point(
+            observation_id=o.id, report_id=r.id, date=r.collected_at, value=o.canonical_value,
+            comparator=o.comparator, value_text=o.value_text, unit_text=o.unit_text, lab=r.lab,
+            page=o.page, line=o.line))
+    for pts in out.values():
+        pts.sort(key=lambda p: (p.date, p.report_id, p.page, p.line))
+    return out
+
+
+def _events(session: Session, patient_id: int) -> list[engine.Event]:
+    out = []
+    for m in _medications(session, patient_id):
+        class_id, generic = catalogue.resolve(m.drug)
+        out.append(engine.Event(m.id, m.drug, m.change, m.date, class_id, generic, m.dose_text))
+    return out
+
+
+@app.get("/patients/{patient_id}/trends", response_model=Trends, response_model_by_alias=True)
+def trends(patient_id: int, session: Session = Depends(get_session)) -> Trends:
+    patient = _patient_or_404(session, patient_id)
+    series, _ = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
+                                       _events(session, patient.id))
+    return Trends(patient=_patient_out(patient), analytes=series)
+
+
+@app.get("/patients/{patient_id}/flags", response_model=Flags, response_model_by_alias=True)
+def flags(patient_id: int, session: Session = Depends(get_session)) -> Flags:
+    patient = _patient_or_404(session, patient_id)
+    _, out = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
+                                    _events(session, patient.id))
+    return Flags(patient_id=patient.id, flags=out)
+
+
+@app.get("/medications/{medication_id}/response", response_model=MedicationResponse, response_model_by_alias=True)
+def medication_response(medication_id: int, session: Session = Depends(get_session)) -> MedicationResponse:
+    m = session.get(MedicationEvent, medication_id)
+    if m is None:
+        raise HTTPException(404, "medication event not found")
+    events = _events(session, m.patient_id)
+    event = next(e for e in events if e.id == m.id)
+    return MedicationResponse(**engine.response(event, infos_by_id(), _confirmed_points(session, m.patient_id), events))
+
+
+# ---------------------------------------------------------------- medications
+
+def _medication_out(m: MedicationEvent) -> MedicationOut:
+    class_id, generic = catalogue.resolve(m.drug)
+    c = catalogue.drug_class(class_id)
+    return MedicationOut(id=m.id, patient_id=m.patient_id, drug=m.drug, generic=generic, drug_class=class_id,
+                         drug_class_name=c.name if c else None, change=m.change, dose_text=m.dose_text, date=m.date)
+
+
+@app.post("/patients/{patient_id}/medications", response_model=MedicationOut, status_code=201)
+def add_medication(patient_id: int, body: MedicationIn, session: Session = Depends(get_session)) -> MedicationOut:
+    patient = _patient_or_404(session, patient_id)
+    if not (patient.birth_year <= body.date.year and body.date <= dt.date.today()):
+        raise HTTPException(422, {"message": "date must be between the patient's birth year and today"})
+    m = MedicationEvent(patient_id=patient.id, drug=body.drug.strip(), change=body.change,
+                        dose_text=body.dose_text.strip(), date=body.date)
+    session.add(m)
+    session.commit()
+    session.refresh(m)
+    return _medication_out(m)
+
+
+def _medications(session: Session, patient_id: int) -> list[MedicationEvent]:
+    return list(session.exec(select(MedicationEvent).where(MedicationEvent.patient_id == patient_id)
+                             .order_by(MedicationEvent.date, MedicationEvent.id)).all())
+
+
+@app.get("/patients/{patient_id}/medications", response_model=list[MedicationOut])
+def list_medications(patient_id: int, session: Session = Depends(get_session)) -> list[MedicationOut]:
+    _patient_or_404(session, patient_id)
+    return [_medication_out(m) for m in _medications(session, patient_id)]
+
+
+@app.delete("/medications/{medication_id}", status_code=204)
+def delete_medication(medication_id: int, session: Session = Depends(get_session)) -> Response:
+    m = session.get(MedicationEvent, medication_id)
+    if m is None:
+        raise HTTPException(404, "medication event not found")
+    session.delete(m)
+    session.commit()
+    return Response(status_code=204)
+

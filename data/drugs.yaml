@@ -1,0 +1,90 @@
+# ChronoTrace drug catalogue (step 6).
+#
+# Maps drug names (generic and common Indian brand names, case-insensitive) to a class. Each class
+# lists the lab values it is expected to move after it is STARTED, in which direction, and the window
+# (days after the start date) in which that effect is usually seen. The trend engine uses this only to
+# add a note to an observed change ("expected after ramipril start") and to keep the planned change
+# out of the long-term slope. It never scores a drug, suggests a dose or makes a diagnosis. Notes are
+# shown to the doctor inside flags, so they state what is expected, never what to do. A `source` may
+# quote a guideline word for word; it is a citation, not advice from ChronoTrace.
+#
+# A drug that is not listed is saved as class "unknown": no expected-effect note, but it still counts
+# as a confounder when another drug's response is shown.
+#
+# status: verified | unverified  (same meaning as rcv.status in analytes.yaml): the ACEi/ARB and SGLT2
+# inhibitor sources were checked against the KDIGO 2024 summary of recommendations and practice points
+# (kdigo.org, KDIGO-2024-CKD-Guideline-Summary-Recommendations-and-Practice-Points.pdf); the metformin
+# source is not yet checked. Brand names are from general familiarity with the Indian market and are
+# unverified.
+
+version: 1
+
+classes:
+  - id: acei_arb
+    name: ACE inhibitor / angiotensin receptor blocker
+    short_name: ACEi/ARB
+    generics: [ramipril, enalapril, lisinopril, perindopril, telmisartan, losartan, olmesartan]
+    brands:
+      Cardace: ramipril
+      Envas: enalapril
+      Listril: lisinopril
+      Telma: telmisartan
+      Telsartan: telmisartan
+      Losar: losartan
+      Repace: losartan
+      Olmezest: olmesartan
+    window_days: [7, 60]
+    effects:
+      - {analyte: creatinine, direction: rise, max_expected_percent: 30,
+         note: "a creatinine rise of up to 30% is expected after starting an ACE inhibitor or ARB"}
+      - {analyte: egfr, direction: fall,
+         note: "an eGFR fall is expected after starting an ACE inhibitor or ARB (the creatinine rise seen through the eGFR formula)"}
+      - {analyte: potassium, direction: rise,
+         note: "a potassium rise is expected after starting an ACE inhibitor or ARB"}
+    source: >-
+      KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int
+      2024;105(4S):S117-S314), Practice Point 3.6.4: "Continue ACEi or ARB therapy unless serum
+      creatinine rises by more than 30% within 4 weeks following initiation of treatment or an increase
+      in dose." See also Practice Point 2.1.4 (eGFR changes of more than 30% after starting
+      hemodynamically active therapies).
+    status: verified
+
+  - id: sglt2i
+    name: SGLT2 inhibitor
+    short_name: SGLT2 inhibitor
+    generics: [empagliflozin, dapagliflozin, canagliflozin]
+    brands:
+      Jardiance: empagliflozin
+      Forxiga: dapagliflozin
+      Oxra: dapagliflozin
+      Invokana: canagliflozin
+    window_days: [7, 90]
+    effects:
+      - {analyte: egfr, direction: fall,
+         note: "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises"}
+      - {analyte: creatinine, direction: rise,
+         note: "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)"}
+    source: >-
+      KDIGO 2024 CKD guideline, Practice Point 3.7.3: "...the reversible decrease in eGFR on
+      initiation is generally not an indication to discontinue therapy." See also Practice Point 2.1.4
+      (eGFR changes of more than 30% after starting hemodynamically active therapies). Trials:
+      DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med
+      2023;388:117-27).
+    status: verified
+
+  - id: biguanide
+    name: Biguanide
+    short_name: metformin
+    generics: [metformin]
+    brands:
+      Glycomet: metformin
+      Glyciphage: metformin
+      Obimet: metformin
+    window_days: [90, 180]
+    effects:
+      - {analyte: hba1c, direction: fall,
+         note: "an HbA1c fall is expected about 3 months after starting metformin"}
+    source: >-
+      ADA Standards of Care in Diabetes (section 6, Glycemic Goals): HbA1c reflects about the previous
+      3 months, so the effect of a change in glucose-lowering therapy shows in HbA1c about 3 months later.
+    status: unverified

@@ -160,6 +160,10 @@ def validate(data: dict) -> list[str]:
                 errors.append(f"{where} rcv.percent must be null when status is not_established")
         elif not isinstance(pct, (int, float)) or pct <= 0:
             errors.append(f"{where} rcv.percent must be a positive number")
+        elif rcv.get("method") == "guideline":
+            # A threshold stated by a guideline (e.g. KDIGO's >20% eGFR change), not computed from CVs.
+            if "practice point" not in str(rcv.get("source", "")).lower() and "recommendation" not in                     str(rcv.get("source", "")).lower():
+                errors.append(f"{where} a guideline rcv must cite the practice point or recommendation in its source")
         elif rcv.get("method") != "derived_from_creatinine":
             cv_i, cv_a = rcv.get("cv_i"), rcv.get("cv_a")
             if not all(isinstance(v, (int, float)) and v > 0 for v in (cv_i, cv_a)):
