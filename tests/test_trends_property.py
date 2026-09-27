@@ -34,6 +34,7 @@ def random_patient(seed: int):
     dates = sorted(start + dt.timedelta(days=rng.randint(0, 2200)) for _ in range(n_reports))
     chosen = rng.sample(ANALYTES, rng.randint(1, len(ANALYTES)))
     points: dict[str, list[E.Point]] = {}
+    labs = {rid: rng.choice(["Lab A", "Lab B", "Lab C", None]) for rid in range(1, n_reports + 1)}
     oid = 0
     for rid, d in enumerate(dates, 1):
         for a in chosen:
@@ -43,7 +44,7 @@ def random_patient(seed: int):
                 oid += 1
                 v = round(typical(a) * rng.uniform(0.4, 1.9), 3)
                 comp = rng.choice(["<", ">"]) if rng.random() < 0.15 else None
-                points.setdefault(a["id"], []).append(E.Point(oid, rid, d, v, comp, page=1, line=oid))
+                points.setdefault(a["id"], []).append(E.Point(oid, rid, d, v, comp, lab=labs[rid], page=1, line=oid))
     events = []
     for i in range(rng.randint(0, 5)):
         drug = rng.choice(DRUGS)
@@ -78,11 +79,18 @@ def test_random_patient(seed):
         assert not set(f["observation_ids"]) & censored   # 3. no flag uses a censored value
         if f["rule_id"] != "KDIGO_RAPID_EGFR":
             assert f["threshold"]["value"] is not None and abs(f["change_percent"]) > f["threshold"]["value"]
+        lab_of = {p.observation_id: p.lab for ps in points.values() for p in ps}
+        assert f["cross_lab"] == (len({lab_of[i] for i in f["observation_ids"]}) > 1)     # cross-lab label
+    for aid in {f["analyte_id"] for f in out["flags"]}:                   # baseline flag: latest result only
+        base = [f for f in out["flags"] if f["analyte_id"] == aid and f["rule_id"] == "RCV_BASELINE"]
+        latest = max(str(p.date) for p in points[aid] if not p.censored)
+        assert len(base) <= 1 and all(f["date"] == latest for f in base)
     for r in out["responses"]:
         for a in r["analytes"]:
             for side in ("before", "after"):
                 if a[side]:
                     assert not set(a[side]["observation_ids"]) & censored
+            assert len(a["before_values"]) <= 3 and (a["before_note"] == "single prior value") == (len(a["before_values"]) == 1)
 
     rng = random.Random(10_000 + seed)                     # 4. same results in any upload order
     shuffled = {k: rng.sample(v, len(v)) for k, v in rng.sample(list(points.items()), len(points))}

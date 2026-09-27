@@ -56,7 +56,7 @@ def keyed(flags):
 def test_flags_before_r10(seeded):
     c, ids = seeded
     flags = c.get(f"/patients/{ids['patient_id']}/flags").json()["flags"]
-    assert len(flags) == 19 and not any(f["rule_id"] == "KDIGO_RAPID_EGFR" for f in flags)
+    assert len(flags) == 6 and not any(f["rule_id"] == "KDIGO_RAPID_EGFR" for f in flags)
     assert [f["date"] for f in flags] == sorted((f["date"] for f in flags), reverse=True)      # newest first
     assert all(f["report_ids"] and set(f["report_ids"]) <= set(ids["report_ids"].values()) for f in flags)
     assert not any(f["analyte_id"] in ("potassium", "fasting_glucose", "uacr") for f in flags)
@@ -82,10 +82,12 @@ def test_medication_responses(seeded):
         got[drug] = {a["analyte_id"]: a for a in r["analytes"]}
         assert r["event"]["event_id"] == eid and r["note"] is None
     m = got["Metformin"]["hba1c"]
-    assert (m["status"], m["change_percent"], m["beyond_rcv"], m["confounders"]) == ("assessed", -14.9, True, [])
+    assert (m["status"], m["change_percent"], m["beyond_rcv"], m["confounders"]) == ("assessed", -15.9, True, [])
+    assert m["before"]["value"] == 8.8 and m["cross_lab"] is True
     cr = got["Ramipril"]["creatinine"]
     assert (cr["change_percent"], cr["beyond_rcv"], cr["expected_effect"]["note"]) == (
-        16.2, True, "within the ≤30% rise expected after ACEi/ARB start")
+        15.5, True, "within the ≤30% rise expected after ACEi/ARB start")
+    assert cr["cross_lab"] is True
     em = got["Empagliflozin"]["egfr"]
     assert em["beyond_rcv"] is False and [(x["drug"], x["days_from_event"]) for x in em["confounders"]] == [("Ramipril", -63)]
 
@@ -101,6 +103,7 @@ def test_r10_upload_fires_the_kdigo_flag_and_unconfirmed_reports_never_count(pdf
     assert c.get(f"/patients/{pid}/flags").json()["flags"] == before            # uploaded, not confirmed yet
     assert c.post(f"/reports/{rid}/confirm", json={}).status_code == 200
     after = c.get(f"/patients/{pid}/flags").json()["flags"]
+    assert len(after) == 7
     kdigo = [f for f in after if f["rule_id"] == "KDIGO_RAPID_EGFR"]
     assert len(kdigo) == 1 and kdigo[0]["compared"]["slope"]["span_days"] == 503
     assert round(kdigo[0]["compared"]["slope"]["per_year"], 1) == -7.1 and kdigo[0]["level"] == "guideline"

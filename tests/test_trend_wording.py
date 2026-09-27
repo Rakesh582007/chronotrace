@@ -52,8 +52,12 @@ def catalogue_texts():
         {e["note"] for c in data["classes"] for e in c["effects"]}
 
 
+# Guideline terms quoted as a citation, as the guardrail review asked; not a statement about the patient.
+CITATIONS = {E.KDIGO_SOURCE}
+
+
 def test_no_advice_scores_or_diagnosis_words():
-    texts = engine_texts() | catalogue_texts()
+    texts = (engine_texts() | catalogue_texts()) - CITATIONS
     assert len(texts) > 30
     offending = sorted((m.group(0), t) for t in texts for m in [BANNED.search(t)] if m)
     assert offending == []

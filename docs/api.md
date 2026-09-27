@@ -184,7 +184,7 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T16:34:09Z",
+    "uploaded_at": "2026-09-27T16:43:37Z",
     "confirmed_at": null
   },
   "counts": {
@@ -476,7 +476,7 @@ Same body as the upload response. Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T16:34:09Z",
+    "uploaded_at": "2026-09-27T16:43:37Z",
     "confirmed_at": null
   },
   "counts": {
@@ -807,8 +807,8 @@ Response `200`:
     "layout": "header",
     "pages": 1,
     "status": "confirmed",
-    "uploaded_at": "2026-09-27T16:34:09Z",
-    "confirmed_at": "2026-09-27T16:34:09Z"
+    "uploaded_at": "2026-09-27T16:43:37Z",
+    "confirmed_at": "2026-09-27T16:43:37Z"
   },
   "counts": {
     "extracted": 0,
@@ -1427,8 +1427,9 @@ Rules the UI should explain to the doctor:
 - **Baseline**: median of the patient's first (up to 3) results before the first medication event that
   affects the analyte. If fewer than 2 exist, the first 3 results overall (`baseline_note: "includes
   on-treatment results"`).
-- **RCV flags** (`level: "change"`): `RCV_PREV` (change from the previous result) and `RCV_BASELINE`
-  (change from the baseline) beyond the analyte's reference change value (RCV). Analytes without an RCV
+- **RCV flags** (`level: "change"`): `RCV_PREV` (change from the previous result, for every result) and
+  `RCV_BASELINE` (change of the **latest** result from the baseline) beyond the analyte's reference change
+  value (RCV). The baseline itself is in `/trends` for the chart. Analytes without an RCV
   (post-prandial glucose, `rcv_status: "not established"`) get a trend but no RCV flags; an
   `rcv_status` of `unverified` means the RCV's source is not yet checked (show it).
 - **Expected effect**: a change inside the window after a drug start whose class is expected to move
@@ -1438,7 +1439,10 @@ Rules the UI should explain to the doctor:
   drug dip is not counted as a trend. It needs 3 results over at least 365 days (`status: "ok"`);
   otherwise `"not enough span"` / `"not enough points"`.
 - **KDIGO_RAPID_EGFR** (`level: "guideline"`, the only guideline rule): eGFR slope below -5
-  mL/min/1.73 m² per year.
+  mL/min/1.73 m² per year (KDIGO 2012 definition of rapid progression).
+- **Different labs**: when the compared values come from different labs, the flag or comparison has
+  `cross_lab: true` and `cross_lab_note` ("values from different labs; between-lab variation is larger
+  than the RCV assumes"). The threshold is not changed; show the note next to the flag.
 - Every flag lists the `observation_ids`, `report_ids` and `dates` it was computed from, its
   `threshold` and the values `compared`, so each one links back to the printed reports.
 
@@ -2074,7 +2078,9 @@ ramipril and empagliflozin starts), after the latest report:
           "page": 1,
           "line": 7,
           "censored": false,
-          "in_window": []
+          "in_window": [
+            3
+          ]
         },
         {
           "observation_id": 71,
@@ -2134,14 +2140,13 @@ ramipril and empagliflozin starts), after the latest report:
         }
       ],
       "slope": {
-        "per_year": 0.091,
+        "per_year": 0.131,
         "unit": "mg/dL per year",
-        "n_points": 5,
-        "span_days": 630,
-        "first_date": "2024-06-10",
+        "n_points": 4,
+        "span_days": 503,
+        "first_date": "2024-10-15",
         "last_date": "2026-03-02",
         "observation_ids": [
-          65,
           71,
           77,
           83,
@@ -2153,35 +2158,42 @@ ramipril and empagliflozin starts), after the latest report:
             "observation_ids": [
               35
             ],
-            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
           },
           {
             "date": "2023-09-14",
             "observation_ids": [
               41
             ],
-            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
           },
           {
             "date": "2023-11-16",
             "observation_ids": [
               47
             ],
-            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
           },
           {
             "date": "2024-02-15",
             "observation_ids": [
               53
             ],
-            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
           },
           {
             "date": "2024-04-01",
             "observation_ids": [
               59
             ],
-            "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+          },
+          {
+            "date": "2024-06-10",
+            "observation_ids": [
+              65
+            ],
+            "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
           }
         ],
         "status": "ok"
@@ -2823,7 +2835,8 @@ ramipril and empagliflozin starts), after the latest report:
 `baseline`); for the slope rule `compared.slope` holds the slope instead. `change_percent` is rounded
 to 1 decimal and is the number compared with the threshold. `message` is a plain sentence for the UI.
 In this example the last report's eGFR is only 7% below the one before (within the RCV), but the
-slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` fires:
+slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` fires. The demo's reports
+alternate between three labs, so every comparison here is `cross_lab`:
 
 <!-- example: flags response 200 -->
 ```json
@@ -2860,6 +2873,10 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
             5,
             6
           ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS",
+            "Kestrelline Labs"
+          ],
           "note": null
         },
         "to": {
@@ -2870,6 +2887,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           ],
           "report_ids": [
             14
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
           ]
         },
         "slope": null
@@ -2902,7 +2922,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           "date": "2023-10-02"
         }
       ],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
+      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
     },
     {
       "id": "RCV_BASELINE:egfr:2026-03-02",
@@ -2937,6 +2959,10 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
             6,
             7
           ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS",
+            "Kestrelline Labs"
+          ],
           "note": null
         },
         "to": {
@@ -2947,6 +2973,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           ],
           "report_ids": [
             14
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
           ]
         },
         "slope": null
@@ -2989,7 +3018,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           "date": "2024-05-06"
         }
       ],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
+      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
     },
     {
       "id": "RCV_BASELINE:creatinine:2026-03-02",
@@ -3024,6 +3055,10 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
             6,
             7
           ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS",
+            "Kestrelline Labs"
+          ],
           "note": null
         },
         "to": {
@@ -3034,6 +3069,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           ],
           "report_ids": [
             14
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
           ]
         },
         "slope": null
@@ -3067,9 +3105,18 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           "drug_class": "acei_arb",
           "change": "start",
           "date": "2024-03-04"
+        },
+        {
+          "event_id": 3,
+          "drug": "Empagliflozin",
+          "drug_class": "sglt2i",
+          "change": "start",
+          "date": "2024-05-06"
         }
       ],
-      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
+      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
     },
     {
       "id": "KDIGO_RAPID_EGFR:egfr:2026-03-02",
@@ -3119,981 +3166,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
       "message": "eGFR fell by 7.1 mL/min/1.73m² per year over 503 days (4 results since the last drug window), faster than the KDIGO threshold of 5 per year.",
       "expected_effect": null,
       "drug_events_since_baseline": [],
-      "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD: a sustained eGFR decline of more than 5 mL/min/1.73 m2 per year is a rapid decline."
-    },
-    {
-      "id": "RCV_BASELINE:hba1c:2025-09-01",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "hba1c",
-      "analyte_name": "HbA1c",
-      "unit": "%",
-      "direction": "fall",
-      "date": "2025-09-01",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 6.3,
-        "rcv_status": "verified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 8.8,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14"
-          ],
-          "observation_ids": [
-            34,
-            40
-          ],
-          "report_ids": [
-            5,
-            6
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2025-09-01",
-          "value": 6.9,
-          "observation_ids": [
-            82
-          ],
-          "report_ids": [
-            13
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -1.9,
-      "change_percent": -21.6,
-      "observation_ids": [
-        34,
-        40,
-        82
-      ],
-      "report_ids": [
-        5,
-        6,
-        13
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2025-09-01"
-      ],
-      "message": "HbA1c fell 21.6% from the baseline (8.8 → 6.9 %), more than its reference change value of 6.3%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 1,
-          "drug": "Metformin",
-          "drug_class": "biguanide",
-          "change": "start",
-          "date": "2023-10-02"
-        }
-      ],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
-    },
-    {
-      "id": "RCV_BASELINE:egfr:2025-09-01",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "egfr",
-      "analyte_name": "eGFR (CKD-EPI 2021)",
-      "unit": "mL/min/1.73m²",
-      "direction": "fall",
-      "date": "2025-09-01",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.4,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 78.42,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            36,
-            42,
-            48
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2025-09-01",
-          "value": 58.12,
-          "observation_ids": [
-            84
-          ],
-          "report_ids": [
-            13
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -20.3,
-      "change_percent": -25.9,
-      "observation_ids": [
-        36,
-        42,
-        48,
-        84
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        13
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2025-09-01"
-      ],
-      "message": "eGFR (CKD-EPI 2021) fell 25.9% from the baseline (78.42 → 58.12 mL/min/1.73m²), more than its reference change value of 15.4%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        },
-        {
-          "event_id": 3,
-          "drug": "Empagliflozin",
-          "drug_class": "sglt2i",
-          "change": "start",
-          "date": "2024-05-06"
-        }
-      ],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
-    },
-    {
-      "id": "RCV_BASELINE:creatinine:2025-09-01",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "creatinine",
-      "analyte_name": "Serum Creatinine",
-      "unit": "mg/dL",
-      "direction": "rise",
-      "date": "2025-09-01",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.0,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 1.11,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            35,
-            41,
-            47
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2025-09-01",
-          "value": 1.41,
-          "observation_ids": [
-            83
-          ],
-          "report_ids": [
-            13
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": 0.3,
-      "change_percent": 27.0,
-      "observation_ids": [
-        35,
-        41,
-        47,
-        83
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        13
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2025-09-01"
-      ],
-      "message": "Serum Creatinine rose 27.0% from the baseline (1.11 → 1.41 mg/dL), more than its reference change value of 15%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        }
-      ],
-      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
-    },
-    {
-      "id": "RCV_BASELINE:hba1c:2025-03-10",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "hba1c",
-      "analyte_name": "HbA1c",
-      "unit": "%",
-      "direction": "fall",
-      "date": "2025-03-10",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 6.3,
-        "rcv_status": "verified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 8.8,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14"
-          ],
-          "observation_ids": [
-            34,
-            40
-          ],
-          "report_ids": [
-            5,
-            6
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2025-03-10",
-          "value": 7.0,
-          "observation_ids": [
-            76
-          ],
-          "report_ids": [
-            12
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -1.8,
-      "change_percent": -20.5,
-      "observation_ids": [
-        34,
-        40,
-        76
-      ],
-      "report_ids": [
-        5,
-        6,
-        12
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2025-03-10"
-      ],
-      "message": "HbA1c fell 20.5% from the baseline (8.8 → 7 %), more than its reference change value of 6.3%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 1,
-          "drug": "Metformin",
-          "drug_class": "biguanide",
-          "change": "start",
-          "date": "2023-10-02"
-        }
-      ],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
-    },
-    {
-      "id": "RCV_BASELINE:egfr:2025-03-10",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "egfr",
-      "analyte_name": "eGFR (CKD-EPI 2021)",
-      "unit": "mL/min/1.73m²",
-      "direction": "fall",
-      "date": "2025-03-10",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.4,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 78.42,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            36,
-            42,
-            48
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2025-03-10",
-          "value": 61.24,
-          "observation_ids": [
-            78
-          ],
-          "report_ids": [
-            12
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -17.18,
-      "change_percent": -21.9,
-      "observation_ids": [
-        36,
-        42,
-        48,
-        78
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        12
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2025-03-10"
-      ],
-      "message": "eGFR (CKD-EPI 2021) fell 21.9% from the baseline (78.42 → 61.24 mL/min/1.73m²), more than its reference change value of 15.4%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        },
-        {
-          "event_id": 3,
-          "drug": "Empagliflozin",
-          "drug_class": "sglt2i",
-          "change": "start",
-          "date": "2024-05-06"
-        }
-      ],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
-    },
-    {
-      "id": "RCV_BASELINE:creatinine:2025-03-10",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "creatinine",
-      "analyte_name": "Serum Creatinine",
-      "unit": "mg/dL",
-      "direction": "rise",
-      "date": "2025-03-10",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.0,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 1.11,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            35,
-            41,
-            47
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2025-03-10",
-          "value": 1.35,
-          "observation_ids": [
-            77
-          ],
-          "report_ids": [
-            12
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": 0.24,
-      "change_percent": 21.6,
-      "observation_ids": [
-        35,
-        41,
-        47,
-        77
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        12
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2025-03-10"
-      ],
-      "message": "Serum Creatinine rose 21.6% from the baseline (1.11 → 1.35 mg/dL), more than its reference change value of 15%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        }
-      ],
-      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
-    },
-    {
-      "id": "RCV_BASELINE:hba1c:2024-10-15",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "hba1c",
-      "analyte_name": "HbA1c",
-      "unit": "%",
-      "direction": "fall",
-      "date": "2024-10-15",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 6.3,
-        "rcv_status": "verified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 8.8,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14"
-          ],
-          "observation_ids": [
-            34,
-            40
-          ],
-          "report_ids": [
-            5,
-            6
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-10-15",
-          "value": 6.9,
-          "observation_ids": [
-            70
-          ],
-          "report_ids": [
-            11
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -1.9,
-      "change_percent": -21.6,
-      "observation_ids": [
-        34,
-        40,
-        70
-      ],
-      "report_ids": [
-        5,
-        6,
-        11
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2024-10-15"
-      ],
-      "message": "HbA1c fell 21.6% from the baseline (8.8 → 6.9 %), more than its reference change value of 6.3%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 1,
-          "drug": "Metformin",
-          "drug_class": "biguanide",
-          "change": "start",
-          "date": "2023-10-02"
-        }
-      ],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
-    },
-    {
-      "id": "RCV_BASELINE:egfr:2024-10-15",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "egfr",
-      "analyte_name": "eGFR (CKD-EPI 2021)",
-      "unit": "mL/min/1.73m²",
-      "direction": "fall",
-      "date": "2024-10-15",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.4,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 78.42,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            36,
-            42,
-            48
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-10-15",
-          "value": 63.88,
-          "observation_ids": [
-            72
-          ],
-          "report_ids": [
-            11
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -14.54,
-      "change_percent": -18.5,
-      "observation_ids": [
-        36,
-        42,
-        48,
-        72
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        11
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2024-10-15"
-      ],
-      "message": "eGFR (CKD-EPI 2021) fell 18.5% from the baseline (78.42 → 63.88 mL/min/1.73m²), more than its reference change value of 15.4%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        },
-        {
-          "event_id": 3,
-          "drug": "Empagliflozin",
-          "drug_class": "sglt2i",
-          "change": "start",
-          "date": "2024-05-06"
-        }
-      ],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
-    },
-    {
-      "id": "RCV_BASELINE:creatinine:2024-10-15",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "creatinine",
-      "analyte_name": "Serum Creatinine",
-      "unit": "mg/dL",
-      "direction": "rise",
-      "date": "2024-10-15",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.0,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 1.11,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            35,
-            41,
-            47
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-10-15",
-          "value": 1.31,
-          "observation_ids": [
-            71
-          ],
-          "report_ids": [
-            11
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": 0.2,
-      "change_percent": 18.0,
-      "observation_ids": [
-        35,
-        41,
-        47,
-        71
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        11
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2024-10-15"
-      ],
-      "message": "Serum Creatinine rose 18.0% from the baseline (1.11 → 1.31 mg/dL), more than its reference change value of 15%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        }
-      ],
-      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
-    },
-    {
-      "id": "RCV_BASELINE:hba1c:2024-06-10",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "hba1c",
-      "analyte_name": "HbA1c",
-      "unit": "%",
-      "direction": "fall",
-      "date": "2024-06-10",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 6.3,
-        "rcv_status": "verified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 8.8,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14"
-          ],
-          "observation_ids": [
-            34,
-            40
-          ],
-          "report_ids": [
-            5,
-            6
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-06-10",
-          "value": 7.0,
-          "observation_ids": [
-            64
-          ],
-          "report_ids": [
-            10
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -1.8,
-      "change_percent": -20.5,
-      "observation_ids": [
-        34,
-        40,
-        64
-      ],
-      "report_ids": [
-        5,
-        6,
-        10
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2024-06-10"
-      ],
-      "message": "HbA1c fell 20.5% from the baseline (8.8 → 7 %), more than its reference change value of 6.3%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 1,
-          "drug": "Metformin",
-          "drug_class": "biguanide",
-          "change": "start",
-          "date": "2023-10-02"
-        }
-      ],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
-    },
-    {
-      "id": "RCV_BASELINE:egfr:2024-06-10",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "egfr",
-      "analyte_name": "eGFR (CKD-EPI 2021)",
-      "unit": "mL/min/1.73m²",
-      "direction": "fall",
-      "date": "2024-06-10",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.4,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 78.42,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            36,
-            42,
-            48
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-06-10",
-          "value": 61.62,
-          "observation_ids": [
-            66
-          ],
-          "report_ids": [
-            10
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -16.8,
-      "change_percent": -21.4,
-      "observation_ids": [
-        36,
-        42,
-        48,
-        66
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        10
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2024-06-10"
-      ],
-      "message": "eGFR (CKD-EPI 2021) fell 21.4% from the baseline (78.42 → 61.62 mL/min/1.73m²), more than its reference change value of 15.4%.",
-      "expected_effect": {
-        "event_id": 3,
-        "drug": "Empagliflozin",
-        "drug_class": "sglt2i",
-        "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
-        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
-        "window": {
-          "start": "2024-05-13",
-          "end": "2024-08-04"
-        }
-      },
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        },
-        {
-          "event_id": 3,
-          "drug": "Empagliflozin",
-          "drug_class": "sglt2i",
-          "change": "start",
-          "date": "2024-05-06"
-        }
-      ],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
-    },
-    {
-      "id": "RCV_BASELINE:creatinine:2024-06-10",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "creatinine",
-      "analyte_name": "Serum Creatinine",
-      "unit": "mg/dL",
-      "direction": "rise",
-      "date": "2024-06-10",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.0,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 1.11,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            35,
-            41,
-            47
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-06-10",
-          "value": 1.35,
-          "observation_ids": [
-            65
-          ],
-          "report_ids": [
-            10
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": 0.24,
-      "change_percent": 21.6,
-      "observation_ids": [
-        35,
-        41,
-        47,
-        65
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        10
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2024-06-10"
-      ],
-      "message": "Serum Creatinine rose 21.6% from the baseline (1.11 → 1.35 mg/dL), more than its reference change value of 15%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        }
-      ],
-      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
+      "source": "KDIGO 2012 definition of rapid progression (> 5 mL/min/1.73 m²/yr)",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation adds uncertainty to the slope"
     },
     {
       "id": "RCV_PREV:egfr:2024-04-01",
@@ -4122,6 +3197,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           "report_ids": [
             8
           ],
+          "labs": [
+            "Varnika Clinical Labs"
+          ],
           "note": null
         },
         "to": {
@@ -4132,6 +3210,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           ],
           "report_ids": [
             9
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
           ]
         },
         "slope": null
@@ -4163,7 +3244,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         }
       },
       "drug_events_since_baseline": [],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
+      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
     },
     {
       "id": "RCV_PREV:creatinine:2024-04-01",
@@ -4192,6 +3275,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           "report_ids": [
             8
           ],
+          "labs": [
+            "Varnika Clinical Labs"
+          ],
           "note": null
         },
         "to": {
@@ -4202,6 +3288,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           ],
           "report_ids": [
             9
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
           ]
         },
         "slope": null
@@ -4233,261 +3322,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         }
       },
       "drug_events_since_baseline": [],
-      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
-    },
-    {
-      "id": "RCV_BASELINE:hba1c:2024-04-01",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "hba1c",
-      "analyte_name": "HbA1c",
-      "unit": "%",
-      "direction": "fall",
-      "date": "2024-04-01",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 6.3,
-        "rcv_status": "verified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 8.8,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14"
-          ],
-          "observation_ids": [
-            34,
-            40
-          ],
-          "report_ids": [
-            5,
-            6
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-04-01",
-          "value": 7.2,
-          "observation_ids": [
-            58
-          ],
-          "report_ids": [
-            9
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -1.6,
-      "change_percent": -18.2,
-      "observation_ids": [
-        34,
-        40,
-        58
-      ],
-      "report_ids": [
-        5,
-        6,
-        9
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2024-04-01"
-      ],
-      "message": "HbA1c fell 18.2% from the baseline (8.8 → 7.2 %), more than its reference change value of 6.3%.",
-      "expected_effect": null,
-      "drug_events_since_baseline": [
-        {
-          "event_id": 1,
-          "drug": "Metformin",
-          "drug_class": "biguanide",
-          "change": "start",
-          "date": "2023-10-02"
-        }
-      ],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
-    },
-    {
-      "id": "RCV_BASELINE:egfr:2024-04-01",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "egfr",
-      "analyte_name": "eGFR (CKD-EPI 2021)",
-      "unit": "mL/min/1.73m²",
-      "direction": "fall",
-      "date": "2024-04-01",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.4,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 78.42,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            36,
-            42,
-            48
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-04-01",
-          "value": 65.08,
-          "observation_ids": [
-            60
-          ],
-          "report_ids": [
-            9
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -13.34,
-      "change_percent": -17.0,
-      "observation_ids": [
-        36,
-        42,
-        48,
-        60
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        9
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2024-04-01"
-      ],
-      "message": "eGFR (CKD-EPI 2021) fell 17.0% from the baseline (78.42 → 65.08 mL/min/1.73m²), more than its reference change value of 15.4%.",
-      "expected_effect": {
-        "event_id": 2,
-        "drug": "Ramipril",
-        "drug_class": "acei_arb",
-        "note": "an eGFR fall is expected after starting an ACE inhibitor or ARB (the creatinine rise seen through the eGFR formula)",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
-        "window": {
-          "start": "2024-03-11",
-          "end": "2024-05-03"
-        }
-      },
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        }
-      ],
-      "source": "Propagated from the creatinine RCV: 1 - (1 + RCV_creatinine)^-1.200 (Scr above kappa). Not an independently published RCV"
-    },
-    {
-      "id": "RCV_BASELINE:creatinine:2024-04-01",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "creatinine",
-      "analyte_name": "Serum Creatinine",
-      "unit": "mg/dL",
-      "direction": "rise",
-      "date": "2024-04-01",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 15.0,
-        "rcv_status": "unverified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 1.11,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14",
-            "2023-11-16"
-          ],
-          "observation_ids": [
-            35,
-            41,
-            47
-          ],
-          "report_ids": [
-            5,
-            6,
-            7
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-04-01",
-          "value": 1.29,
-          "observation_ids": [
-            59
-          ],
-          "report_ids": [
-            9
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": 0.18,
-      "change_percent": 16.2,
-      "observation_ids": [
-        35,
-        41,
-        47,
-        59
-      ],
-      "report_ids": [
-        5,
-        6,
-        7,
-        9
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2023-11-16",
-        "2024-04-01"
-      ],
-      "message": "Serum Creatinine rose 16.2% from the baseline (1.11 → 1.29 mg/dL), more than its reference change value of 15%.",
-      "expected_effect": {
-        "event_id": 2,
-        "drug": "Ramipril",
-        "drug_class": "acei_arb",
-        "note": "within the ≤30% rise expected after ACEi/ARB start",
-        "source": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD (Kidney Int 2024;105(4S):S117-S314): a serum creatinine rise of up to 30% within 4 weeks of starting an ACEi or ARB is described as expected.",
-        "window": {
-          "start": "2024-03-11",
-          "end": "2024-05-03"
-        }
-      },
-      "drug_events_since_baseline": [
-        {
-          "event_id": 2,
-          "drug": "Ramipril",
-          "drug_class": "acei_arb",
-          "change": "start",
-          "date": "2024-03-04"
-        }
-      ],
-      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"
+      "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
     },
     {
       "id": "RCV_PREV:hba1c:2024-02-15",
@@ -4516,6 +3353,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           "report_ids": [
             7
           ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ],
           "note": null
         },
         "to": {
@@ -4526,6 +3366,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
           ],
           "report_ids": [
             8
+          ],
+          "labs": [
+            "Varnika Clinical Labs"
           ]
         },
         "slope": null
@@ -4557,91 +3400,9 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
         }
       },
       "drug_events_since_baseline": [],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
-    },
-    {
-      "id": "RCV_BASELINE:hba1c:2024-02-15",
-      "rule_id": "RCV_BASELINE",
-      "level": "change",
-      "analyte_id": "hba1c",
-      "analyte_name": "HbA1c",
-      "unit": "%",
-      "direction": "fall",
-      "date": "2024-02-15",
-      "threshold": {
-        "type": "rcv_percent",
-        "value": 6.3,
-        "rcv_status": "verified"
-      },
-      "compared": {
-        "from": {
-          "label": "baseline",
-          "value": 8.8,
-          "dates": [
-            "2023-06-12",
-            "2023-09-14"
-          ],
-          "observation_ids": [
-            34,
-            40
-          ],
-          "report_ids": [
-            5,
-            6
-          ],
-          "note": null
-        },
-        "to": {
-          "date": "2024-02-15",
-          "value": 7.4,
-          "observation_ids": [
-            52
-          ],
-          "report_ids": [
-            8
-          ]
-        },
-        "slope": null
-      },
-      "change_abs": -1.4,
-      "change_percent": -15.9,
-      "observation_ids": [
-        34,
-        40,
-        52
-      ],
-      "report_ids": [
-        5,
-        6,
-        8
-      ],
-      "dates": [
-        "2023-06-12",
-        "2023-09-14",
-        "2024-02-15"
-      ],
-      "message": "HbA1c fell 15.9% from the baseline (8.8 → 7.4 %), more than its reference change value of 6.3%.",
-      "expected_effect": {
-        "event_id": 1,
-        "drug": "Metformin",
-        "drug_class": "biguanide",
-        "note": "an HbA1c fall is expected about 3 months after starting metformin",
-        "source": "ADA Standards of Care in Diabetes (section 6, Glycemic Goals): HbA1c reflects about the previous 3 months, so the effect of a change in glucose-lowering therapy shows in HbA1c about 3 months later.",
-        "window": {
-          "start": "2023-12-31",
-          "end": "2024-03-30"
-        }
-      },
-      "drug_events_since_baseline": [
-        {
-          "event_id": 1,
-          "drug": "Metformin",
-          "drug_class": "biguanide",
-          "change": "start",
-          "date": "2023-10-02"
-        }
-      ],
-      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed"
+      "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed",
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
     }
   ]
 }
@@ -4649,8 +3410,12 @@ slope since the drug windows ended is below -5 per year, so `KDIGO_RAPID_EGFR` f
 
 ### `GET /medications/{medication_id}/response`: lab values before and after one medication event
 
-For each value the drug's class is expected to move: `before` is the last result on or before the
-event date (at most 180 days earlier), `after` the first result inside the class's window. `status`:
+For each value the drug's class is expected to move: `before` is the **mean of the last 2-3 results**
+on or before the event date, at most 180 days earlier and after any earlier drug event that affects
+the same value (`before_values` lists them; `before_note: "single prior value"` when there was only
+one). `after` is the first result inside the class's window. `cross_lab` marks a before/after pair
+from different labs. Every drug start carries `caveat` ("Some change is expected after a treatment
+started for a high value (regression to the mean); adherence is not recorded."). `status`:
 `assessed`, `too early to assess` (no result yet past the window start), `no baseline` (no `before`)
 or `no result in window`. `confounders` are the other medication events from 90 days before this one
 up to the `after` result. A drug not in the catalogue returns an empty `analytes` list and a `note`.
@@ -4671,6 +3436,7 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
     "drug_class_name": "SGLT2 inhibitor"
   },
   "note": null,
+  "caveat": "Some change is expected after a treatment started for a high value (regression to the mean); adherence is not recorded.",
   "analytes": [
     {
       "analyte_id": "egfr",
@@ -4688,15 +3454,38 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
         "end": "2024-08-04"
       },
       "before": {
-        "date": "2024-04-01",
+        "label": "mean before the event",
         "value": 65.08,
+        "dates": [
+          "2024-04-01"
+        ],
         "observation_ids": [
           60
         ],
         "report_ids": [
           9
-        ]
+        ],
+        "labs": [
+          "ASTERLANE DIAGNOSTICS"
+        ],
+        "note": null
       },
+      "before_values": [
+        {
+          "date": "2024-04-01",
+          "value": 65.08,
+          "observation_ids": [
+            60
+          ],
+          "report_ids": [
+            9
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        }
+      ],
+      "before_note": "single prior value",
       "after": {
         "date": "2024-06-10",
         "value": 61.62,
@@ -4705,6 +3494,9 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
         ],
         "report_ids": [
           10
+        ],
+        "labs": [
+          "Kestrelline Labs"
         ]
       },
       "change_abs": -3.46,
@@ -4712,11 +3504,104 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
       "rcv_percent": 15.4,
       "rcv_status": "unverified",
       "beyond_rcv": false,
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
       "expected_effect": {
         "event_id": 3,
         "drug": "Empagliflozin",
         "drug_class": "sglt2i",
         "note": "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises",
+        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
+        "window": {
+          "start": "2024-05-13",
+          "end": "2024-08-04"
+        }
+      },
+      "confounders": [
+        {
+          "event_id": 2,
+          "drug": "Ramipril",
+          "drug_class": "acei_arb",
+          "change": "start",
+          "date": "2024-03-04",
+          "days_from_event": -63
+        }
+      ],
+      "status": "assessed"
+    },
+    {
+      "analyte_id": "creatinine",
+      "name": "Serum Creatinine",
+      "unit": "mg/dL",
+      "expected": {
+        "direction": "rise",
+        "note": "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)",
+        "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
+        "status": "unverified",
+        "applies": true
+      },
+      "window": {
+        "start": "2024-05-13",
+        "end": "2024-08-04"
+      },
+      "before": {
+        "label": "mean before the event",
+        "value": 1.29,
+        "dates": [
+          "2024-04-01"
+        ],
+        "observation_ids": [
+          59
+        ],
+        "report_ids": [
+          9
+        ],
+        "labs": [
+          "ASTERLANE DIAGNOSTICS"
+        ],
+        "note": null
+      },
+      "before_values": [
+        {
+          "date": "2024-04-01",
+          "value": 1.29,
+          "observation_ids": [
+            59
+          ],
+          "report_ids": [
+            9
+          ],
+          "labs": [
+            "ASTERLANE DIAGNOSTICS"
+          ]
+        }
+      ],
+      "before_note": "single prior value",
+      "after": {
+        "date": "2024-06-10",
+        "value": 1.35,
+        "observation_ids": [
+          65
+        ],
+        "report_ids": [
+          10
+        ],
+        "labs": [
+          "Kestrelline Labs"
+        ]
+      },
+      "change_abs": 0.06,
+      "change_percent": 4.7,
+      "rcv_percent": 15.0,
+      "rcv_status": "unverified",
+      "beyond_rcv": false,
+      "cross_lab": true,
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "expected_effect": {
+        "event_id": 3,
+        "drug": "Empagliflozin",
+        "drug_class": "sglt2i",
+        "note": "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)",
         "source": "KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46); EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2 inhibitor is described as expected.",
         "window": {
           "start": "2024-05-13",

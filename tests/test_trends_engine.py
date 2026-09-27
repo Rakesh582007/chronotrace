@@ -234,9 +234,12 @@ def test_demo_egfr_column_matches_ckd_epi(r):
 def test_demo_metformin_response():
     points, events = demo_patient("R9")
     h = by_drug(points, events, "Metformin")["hba1c"]
-    assert h["status"] == "assessed" and (h["before"]["value"], h["after"]["value"]) == (8.7, 7.4)
-    assert h["before"]["date"] == D("2023-09-14") and h["after"]["date"] == D("2024-02-15")
-    assert h["change_percent"] == -14.9 and h["beyond_rcv"] is True and h["confounders"] == []
+    # before = mean(R1 8.9, R2 8.7) = 8.8 (the last 2-3 results within 180 days before the start)
+    assert h["status"] == "assessed" and (h["before"]["value"], h["after"]["value"]) == (8.8, 7.4)
+    assert [v["date"] for v in h["before_values"]] == [D("2023-06-12"), D("2023-09-14")] and h["before_note"] is None
+    assert h["after"]["date"] == D("2024-02-15")
+    assert h["change_percent"] == -15.9 and h["beyond_rcv"] is True and h["confounders"] == []
+    assert h["cross_lab"] is True and h["cross_lab_note"] == E.CROSS_LAB_NOTE          # labs A, B -> C
     assert h["expected_effect"]["note"] == "an HbA1c fall is expected about 3 months after starting metformin"
     points, events = demo_patient("R3")
     assert by_drug(points, events, "Metformin")["hba1c"]["status"] == "too early to assess"
@@ -246,23 +249,29 @@ def test_demo_ramipril_response():
     points, events = demo_patient("R9")
     r = by_drug(points, events, "Ramipril")
     c = r["creatinine"]
-    assert (c["before"]["value"], c["after"]["value"], c["change_percent"], c["beyond_rcv"]) == (1.11, 1.29, 16.2, True)
-    assert c["rcv_percent"] == 15.0 and c["confounders"] == []
+    # before = mean(R2 1.13, R3 1.11, R4 1.11) = 1.1167 -> R5 1.29: +15.5%, still beyond the 15.0% RCV
+    assert (c["before"]["value"], c["after"]["value"], c["change_percent"], c["beyond_rcv"]) == (1.1167, 1.29, 15.5, True)
+    assert c["rcv_percent"] == 15.0 and c["confounders"] == [] and c["cross_lab"] is True
     assert c["expected_effect"]["note"] == "within the ≤30% rise expected after ACEi/ARB start"
     e = r["egfr"]
-    # -16.5% from the stored eGFRs (77.94 -> 65.08); the spec's -16.4% used the 1-decimal table (77.9 -> 65.1).
-    assert e["change_percent"] == -16.5 and e["expected_effect"] is not None
+    assert e["change_percent"] == -16.2 and e["expected_effect"] is not None      # mean(76.76, 78.42, 77.94) -> 65.08
     assert r["potassium"]["beyond_rcv"] is False
 
 
 def test_demo_empagliflozin_response():
     points, events = demo_patient("R9")
-    e = by_drug(points, events, "Empagliflozin")["egfr"]
+    r = by_drug(points, events, "Empagliflozin")
+    e = r["egfr"]
+    # only R5 is after ramipril (an earlier drug affecting eGFR): a single prior value
     assert (round(e["before"]["value"], 1), round(e["after"]["value"], 1)) == (65.1, 61.6)
+    assert e["before_note"] == "single prior value" and len(e["before_values"]) == 1
     # -5.3% from the stored eGFRs (65.08 -> 61.62); the spec's -5.4% used the 1-decimal table (65.1 -> 61.6).
     assert e["change_percent"] == -5.3 and e["beyond_rcv"] is False
     assert "dip" in e["expected_effect"]["note"]
     assert [(c["drug"], c["days_from_event"]) for c in e["confounders"]] == [("Ramipril", -63)]
+    cr = r["creatinine"]                                                  # the SGLT2 inhibitor creatinine effect
+    assert (cr["before"]["value"], cr["after"]["value"], cr["change_percent"]) == (1.29, 1.35, 4.7)
+    assert "creatinine rise" in cr["expected_effect"]["note"]
 
 
 def test_demo_egfr_slope_before_r10_is_too_short_for_the_guideline_flag():
@@ -297,3 +306,55 @@ def test_demo_engine_does_not_report_the_naive_slope():
     trends, _ = E.analyse_patient(list(analyte_infos()), points, events)
     s = next(t for t in trends if t["analyte_id"] == "egfr")["slope"]
     assert s["per_year"] != pytest.approx(naive, abs=0.5)
+
+
+# ---------------------------------------------------------------- guardrail review (cross-lab, before, baseline)
+
+def test_demo_flag_counts_with_baseline_flags_only_for_the_latest_result():
+    for upto, n in (("R9", 6), ("R10", 7)):
+        points, events = demo_patient(upto)
+        trends, flags = E.analyse_patient(list(analyte_infos()), points, events)
+        assert len(flags) == n, upto
+        base = [f for f in flags if f["rule_id"] == "RCV_BASELINE"]
+        assert sorted(f["analyte_id"] for f in base) == ["creatinine", "egfr", "hba1c"]
+        assert {f["date"] for f in base} == {demo.REPORTS[len(points["egfr"]) - 1].date}
+        assert next(t for t in trends if t["analyte_id"] == "egfr")["baseline"] == pytest.approx(78.42)
+        assert all(f["cross_lab"] is True for f in flags)                 # the demo's labs alternate
+
+
+def lab_points(values):
+    """[(date, value, lab)] -> Points."""
+    return [E.Point(i + 1, 100 + i, D(d), v, lab=lab) for i, (d, v, lab) in enumerate(values)]
+
+
+def test_cross_lab_is_labelled_only_when_labs_differ():
+    same = lab_points([("2023-01-01", 1.0, "A"), ("2023-02-01", 1.3, "A")])
+    f = trend("creatinine", same)[1][0]
+    assert (f["cross_lab"], f["cross_lab_note"]) == (False, None)
+    mixed = lab_points([("2023-01-01", 1.0, "A"), ("2023-02-01", 1.3, "B")])
+    f = trend("creatinine", mixed)[1][0]
+    assert f["cross_lab"] is True
+    assert f["cross_lab_note"] == "values from different labs; between-lab variation is larger than the RCV assumes"
+    assert f["compared"]["from"]["labs"] == ["A"] and f["compared"]["to"]["labs"] == ["B"]
+
+
+def test_before_is_the_mean_of_the_last_three_after_an_earlier_drug():
+    points = {"creatinine": lab_points([("2023-10-01", 0.9, "A"), ("2023-11-01", 1.0, "A"), ("2023-12-01", 1.1, "A"),
+                                        ("2024-01-01", 1.2, "A"), ("2024-01-20", 1.3, "A"), ("2024-02-20", 1.5, "A")])}
+    ram = ev(2, "Ramipril", "2024-02-01")
+    c = next(a for a in E.response(ram, INFO, points, [ram])["analytes"] if a["analyte_id"] == "creatinine")
+    assert c["before"]["value"] == pytest.approx(1.2) and len(c["before_values"]) == 3    # mean(1.1, 1.2, 1.3)
+    empa = ev(3, "Empagliflozin", "2024-02-10")       # ramipril (earlier, affects creatinine) limits the look-back
+    c = next(a for a in E.response(empa, INFO, points, [ram, empa])["analytes"] if a["analyte_id"] == "creatinine")
+    assert c["status"] == "no baseline" and c["before"] is None
+
+
+def test_every_start_carries_the_regression_to_the_mean_caveat():
+    points = {"hba1c": lab_points([("2023-01-01", 9.0, "A"), ("2023-05-01", 7.5, "A")])}
+    start, stop = ev(1, "Metformin", "2023-01-10"), ev(2, "Metformin", "2023-03-01", change="stop")
+    assert E.response(start, INFO, points, [start, stop])["caveat"] == (
+        "Some change is expected after a treatment started for a high value (regression to the mean); "
+        "adherence is not recorded.")
+    assert E.response(stop, INFO, points, [start, stop])["caveat"] is None
+    h = E.response(start, INFO, points, [start])["analytes"][0]
+    assert h["before_note"] == "single prior value"

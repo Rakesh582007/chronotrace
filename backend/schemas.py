@@ -173,14 +173,16 @@ class DayRef(BaseModel):
     value: float
     observation_ids: list[int]
     report_ids: list[int]
+    labs: list[str]                   # lab of each result ("unknown lab" when the report shows none)
 
 
 class FlagFrom(BaseModel):
-    label: str                        # "previous result" or "baseline"
+    label: str                        # "previous result", "baseline" or "mean before the event"
     value: float
     dates: list[dt.date]
     observation_ids: list[int]
     report_ids: list[int]
+    labs: list[str]
     note: str | None                  # baseline note, e.g. "includes on-treatment results"
 
 
@@ -248,6 +250,8 @@ class Flag(BaseModel):
     expected_effect: ExpectedEffect | None
     drug_events_since_baseline: list[EventRef]
     source: str | None
+    cross_lab: bool                   # the compared values come from different labs
+    cross_lab_note: str | None
 
 
 class Flags(BaseModel):
@@ -316,13 +320,17 @@ class ResponseEntry(BaseModel):
     unit: str
     expected: Expected
     window: DateWindow
-    before: DayRef | None
+    before: FlagFrom | None           # mean of the last 2-3 results before the event
+    before_values: list[DayRef]       # the results that mean was taken over
+    before_note: str | None           # "single prior value"
     after: DayRef | None
     change_abs: float | None
     change_percent: float | None
     rcv_percent: float | None
     rcv_status: str
     beyond_rcv: bool | None
+    cross_lab: bool | None            # before and after values come from different labs
+    cross_lab_note: str | None
     expected_effect: ExpectedEffect | None
     confounders: list[Confounder]
     status: str                       # assessed | too early to assess | no baseline | no result in window
@@ -337,4 +345,5 @@ class ResponseEvent(EventRef):
 class MedicationResponse(BaseModel):
     event: ResponseEvent
     note: str | None
+    caveat: str | None                # on every drug start: regression to the mean, adherence not recorded
     analytes: list[ResponseEntry]

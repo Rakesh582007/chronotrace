@@ -42,8 +42,7 @@ SLOPE_MIN_POINTS = 3
 SLOPE_MIN_SPAN_DAYS = 365
 DAYS_PER_YEAR = 365.25
 KDIGO_RAPID_EGFR_PER_YEAR = -5.0
-KDIGO_SOURCE = ("KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of CKD: a sustained "
-                "eGFR decline of more than 5 mL/min/1.73 m2 per year is a rapid decline.")
+KDIGO_SOURCE = "KDIGO 2012 definition of rapid progression (> 5 mL/min/1.73 m²/yr)"
 
 STATUS_OK = "ok"
 STATUS_INSUFFICIENT = "insufficient data"
@@ -52,6 +51,13 @@ SLOPE_OK, SLOPE_SHORT, SLOPE_FEW = "ok", "not enough span", "not enough points"
 RESP_ASSESSED, RESP_TOO_EARLY, RESP_NO_BASELINE, RESP_NO_RESULT = (
     "assessed", "too early to assess", "no baseline", "no result in window")
 ON_TREATMENT_NOTE = "includes on-treatment results"
+UNKNOWN_LAB = "unknown lab"
+CROSS_LAB_NOTE = "values from different labs; between-lab variation is larger than the RCV assumes"
+CROSS_LAB_SLOPE_NOTE = "values from different labs; between-lab variation adds uncertainty to the slope"
+SINGLE_PRIOR_NOTE = "single prior value"
+BEFORE_MAX_VALUES = 3
+REGRESSION_CAVEAT = ("Some change is expected after a treatment started for a high value (regression to the mean); "
+                     "adherence is not recorded.")
 
 
 # ---------------------------------------------------------------- inputs
@@ -117,9 +123,23 @@ class DayValue:
     def report_ids(self) -> list[int]:
         return sorted({p.report_id for p in self.points})
 
+    @property
+    def labs(self) -> set[str | None]:
+        return {p.lab for p in self.points}
+
     def ref(self) -> dict:
         return {"date": self.date, "value": round(self.value, 4), "observation_ids": self.observation_ids,
-                "report_ids": self.report_ids}
+                "report_ids": self.report_ids, "labs": lab_names(self.labs)}
+
+
+def lab_names(labs: set[str | None]) -> list[str]:
+    return sorted(lab or UNKNOWN_LAB for lab in labs)
+
+
+def cross_lab(*groups: list[DayValue]) -> bool:
+    """True when the compared values do not all come from one lab (an unknown lab counts as another)."""
+    labs = {lab for g in groups for d in g for lab in d.labs}
+    return len(labs) > 1
 
 
 def day_values(points: list[Point]) -> list[DayValue]:
@@ -215,7 +235,8 @@ def expected_effect(windows: list[Window], later: dt.date, direction: str, chang
 def _from(ref_days: list[DayValue], value: float, label: str, note: str | None = None) -> dict:
     return {"label": label, "value": round(value, 4), "dates": [d.date for d in ref_days],
             "observation_ids": [i for d in ref_days for i in d.observation_ids],
-            "report_ids": sorted({i for d in ref_days for i in d.report_ids}), "note": note}
+            "report_ids": sorted({i for d in ref_days for i in d.report_ids}),
+            "labs": lab_names({lab for d in ref_days for lab in d.labs}), "note": note}
 
 
 def _flag(rule_id: str, a: AnalyteInfo, later: DayValue, ref_value: float, ref_label: str,
@@ -228,6 +249,7 @@ def _flag(rule_id: str, a: AnalyteInfo, later: DayValue, ref_value: float, ref_l
     rep_ids = sorted({i for d in ref_days for i in d.report_ids} | set(later.report_ids))
     dates = sorted({d.date for d in ref_days} | {later.date})
     word = "rose" if direction == "rise" else "fell"
+    crossed = cross_lab(ref_days, [later])
     return {
         "rule_id": rule_id, "level": "change", "analyte_id": a.id, "analyte_name": a.name, "unit": a.unit,
         "direction": direction, "date": later.date,
@@ -239,10 +261,13 @@ def _flag(rule_id: str, a: AnalyteInfo, later: DayValue, ref_value: float, ref_l
                     f"{later.value:.4g} {a.unit}), more than its reference change value of {a.rcv_percent:g}%."),
         "expected_effect": expected_effect(windows, later.date, direction, change),
         "drug_events_since_baseline": [], "source": a.rcv_source or None,
+        "cross_lab": crossed, "cross_lab_note": CROSS_LAB_NOTE if crossed else None,
     }
 
 
 def rcv_flags(a: AnalyteInfo, days: list[DayValue], base: Baseline, events: list[Event]) -> list[dict]:
+    """RCV_PREV for every result; RCV_BASELINE for the latest result only (the baseline itself stays in the
+    trend, so the chart can draw it)."""
     if a.rcv_percent is None:
         return []
     windows = windows_for(a.id, events)
@@ -251,16 +276,13 @@ def rcv_flags(a: AnalyteInfo, days: list[DayValue], base: Baseline, events: list
         f = _flag("RCV_PREV", a, cur, prev.value, "previous result", [prev], windows)
         if f:
             flags.append(f)
-    if base.value is not None and base.days:
-        last_base = base.days[-1].date
-        affecting = affecting_events(a.id, events)
-        for cur in days:
-            if cur.date <= last_base:
-                continue
-            f = _flag("RCV_BASELINE", a, cur, base.value, "baseline", base.days, windows, base.note)
-            if f:
-                f["drug_events_since_baseline"] = [event_ref(e) for e in affecting if last_base < e.date <= cur.date]
-                flags.append(f)
+    if base.value is not None and base.days and days[-1].date > base.days[-1].date:
+        cur, last_base = days[-1], base.days[-1].date
+        f = _flag("RCV_BASELINE", a, cur, base.value, "baseline", base.days, windows, base.note)
+        if f:
+            f["drug_events_since_baseline"] = [event_ref(e) for e in affecting_events(a.id, events)
+                                               if last_base < e.date <= cur.date]
+            flags.append(f)
     return flags
 
 
@@ -314,6 +336,7 @@ def slope_flags(a: AnalyteInfo, s: dict, days: list[DayValue]) -> list[dict]:
                     f"({s['n_points']} results since the last drug window), faster than the KDIGO threshold "
                     f"of 5 per year."),
         "expected_effect": None, "drug_events_since_baseline": [], "source": KDIGO_SOURCE,
+        "cross_lab": cross_lab(used), "cross_lab_note": CROSS_LAB_SLOPE_NOTE if cross_lab(used) else None,
     }]
 
 
@@ -372,6 +395,17 @@ def analyse_patient(analytes: list[AnalyteInfo], points_by_analyte: dict[str, li
 
 # ---------------------------------------------------------------- medication response
 
+def _before_days(days: list[DayValue], event: Event, analyte_id: str, events: list[Event]) -> list[DayValue]:
+    """The last up to 3 results within 180 days before the event and after any earlier event that affects the
+    same analyte (so an earlier drug's effect is not counted as this one's). Averaging 2-3 values dampens
+    regression to the mean."""
+    earlier = [e.date for e in affecting_events(analyte_id, events) if e.id != event.id and e.date < event.date]
+    since = max(earlier, default=None)
+    eligible = [d for d in days if d.date <= event.date and (event.date - d.date).days <= BEFORE_LOOKBACK_DAYS
+                and (since is None or d.date > since)]
+    return eligible[-BEFORE_MAX_VALUES:]
+
+
 def response(event: Event, analytes: dict[str, AnalyteInfo], points_by_analyte: dict[str, list[Point]],
              events: list[Event]) -> dict:
     c = event.klass
@@ -379,7 +413,8 @@ def response(event: Event, analytes: dict[str, AnalyteInfo], points_by_analyte: 
     out = {"event": event_ref(event) | {"generic": event.generic, "dose_text": event.dose_text,
                                          "drug_class_name": c.name if c else None},
            "analytes": [],
-           "note": None if c else "drug not in the ChronoTrace catalogue: no expected effect is shown"}
+           "note": None if c else "drug not in the ChronoTrace catalogue: no expected effect is shown",
+           "caveat": REGRESSION_CAVEAT if event.change == "start" else None}
     if c is None:
         return out
     ws, we = event.date + dt.timedelta(days=c.window_start), event.date + dt.timedelta(days=c.window_end)
@@ -388,28 +423,34 @@ def response(event: Event, analytes: dict[str, AnalyteInfo], points_by_analyte: 
         if a is None:
             continue
         days = day_values(points_by_analyte.get(eff.analyte_id) or [])
-        before = next((d for d in reversed(days)
-                       if d.date <= event.date and (event.date - d.date).days <= BEFORE_LOOKBACK_DAYS), None)
+        before_days = _before_days(days, event, eff.analyte_id, events)
+        before_value = statistics.mean(d.value for d in before_days) if before_days else None
         after = next((d for d in days if ws <= d.date <= we), None)
         entry = {"analyte_id": a.id, "name": a.name, "unit": a.unit,
                  "expected": {"direction": eff.direction, "note": eff.note, "source": c.source,
                               "status": c.status, "applies": event.change == "start"},
-                 "window": {"start": ws, "end": we}, "before": before.ref() if before else None,
+                 "window": {"start": ws, "end": we},
+                 "before": _from(before_days, before_value, "mean before the event") if before_days else None,
+                 "before_values": [d.ref() for d in before_days],
+                 "before_note": SINGLE_PRIOR_NOTE if len(before_days) == 1 else None,
                  "after": after.ref() if after else None, "change_abs": None, "change_percent": None,
                  "rcv_percent": a.rcv_percent, "rcv_status": a.rcv_status, "beyond_rcv": None,
+                 "cross_lab": None, "cross_lab_note": None,
                  "expected_effect": None, "confounders": [], "status": None}
         if not any(d.date >= ws for d in days):
             entry["status"] = RESP_TOO_EARLY
-        elif before is None:
+        elif not before_days:
             entry["status"] = RESP_NO_BASELINE
         elif after is None:
             entry["status"] = RESP_NO_RESULT
         else:
-            change = pct_change(after.value, before.value)
-            entry.update(status=RESP_ASSESSED, change_abs=round(after.value - before.value, 4),
+            change = pct_change(after.value, before_value)
+            crossed = cross_lab(before_days, [after])
+            entry.update(status=RESP_ASSESSED, change_abs=round(after.value - before_value, 4),
                          change_percent=change,
-                         beyond_rcv=None if a.rcv_percent is None or change is None else abs(change) > a.rcv_percent)
-            direction = "rise" if after.value > before.value else "fall"
+                         beyond_rcv=None if a.rcv_percent is None or change is None else abs(change) > a.rcv_percent,
+                         cross_lab=crossed, cross_lab_note=CROSS_LAB_NOTE if crossed else None)
+            direction = "rise" if after.value > before_value else "fall"
             if event.change == "start" and change is not None and direction == eff.direction:
                 win = [Window(event, eff.direction, eff.note, eff.max_expected_percent, ws, we, c.source)]
                 entry["expected_effect"] = expected_effect(win, after.date, direction, change)
