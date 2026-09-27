@@ -1,0 +1,614 @@
+{
+  "model_dir": "chronotrace-ner",
+  "scheme": "seqeval strict IOB2, micro average",
+  "systems": {
+    "model": "DistilBERT NER (this model)",
+    "rules": "rules (generator vocabulary): baseline_rules.py, which knows every test name, unit and method string the synthetic generator uses; an upper bound on synthetic data"
+  },
+  "notes": [
+    "All data is synthetic. The rules baseline knows the generator's full vocabulary, so it is an upper bound on synthetic data; the real model-vs-rules comparison is on real reports (step 9).",
+    "The flag-position fix (commit 3649ebe) was prompted by error analysis on the held-out test families (flag_emphasis, inline_unit), so the post-fix test score is not fully blind. Hyperparameters were not changed. Pre-fix numbers are kept under before_flag_fix.",
+    "After the flag fix, the first retrain kept epoch 1 because val entity F1 tied at 1.0000 in all epochs. That checkpoint's test results were printed once before checkpoint selection was changed (commit 9be245a: ties broken by lower val loss). The selection change was prompted by the val tie, not by those test numbers, and they are not reported here."
+  ],
+  "val": {
+    "model": {
+      "TEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1246
+      },
+      "VALUE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1246
+      },
+      "UNIT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1199
+      },
+      "RANGE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1246
+      },
+      "FLAG": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 254
+      },
+      "overall": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5191
+      },
+      "exact_value_accuracy": 1.0,
+      "exact_value_rows": "1246/1246",
+      "row_accuracy": 1.0,
+      "rows": 3069
+    },
+    "rules": {
+      "TEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1246
+      },
+      "VALUE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1246
+      },
+      "UNIT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1199
+      },
+      "RANGE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1246
+      },
+      "FLAG": {
+        "precision": 1.0,
+        "recall": 0.95669,
+        "f1": 0.97787,
+        "support": 254
+      },
+      "overall": {
+        "precision": 1.0,
+        "recall": 0.99788,
+        "f1": 0.99894,
+        "support": 5191
+      },
+      "exact_value_accuracy": 1.0,
+      "exact_value_rows": "1246/1246",
+      "row_accuracy": 0.99642,
+      "rows": 3069
+    },
+    "by_family": {
+      "model": {
+        "banded_header_bar": {
+          "rows": 199,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 18
+        },
+        "compact_dense": {
+          "rows": 220,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 10
+        },
+        "dotmatrix_leaders": {
+          "rows": 284,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 19
+        },
+        "grid_classic": {
+          "rows": 480,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 50
+        },
+        "hrule_investigation": {
+          "rows": 336,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 35
+        },
+        "method_column": {
+          "rows": 419,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 53
+        },
+        "method_line_below": {
+          "rows": 807,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 44
+        },
+        "range_first": {
+          "rows": 324,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 25
+        }
+      },
+      "rules": {
+        "banded_header_bar": {
+          "rows": 199,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 18
+        },
+        "compact_dense": {
+          "rows": 220,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 10
+        },
+        "dotmatrix_leaders": {
+          "rows": 284,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 19
+        },
+        "grid_classic": {
+          "rows": 480,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 50
+        },
+        "hrule_investigation": {
+          "rows": 336,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 35
+        },
+        "method_column": {
+          "rows": 419,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 53
+        },
+        "method_line_below": {
+          "rows": 807,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 44
+        },
+        "range_first": {
+          "rows": 324,
+          "overall_f1": 0.98984,
+          "flag_recall": 0.56,
+          "flag_support": 25
+        }
+      }
+    },
+    "layout_families": [
+      "banded_header_bar",
+      "compact_dense",
+      "dotmatrix_leaders",
+      "grid_classic",
+      "hrule_investigation",
+      "method_column",
+      "method_line_below",
+      "range_first"
+    ]
+  },
+  "test": {
+    "model": {
+      "TEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2925
+      },
+      "VALUE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2925
+      },
+      "UNIT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2813
+      },
+      "RANGE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2925
+      },
+      "FLAG": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 676
+      },
+      "overall": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12264
+      },
+      "exact_value_accuracy": 1.0,
+      "exact_value_rows": "2925/2925",
+      "row_accuracy": 1.0,
+      "rows": 6586
+    },
+    "rules": {
+      "TEST": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2925
+      },
+      "VALUE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2925
+      },
+      "UNIT": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2813
+      },
+      "RANGE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2925
+      },
+      "FLAG": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 676
+      },
+      "overall": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 12264
+      },
+      "exact_value_accuracy": 1.0,
+      "exact_value_rows": "2925/2925",
+      "row_accuracy": 1.0,
+      "rows": 6586
+    },
+    "by_family": {
+      "model": {
+        "flag_emphasis": {
+          "rows": 3396,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 367
+        },
+        "inline_unit": {
+          "rows": 3190,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 309
+        }
+      },
+      "rules": {
+        "flag_emphasis": {
+          "rows": 3396,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 367
+        },
+        "inline_unit": {
+          "rows": 3190,
+          "overall_f1": 1.0,
+          "flag_recall": 1.0,
+          "flag_support": 309
+        }
+      }
+    },
+    "layout_families": [
+      "flag_emphasis",
+      "inline_unit"
+    ]
+  },
+  "cpu_latency": {
+    "rows": 500,
+    "threads": 4,
+    "batch_size": 1,
+    "mean_ms_per_row": 18.18,
+    "p50_ms": 17.96,
+    "p95_ms": 27.13,
+    "target_ms": 25.0,
+    "meets_target": true
+  },
+  "training": {
+    "hyperparameters": {
+      "base_model": "distilbert-base-uncased",
+      "max_length": 64,
+      "batch_size": 32,
+      "lr": 5e-05,
+      "epochs": 3,
+      "weight_decay": 0.01,
+      "warmup_ratio": 0.0,
+      "fp16": true,
+      "seed": 42
+    },
+    "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+    "train_rows": 26607,
+    "val_rows": 3069,
+    "steps": 2496,
+    "epochs": [
+      {
+        "epoch": 1,
+        "train_loss": 0.04262,
+        "val_loss": 0.000291,
+        "val_entity_f1": 1.0,
+        "seconds": 80.2
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.00052,
+        "val_loss": 0.00014,
+        "val_entity_f1": 1.0,
+        "seconds": 79.9
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.00026,
+        "val_loss": 0.000115,
+        "val_entity_f1": 1.0,
+        "seconds": 79.8
+      }
+    ],
+    "selection": "highest val entity F1, ties broken by lower val loss",
+    "best_epoch": 3,
+    "best_val_entity_f1": 1.0,
+    "best_val_loss": 0.000115,
+    "peak_vram_mb": 1550.8,
+    "train_seconds": 242.2,
+    "torch": "2.11.0+cu128"
+  },
+  "before_flag_fix": {
+    "description": "Model trained and evaluated on the dataset before the flag-position fix (commit db610f3; flags in a fixed position per family, 937 flagged train rows). Same hyperparameters.",
+    "val": {
+      "model": {
+        "TEST": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1246
+        },
+        "VALUE": {
+          "precision": 0.9992,
+          "recall": 1.0,
+          "f1": 0.9996,
+          "support": 1246
+        },
+        "UNIT": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1199
+        },
+        "RANGE": {
+          "precision": 1.0,
+          "recall": 0.9992,
+          "f1": 0.9996,
+          "support": 1246
+        },
+        "FLAG": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 84
+        },
+        "overall": {
+          "precision": 0.9998,
+          "recall": 0.9998,
+          "f1": 0.9998,
+          "support": 5021
+        },
+        "exact_value_accuracy": 0.9992,
+        "exact_value_rows": "1245/1246",
+        "row_accuracy": 0.99967,
+        "rows": 3074
+      },
+      "rules": {
+        "TEST": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1246
+        },
+        "VALUE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1246
+        },
+        "UNIT": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1199
+        },
+        "RANGE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1246
+        },
+        "FLAG": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 84
+        },
+        "overall": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5021
+        },
+        "exact_value_accuracy": 1.0,
+        "exact_value_rows": "1246/1246",
+        "row_accuracy": 1.0,
+        "rows": 3074
+      }
+    },
+    "test": {
+      "model": {
+        "TEST": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2925
+        },
+        "VALUE": {
+          "precision": 0.99898,
+          "recall": 0.99966,
+          "f1": 0.99932,
+          "support": 2925
+        },
+        "UNIT": {
+          "precision": 0.98207,
+          "recall": 0.99289,
+          "f1": 0.98745,
+          "support": 2813
+        },
+        "RANGE": {
+          "precision": 0.98319,
+          "recall": 1.0,
+          "f1": 0.99153,
+          "support": 2925
+        },
+        "FLAG": {
+          "precision": 1.0,
+          "recall": 0.78439,
+          "f1": 0.87917,
+          "support": 487
+        },
+        "overall": {
+          "precision": 0.99137,
+          "recall": 0.98957,
+          "f1": 0.99047,
+          "support": 12075
+        },
+        "exact_value_accuracy": 0.99863,
+        "exact_value_rows": "2921/2925",
+        "row_accuracy": 0.98403,
+        "rows": 6636
+      },
+      "rules": {
+        "TEST": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2925
+        },
+        "VALUE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2925
+        },
+        "UNIT": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2813
+        },
+        "RANGE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2925
+        },
+        "FLAG": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 487
+        },
+        "overall": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 12075
+        },
+        "exact_value_accuracy": 1.0,
+        "exact_value_rows": "2925/2925",
+        "row_accuracy": 1.0,
+        "rows": 6636
+      }
+    },
+    "flag_recall_by_test_family": {
+      "source": "word-level count of B-FLAG words tagged B-FLAG, from the error analysis before the fix",
+      "flag_emphasis": {
+        "model": 0.90736,
+        "rules": 1.0,
+        "flags": 367
+      },
+      "inline_unit": {
+        "model": 0.40833,
+        "rules": 1.0,
+        "flags": 120
+      }
+    },
+    "test_rows_wrong_model": 106,
+    "cpu_latency": {
+      "rows": 500,
+      "threads": 4,
+      "batch_size": 1,
+      "mean_ms_per_row": 9.15,
+      "p50_ms": 8.81,
+      "p95_ms": 12.24,
+      "target_ms": 25.0,
+      "meets_target": true
+    },
+    "training": {
+      "epochs": [
+        {
+          "epoch": 1,
+          "train_loss": 0.04687,
+          "val_entity_f1": 0.9997,
+          "seconds": 79.0
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.00053,
+          "val_entity_f1": 0.9996,
+          "seconds": 83.9
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.00022,
+          "val_entity_f1": 0.9998,
+          "seconds": 78.5
+        }
+      ],
+      "best_epoch": 3,
+      "best_val_entity_f1": 0.9998,
+      "peak_vram_mb": 1551.9,
+      "train_seconds": 242.3,
+      "train_rows": 26560
+    }
+  }
+}

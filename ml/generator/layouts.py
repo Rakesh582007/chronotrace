@@ -87,7 +87,7 @@ class TestRow:
     sex: str
     age: int
     profile: str
-    flag_column: bool = True   # False when the layout has no flag column (flag is then not printed)
+    flag_column: bool = True   # False when the report prints no flags (name kept for the labels schema)
 
     @property
     def abnormal(self) -> bool:
@@ -138,8 +138,8 @@ class Family:
     col_header: list[str]
     page_formats: list[str]
     endings: list[list[str]]
-    p_flag: float = 0.0
-    flag_pos: str = "end"
+    p_flag: float = 0.0          # share of reports that print H/L flags
+    flag_column_at: str = "end"  # where a separate flag column goes: "end" or "after_value"
     p_method: float = 0.0
     method_pos: str = "after_test"
     p_swap_unit_range: float = 0.0
@@ -161,45 +161,45 @@ FAMILIES: list[Family] = [
     Family("grid_classic", ["test", "value", "unit", "range"], [0, 4], ["helvetica", "vera"],
            ["centered_banner", "boxed"], ["grid2x3", "boxed"], ["grid"], ["centered_bold"],
            ["per_section"], ["Page {i} of {n}"], [["signature"], ["signature", "end_marker"]],
-           p_flag=0.2, p_method=0.1, p_swap_unit_range=0.15, value_align=["center"],
+           p_flag=0.7, p_method=0.1, p_swap_unit_range=0.15, value_align=["center"],
            continuation=["full"], p_break=0.3),
     Family("hrule_investigation", ["test", "value", "unit", "range"], [1], ["helvetica", "times"],
            ["left_logo"], ["table_lines"], ["hrules"], ["left_underline"],
            ["per_page"], ["Page {i} of {n}", "Page {i}/{n}"], [["signature"], ["end_marker", "signature"]],
-           p_flag=0.1, p_method=0.3, method_pos="end", p_swap_unit_range=0.2, p_notes=0.5, p_break=0.35),
-    Family("flag_emphasis", ["test", "value", "flag", "unit", "range"], [0, 2], ["helvetica", "vera"],
+           p_flag=0.65, p_method=0.3, method_pos="end", p_swap_unit_range=0.2, p_notes=0.5, p_break=0.35),
+    Family("flag_emphasis", ["test", "value", "unit", "range"], [0, 2], ["helvetica", "vera"],
            ["boxed"], ["grid2x3"], ["banded"], ["shaded_bar"],
            ["per_section"], ["Page {i} of {n}"], [["signature"]],
-           p_swap_unit_range=0.2, value_align=["right", "center"], p_bold_abnormal=0.8, p_break=0.25),
+           p_flag=1.0, flag_column_at="after_value", p_swap_unit_range=0.2, value_align=["right", "center"], p_bold_abnormal=0.8, p_break=0.25),
     Family("method_column", ["test", "method", "value", "unit", "range"], [0, 1, 4], ["times", "vera"],
            ["two_column"], ["inline_rows"], ["none"], ["caps_left"],
            ["per_section"], ["{i} / {n}"], [["end_marker"], ["signature", "end_marker"]],
-           p_flag=0.3, p_swap_unit_range=0.2, p_break=0.3, continuation=["none"]),
+           p_flag=0.75, p_swap_unit_range=0.2, p_break=0.3, continuation=["none"]),
     Family("range_first", ["test", "range", "value", "unit"], [2, 3], ["helvetica", "courier"],
            ["right_aligned"], ["grid2x3"], ["hrules"], ["boxed"],
            ["per_page"], ["Page {i} of {n}"], [["signature"]],
-           p_flag=0.3, flag_pos="after_value", continuation=["full"], p_disclaimer=0.7, p_break=0.25),
+           p_flag=0.75, flag_column_at="after_value", continuation=["full"], p_disclaimer=0.7, p_break=0.25),
     Family("inline_unit", ["test", "value_unit", "range"], [0, 4], ["vera", "helvetica", "times"],
            ["minimal"], ["inline_rows"], ["none"], ["centered_bold"],
            ["per_section"], ["Page {i}"], [["signature"]],
-           p_flag=0.3, flag_pos="after_value", p_notes=0.4, p_break=0.2),
+           p_flag=0.75, flag_column_at="after_value", p_notes=0.4, p_break=0.2),
     Family("dotmatrix_leaders", ["test", "value", "unit", "range"], [3], ["courier"],
            ["minimal_center"], ["inline_rows"], ["none"], ["caps_left"],
            ["per_page", "none"], ["- {i} -"], [["end_marker"]],
-           p_flag=0.2, leaders=True, p_break=0.3, continuation=["none"], p_upper_tests=0.6,
+           p_flag=0.7, leaders=True, p_break=0.3, continuation=["none"], p_upper_tests=0.6,
            p_lower_units=0.5, p_bold_abnormal=0.0),
     Family("method_line_below", ["test", "value", "unit", "range"], [0, 1], ["helvetica", "times", "vera"],
            ["left_logo", "centered_banner"], ["grid2x3"], ["hrules"], ["left_underline"],
            ["per_section"], ["Page {i} of {n}"], [["signature"], ["signature", "end_marker"]],
-           p_flag=0.2, p_method_line=0.85, p_notes=0.8, p_break=0.3),
+           p_flag=0.7, p_method_line=0.85, p_notes=0.8, p_break=0.3),
     Family("banded_header_bar", ["test", "value", "unit", "range"], [2, 4], ["vera", "helvetica"],
            ["centered_banner"], ["boxed"], ["banded_bar"], ["shaded_bar"],
            ["per_section"], ["Page {i} of {n}"], [["signature"]],
-           p_flag=0.5, p_break=0.35, continuation=["full"], p_disclaimer=0.6),
+           p_flag=0.8, p_break=0.35, continuation=["full"], p_disclaimer=0.6),
     Family("compact_dense", ["test", "value", "unit", "range"], [3, 1], ["helvetica", "courier", "times", "vera"],
            ["two_column"], ["inline_rows"], ["hrules", "none"], ["left_underline"],
            ["per_page"], ["Page {i} of {n}", "Page {i}/{n}"], [["signature"], ["end_marker"]],
-           p_flag=0.6, p_method=0.6, p_break=0.5, size_delta=(-1.5, -1.0), row_gap=(1.35, 1.55),
+           p_flag=0.8, p_method=0.6, p_break=0.5, size_delta=(-1.5, -1.0), row_gap=(1.35, 1.55),
            p_notes=0.5, p_disclaimer=0.6),
 ]
 FAMILY_NAMES = [f.name for f in FAMILIES]
@@ -324,6 +324,11 @@ def build_content(rng: random.Random, fake: Faker, family: Family, report_id: st
 
 # ---------------------------------------------------------------- style
 
+# Where a report prints H/L flags, chosen per report with equal weight: in the same cell right
+# after the value, the unit or the range, or in a separate flag column.
+FLAG_POSITIONS = ("after_value", "after_unit", "after_range", "column")
+
+
 @dataclass
 class Style:
     font: str
@@ -331,6 +336,7 @@ class Style:
     italic: str
     size: float
     columns: list[str]
+    flag_pos: str        # one of FLAG_POSITIONS, or "" when the report prints no flags
     labels: dict
     header: str
     patient: str
@@ -362,9 +368,10 @@ class Style:
 def resolve_style(rng: random.Random, fam: Family) -> Style:
     regular, bold, italic, base = FONT_PRESETS[rng.choice(fam.fonts)]
     cols = list(fam.base_columns)
-    if "flag" not in cols and rng.random() < fam.p_flag:
+    flag_pos = rng.choice(FLAG_POSITIONS) if rng.random() < fam.p_flag else ""
+    if flag_pos == "column":
         after = "value_unit" if "value_unit" in cols else "value"
-        cols.insert(cols.index(after) + 1 if fam.flag_pos == "after_value" else len(cols), "flag")
+        cols.insert(cols.index(after) + 1 if fam.flag_column_at == "after_value" else len(cols), "flag")
     if "method" not in cols and rng.random() < fam.p_method:
         cols.insert(1 if fam.method_pos == "after_test" else len(cols), "method")
     if "unit" in cols and "range" in cols and rng.random() < fam.p_swap_unit_range:
@@ -374,6 +381,7 @@ def resolve_style(rng: random.Random, fam: Family) -> Style:
         font=regular, bold=bold, italic=italic,
         size=round(base + rng.uniform(*fam.size_delta), 1),
         columns=cols,
+        flag_pos=flag_pos,
         labels=LABEL_SETS[rng.choice(fam.label_sets)],
         header=rng.choice(fam.headers),
         patient=rng.choice(fam.patients),
@@ -495,12 +503,25 @@ def _cell_texts(row: TestRow, col: str) -> list[str]:
     }[col]
 
 
+def _inline_flag_host(st: Style) -> str | None:
+    """Column whose cell also holds the flag, for the inline flag positions."""
+    if st.flag_pos == "after_value":
+        return "value_unit" if "value_unit" in st.columns else "value"
+    if st.flag_pos == "after_unit":
+        return "unit" if "unit" in st.columns else "value_unit"
+    if st.flag_pos == "after_range":
+        return "range"
+    return None
+
+
 def compute_table(st: Style, report: Report) -> Table:
     rows = report.rows()
     avail = PAGE_W - st.ml - st.mr
     size = st.size
+    host = _inline_flag_host(st)
     while True:
         widths = {}
+        flag_w = max((INLINE_GAP + Renderer.width(r.flag, st.bold, size) for r in rows if r.flag), default=0.0)
         for col in st.columns:
             label_w = Renderer.width(st.labels[col], st.bold, size)
             if col == "value_unit":
@@ -509,7 +530,7 @@ def compute_table(st: Style, report: Report) -> Table:
             else:
                 font = st.bold if col in ("value", "flag") else st.font
                 cell = max(Renderer.width(t, font, size) for r in rows for t in _cell_texts(r, col))
-            widths[col] = max(label_w, cell)
+            widths[col] = max(label_w, cell + (flag_w if col == host else 0.0))
         if st.leaders:
             widths["test"] += 40
         gap = (avail - sum(widths.values())) / (len(st.columns) - 1)
@@ -554,24 +575,34 @@ def row_block(st: Style, tb: Table, row: TestRow, index: int) -> Block:
         if st.table == "hrules" and st.row_rules:
             r.line(tb.x0, y - h, tb.x1, y - h, 0.3, GREY)
         base = _baseline(y, h, size)
+        host = _inline_flag_host(st) if row.flag else None
+        value_font = st.bold if row.abnormal and st.bold_abnormal else st.font
+
+        def cell(x, align, parts):
+            """Draw (text, font, kind) parts left to right, INLINE_GAP apart, aligned as one cell."""
+            parts = [p for p in parts if p[0]]
+            total = sum(Renderer.width(t, f, size) for t, f, _ in parts) + INLINE_GAP * (len(parts) - 1)
+            x = x if align == "left" else (x - total if align == "right" else x - total / 2)
+            for t, f, kind in parts:
+                x = r.text(x, base, t, f, size, kind, row.row_id) + INLINE_GAP
+
         test_end = value_start = None
         for col in tb.columns:
             align = _align(st, col)
             x = _anchor(tb, col, align)
+            flag = [(row.flag, st.bold, "FLAG")] if col == host else []
             if col == "test":
                 test_end = r.text(x, base, row.display, st.font, size, "TEST", row.row_id)
             elif col == "value":
-                font = st.bold if row.abnormal and st.bold_abnormal else st.font
                 value_start = x if align == "left" else None
-                r.text(x, base, row.value, font, size, "VALUE", row.row_id, align)
+                cell(x, align, [(row.value, value_font, "VALUE")] + flag)
             elif col == "value_unit":
-                font = st.bold if row.abnormal and st.bold_abnormal else st.font
-                end = r.text(x, base, row.value, font, size, "VALUE", row.row_id)
-                r.text(end + INLINE_GAP, base, row.unit, st.font, size, "UNIT", row.row_id)
+                value, unit = [(row.value, value_font, "VALUE")], [(row.unit, st.font, "UNIT")]
+                cell(x, "left", value + flag + unit if st.flag_pos == "after_value" else value + unit + flag)
             elif col == "unit":
-                r.text(x, base, row.unit, st.font, size, "UNIT", row.row_id)
+                cell(x, "left", [(row.unit, st.font, "UNIT")] + flag)
             elif col == "range":
-                r.text(x, base, row.range, st.font, size, "RANGE", row.row_id)
+                cell(x, "left", [(row.range, st.font, "RANGE")] + flag)
             elif col == "flag" and row.flag:
                 r.text(x, base, row.flag, st.bold, size, "FLAG", row.row_id, align)
             elif col == "method":

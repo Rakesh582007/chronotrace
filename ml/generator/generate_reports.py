@@ -77,7 +77,7 @@ def make_report(task: tuple[int, int, str]) -> dict:
     path = Path(out_dir) / "pdfs" / f"{rid}.pdf"
     report, style, fragments, pages = layouts.render_capped(report, style, path)
     for row in report.rows():
-        row.flag_column = "flag" in style.columns
+        row.flag_column = bool(style.flag_pos)
     records, stats = label_pdf(path, fragments, {r.row_id: r for r in report.rows()})
     return {"report_id": rid, "family": family.name, "pages": pages, "records": records, "stats": stats,
             "lab": report.lab["name"]}

@@ -1,0 +1,9 @@
+# Step 3: model training and evaluation (pip install -r requirements-ml.txt)
+# Install torch first, separately, to get the CUDA build (RTX 3050, CUDA 12.8):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+# On the CPU-only demo machine:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+transformers>=4.46
+accelerate>=1.0
+seqeval>=1.2
+numpy>=1.26
