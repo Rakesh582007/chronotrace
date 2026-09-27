@@ -8,3 +8,11 @@ faker>=30.0
 
 # Tests
 pytest>=8.0
+
+# Steps 4-5: backend (extraction, normalisation, database, API)
+# Report extraction also needs the model runtime: torch + requirements-ml.txt (transformers).
+fastapi>=0.115
+sqlmodel>=0.0.22
+python-multipart>=0.0.9
+uvicorn>=0.30
+httpx>=0.27
