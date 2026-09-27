@@ -25,7 +25,8 @@ def test_classes_as_specified(data):
     assert by["biguanide"]["window_days"] == [90, 180]
     effects = {(c["id"], e["analyte"], e["direction"]) for c in data["classes"] for e in c["effects"]}
     assert effects == {("acei_arb", "creatinine", "rise"), ("acei_arb", "egfr", "fall"),
-                       ("acei_arb", "potassium", "rise"), ("sglt2i", "egfr", "fall"), ("biguanide", "hba1c", "fall")}
+                       ("acei_arb", "potassium", "rise"), ("sglt2i", "egfr", "fall"), ("sglt2i", "creatinine", "rise"),
+                       ("biguanide", "hba1c", "fall")}
     assert next(e for e in by["acei_arb"]["effects"] if e["analyte"] == "creatinine")["max_expected_percent"] == 30
     assert all(c["status"] == "unverified" and c["source"] for c in data["classes"])
 

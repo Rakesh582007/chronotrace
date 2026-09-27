@@ -56,6 +56,8 @@ classes:
     effects:
       - {analyte: egfr, direction: fall,
          note: "a small initial eGFR dip (a few mL/min) is expected after starting an SGLT2 inhibitor, then eGFR usually stabilises"}
+      - {analyte: creatinine, direction: rise,
+         note: "a small initial creatinine rise is expected after starting an SGLT2 inhibitor (the same change as the eGFR dip)"}
     source: >-
       KDIGO 2024 CKD guideline; DAPA-CKD (Heerspink et al., N Engl J Med 2020;383:1436-46);
       EMPA-KIDNEY (N Engl J Med 2023;388:117-27): an initial eGFR dip after starting an SGLT2
