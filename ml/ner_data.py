@@ -18,12 +18,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # ml/, so "generator" imports
 
 from generator.labeler import TAGS  # noqa: E402
+from shared import ner_infer  # noqa: E402  (labeler puts the repo root on sys.path)
 
 LABELS: list[str] = list(TAGS)
 LABEL2ID = {t: i for i, t in enumerate(LABELS)}
 ID2LABEL = dict(enumerate(LABELS))
 IGNORE = -100
-MAX_LENGTH = 64
+MAX_LENGTH = ner_infer.MAX_LENGTH
 BASE_MODEL = "distilbert-base-uncased"
 DEFAULT_LABELS = Path(__file__).resolve().parent / "generated" / "labels.jsonl"
 
@@ -55,13 +56,7 @@ def encode(tokenizer, words: list[str], tags: list[str] | None = None, max_lengt
 
 def word_tags_from_predictions(word_ids: list[int | None], pred_ids: list[int], n_words: int) -> list[str]:
     """Each word's tag is the prediction at its first sub-token. Words cut off by truncation get "O"."""
-    tags = ["O"] * n_words
-    prev = None
-    for w, p in zip(word_ids, pred_ids):
-        if w is not None and w != prev:
-            tags[w] = ID2LABEL[int(p)]
-        prev = w
-    return tags
+    return ner_infer.word_tags_from_predictions(word_ids, pred_ids, n_words, ID2LABEL)
 
 
 class NerDataset:
@@ -83,19 +78,6 @@ class NerDataset:
 
 def predict(model, tokenizer, rows: list[dict], device, batch_size: int = 64,
             max_length: int = MAX_LENGTH) -> list[list[str]]:
-    """Word-level BIO tags for each row."""
-    import torch
-
-    model.eval()
-    out: list[list[str]] = []
-    for i in range(0, len(rows), batch_size):
-        batch = rows[i:i + batch_size]
-        enc = tokenizer([r["tokens"] for r in batch], is_split_into_words=True, truncation=True,
-                        max_length=max_length, padding=True, return_tensors="pt")
-        with torch.no_grad():
-            logits = model(input_ids=enc["input_ids"].to(device),
-                           attention_mask=enc["attention_mask"].to(device)).logits
-        preds = logits.argmax(-1).cpu().tolist()
-        for j, r in enumerate(batch):
-            out.append(word_tags_from_predictions(enc.word_ids(j), preds[j], len(r["tokens"])))
-    return out
+    """Word-level BIO tags for each row (shared with the backend: shared.ner_infer)."""
+    return ner_infer.predict_tags(model, tokenizer, [r["tokens"] for r in rows], device, batch_size,
+                                  max_length, ID2LABEL)

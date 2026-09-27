@@ -4,41 +4,25 @@ Tags come from the Fragments recorded while drawing: each word pdfplumber extrac
 matched to the fragment whose box contains it. A report is only accepted when every word
 matches exactly one fragment and each fragment's words spell its text exactly.
 
-The same WORD_SETTINGS and row grouping must be used at inference time (step 4).
+Rows come from shared.pdf_rows, which the backend also uses at inference time.
 """
 
 from __future__ import annotations
 
+import sys
 from collections import defaultdict
+from pathlib import Path
 
-import pdfplumber
+ROOT = Path(__file__).resolve().parents[2]   # repo root, for the "shared" package
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from .layouts import Fragment, TestRow
+from shared.pdf_rows import ROW_TOLERANCE, WORD_SETTINGS, extract_rows, group_rows  # noqa: E402,F401
 
-WORD_SETTINGS = dict(x_tolerance=3, y_tolerance=3, keep_blank_chars=False, use_text_flow=False)
-ROW_TOLERANCE = 3.0
+from .layouts import Fragment, TestRow  # noqa: E402
+
 ENTITY_KINDS = ("TEST", "VALUE", "UNIT", "RANGE", "FLAG")
 TAGS = ["O"] + [f"{p}-{k}" for k in ENTITY_KINDS for p in ("B", "I")]
-
-
-def group_rows(words: list[dict], tol: float = ROW_TOLERANCE) -> list[list[dict]]:
-    """Group words whose top edges are within `tol` points into rows, left to right."""
-    rows: list[list[dict]] = []
-    for w in sorted(words, key=lambda w: (w["top"], w["x0"])):
-        if rows and abs(w["top"] - rows[-1][0]["top"]) <= tol:
-            rows[-1].append(w)
-        else:
-            rows.append([w])
-    return [sorted(r, key=lambda w: w["x0"]) for r in rows]
-
-
-def extract_rows(pdf_path) -> list[tuple[int, float, list[list[dict]]]]:
-    """[(page number, page height, rows)] for every page."""
-    out = []
-    with pdfplumber.open(pdf_path) as pdf:
-        for n, page in enumerate(pdf.pages, 1):
-            out.append((n, float(page.height), group_rows(page.extract_words(**WORD_SETTINGS))))
-    return out
 
 
 def _match(word: dict, frags: list[Fragment], page_h: float) -> Fragment | None:

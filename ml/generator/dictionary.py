@@ -49,15 +49,12 @@ def basis_synonyms(analyte: dict) -> list[str]:
     return list((analyte.get("alternate_basis") or {}).get("synonyms", []))
 
 
-def is_mass_unit(unit: str) -> bool:
-    return "mol" not in va.norm_unit(unit)
+is_mass_unit = va.is_mass_unit
 
 
 def basis_factor(analyte: dict, unit: str, basis: str) -> float:
     """Multiplier from the alternate basis to the analyte (BUN mg/dL x 2.1437 = urea mg/dL)."""
-    if basis == "alternate" and is_mass_unit(unit):
-        return analyte["alternate_basis"]["mass_factor"]
-    return 1.0
+    return va.alternate_basis_factor(analyte, unit) if basis == "alternate" else 1.0
 
 
 def conversion(analyte: dict, unit: str) -> dict:

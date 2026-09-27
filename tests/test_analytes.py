@@ -85,6 +85,21 @@ def test_find_analyte_by_indian_lab_synonym(data, name, aid):
     assert va.find_analyte(data, name)["id"] == aid
 
 
+@pytest.mark.parametrize("name, aid", [
+    ("GLUCOSE (FASTING)", "fasting_glucose"), ("CREATININE - SERUM", "creatinine"), ("UREA - SERUM", "urea"),
+    ("CHOLESTEROL - SERUM", "total_cholesterol"), ("HDL CHOLESTEROL (DIRECT)", "hdl"),
+    ("LDL CHOLESTEROL (DIRECT)", "ldl"), ("HB A1C", "hba1c"),
+])
+def test_find_analyte_by_real_report_synonym(data, name, aid):
+    assert va.find_analyte(data, name)["id"] == aid
+
+
+def test_validator_rejects_report_synonym_clash(data):
+    bad = copy.deepcopy(data)
+    analyte(bad, "hdl")["report_synonyms"].append("LDL CHOLESTEROL (DIRECT)")
+    assert any("also used by" in e for e in va.validate(bad))
+
+
 def test_unknown_name_returns_none(data):
     assert va.find_analyte(data, "Serum Ferritin") is None
 

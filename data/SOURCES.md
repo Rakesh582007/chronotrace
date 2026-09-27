@@ -68,3 +68,7 @@ Reference ranges are context only. Flags come from the patient's own baseline an
 ## Synonyms
 
 Synonyms are spellings seen on Indian lab reports (e.g. SGPT, FBS, PPBS, TLC, "S. Creatinine"). They were written from general familiarity with Indian report formats, not collected from a specific set of reports. Step 9 (real-report evaluation) should add any names that fail to match. The validator ensures no synonym points to two analytes. Short generic names such as `Cholesterol` or `Urea` rely on the matcher trying longer names first (for example "LDL Cholesterol" before "Cholesterol").
+
+### Names from a real report (`report_synonyms`)
+
+Seven names come from **one** real Indian lab report used for step 4-5 testing: `GLUCOSE (FASTING)`, `CREATININE - SERUM`, `UREA - SERUM`, `CHOLESTEROL - SERUM`, `HDL CHOLESTEROL (DIRECT)`, `LDL CHOLESTEROL (DIRECT)` and `HB A1C` (`TRIGLYCERIDES` was already a synonym). They are stored as `report_synonyms`, which only the extraction matcher reads, so the synthetic generator's name pool and the step 2-3 training data do not change. One report is a sample of one lab's style, not a survey; step 9 should add names from more reports. The report itself is never committed (`data/real_reports/` is git-ignored).
