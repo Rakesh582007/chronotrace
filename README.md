@@ -92,8 +92,8 @@ python tests/fixtures/make_fixtures.py                         # rebuild the tes
 - [x] Step 1 – Analyte dictionary
 - [x] Step 2 – Synthetic report generator
 - [x] Step 3 – Model training
-- [ ] Step 4 – Extraction pipeline
-- [ ] Step 5 – Database and normalisation
+- [x] Step 4 – Extraction pipeline
+- [x] Step 5 – Database and normalisation
 - [ ] Step 6 – Trend engine and medication response
 - [ ] Step 7 – LLM summaries
 - [ ] Step 8 – Frontend
