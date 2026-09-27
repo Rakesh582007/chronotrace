@@ -36,10 +36,15 @@ def read_token() -> str:
 def model_card(m: dict, repo: str) -> str:
     kinds = ("TEST", "VALUE", "UNIT", "RANGE", "FLAG", "overall")
     rows = "\n".join(
-        f"| {k} | {m['val']['model'][k]['f1']:.4f} | {m['val']['baseline'][k]['f1']:.4f} "
-        f"| {m['test']['model'][k]['f1']:.4f} | {m['test']['baseline'][k]['f1']:.4f} |" for k in kinds)
+        f"| {k} | {m['val']['model'][k]['f1']:.4f} | {m['val']['rules'][k]['f1']:.4f} "
+        f"| {m['test']['model'][k]['f1']:.4f} | {m['test']['rules'][k]['f1']:.4f} |" for k in kinds)
     ev = f"| exact value accuracy | " + " | ".join(
-        f"{m[s][x]['exact_value_accuracy']:.4f}" for s in ("val", "test") for x in ("model", "baseline")) + " |"
+        f"{m[s][x]['exact_value_accuracy']:.4f}" for s in ("val", "test") for x in ("model", "rules")) + " |"
+    fam = "\n".join(
+        f"| {f} | {r['flag_recall']:.4f} | {m['test']['by_family']['rules'][f]['flag_recall']:.4f} "
+        f"| {m['before_flag_fix']['flag_recall_by_test_family'][f]['model']:.4f} |"
+        for f, r in m["test"]["by_family"]["model"].items())
+    b = m["before_flag_fix"]["test"]
     t, lat = m["training"], m["cpu_latency"]
     hp = t["hyperparameters"]
     return f"""---
@@ -78,15 +83,42 @@ The test set ({m['test']['model']['rows']:,} rows) uses 2 layout families never 
 
 ## Results (synthetic data)
 
-Entity F1 (seqeval, strict IOB2). "Rules" is a hand-written baseline that knows every test
-name, unit and method string the generator uses.
+Entity F1 (seqeval, strict IOB2). "Rules" is `rules (generator vocabulary)`: a hand-written
+tagger that knows every test name, unit and method string the synthetic generator uses. On
+synthetic data it is therefore an **upper bound**, not a realistic competitor. The comparison
+that matters is on real reports, which will contain names and units outside that vocabulary
+(ChronoTrace step 9, pending).
 
 | | val model | val rules | held-out test model | held-out test rules |
 |---|---|---|---|---|
 {rows}
 {ev}
 
-CPU latency: {lat['mean_ms_per_row']} ms per row (mean over {lat['rows']} rows, batch 1, {lat['threads']} threads).
+FLAG recall on the held-out families:
+
+| family | model | rules | model before flag fix |
+|---|---|---|---|
+{fam}
+
+**The held-out score is not fully blind.** A first model (same hyperparameters) was trained
+on data where each layout family printed flags in one fixed position. Error analysis on the
+held-out families showed it missed flags printed right after the value or unit. The generator
+was then changed to vary flag position in every family, and the model was retrained with
+unchanged hyperparameters (twice; see checkpoint selection below). Before that fix, held-out test overall F1 was
+{b['model']['overall']['f1']:.4f} and FLAG F1 {b['model']['FLAG']['f1']:.4f} (rules: {b['rules']['overall']['f1']:.4f}).
+All numbers are in `step3_metrics.json` in the ChronoTrace repository, the pre-fix ones under
+`before_flag_fix`.
+
+**Checkpoint selection was also changed after test results had been printed.** The first
+retrain after the flag fix tied at val entity F1 1.0000 in every epoch, so the "higher F1 only"
+rule kept epoch 1, and that checkpoint's held-out test results were printed once. Selection
+was then changed to break F1 ties by lower validation loss, and the model was retrained with the
+same hyperparameters and seed. The change was prompted by the validation tie, not by the test
+numbers, but it came after they had been seen, so the reported test score is not fully blind on
+this point either.
+
+CPU latency: {lat['mean_ms_per_row']} ms per row (mean over {lat['rows']} rows, batch 1, {lat['threads']} threads,
+on a laptop CPU; it varies with machine load).
 
 ## Training
 
