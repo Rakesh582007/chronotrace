@@ -59,7 +59,7 @@ Training takes about 4 minutes on an RTX 3050 (6 GB, 1.6 GB peak VRAM). Results:
 
 - [x] Step 1 – Analyte dictionary
 - [x] Step 2 – Synthetic report generator
-- [ ] Step 3 – Model training
+- [x] Step 3 – Model training
 - [ ] Step 4 – Extraction pipeline
 - [ ] Step 5 – Database and normalisation
 - [ ] Step 6 – Trend engine and medication response
