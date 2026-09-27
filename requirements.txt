@@ -1,5 +1,10 @@
 # Step 1: analyte dictionary
 pyyaml>=6.0
 
+# Step 2: synthetic report generator
+reportlab>=4.0
+pdfplumber>=0.11
+faker>=30.0
+
 # Tests
 pytest>=8.0
