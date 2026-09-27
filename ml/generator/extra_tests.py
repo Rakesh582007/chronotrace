@@ -54,6 +54,7 @@ EXTRA_TESTS: dict[str, ExtraTest] = {t.id: t for t in [
     _t("lymphocytes", "CBC", ["Lymphocytes", "Lymphocytes %"], "%", 0, _CBC, (20, 40)),
     _t("eosinophils", "CBC", ["Eosinophils", "Eosinophils %"], "%", 0, _CBC, (1, 6)),
     _t("monocytes", "CBC", ["Monocytes", "Monocytes %"], "%", 0, _CBC, (2, 10)),
+    _t("basophils", "CBC", ["Basophils", "Basophils %"], "%", 0, _CBC, (0, 2)),
     # LFT
     _t("total_bilirubin", "LFT", ["Total Bilirubin", "Bilirubin, Total", "S. Bilirubin (Total)"], "mg/dL", 2,
        ("Diazo", "DPD"), (0.3, 1.2)),
@@ -94,7 +95,7 @@ PANEL_ORDER: dict[str, list[str]] = {
     "LFT": ["total_bilirubin", "direct_bilirubin", "alt", "ast", "alp", "total_protein", "albumin",
             "globulin", "ag_ratio"],
     "CBC": ["haemoglobin", "rbc", "pcv", "mcv", "mch", "mchc", "wbc", "neutrophils", "lymphocytes",
-            "eosinophils", "monocytes", "platelets"],
+            "eosinophils", "monocytes", "basophils", "platelets"],
     "THYROID PROFILE": ["tsh", "free_t4"],
 }
 
@@ -113,24 +114,32 @@ REQUIRES: dict[str, set[str]] = {
     "mchc": {"haemoglobin", "pcv"},
 }
 
-# CBC and LFT: extras make up about 30-40% of the panel's rows. Other panels: each extra
-# appears with this probability.
-SHARE_PANELS = ("CBC", "LFT")
+# The differential count is printed complete or not at all, so it sums to 100.
+DIFFERENTIAL = ("neutrophils", "lymphocytes", "eosinophils", "monocytes", "basophils")
+
+# CBC and LFT extras come in blocks, each printed with this probability. Some CBC and LFT
+# orders are a single test, so a panel gets no extras at all with P_NO_EXTRAS.
+BLOCKS: dict[str, list[tuple[float, tuple[str, ...]]]] = {
+    "CBC": [(0.87, ("rbc", "pcv", "mcv", "mch", "mchc")), (0.84, DIFFERENTIAL)],
+    "LFT": [(0.82, ("total_bilirubin", "direct_bilirubin")), (0.8, ("alp",)),
+            (0.8, ("total_protein", "albumin", "globulin", "ag_ratio"))],
+}
+P_NO_EXTRAS = 0.08
+SHARE_PANELS = tuple(BLOCKS)
+# Other panels: each extra appears with this probability.
 P_OTHER_EXTRA = 0.3
 
 
-def choose_extras(rng: random.Random, panel: str, n_dictionary_rows: int) -> list[str]:
-    pool = [t for t in PANEL_ORDER[panel] if t in EXTRA_TESTS]
-    if not pool:
-        return []
-    if panel in SHARE_PANELS:
-        k = max(1, round(n_dictionary_rows * rng.uniform(0.43, 0.67)))
-        return rng.sample(pool, min(k, len(pool)))
-    return [t for t in pool if rng.random() < P_OTHER_EXTRA]
+def choose_extras(rng: random.Random, panel: str) -> list[str]:
+    if panel in BLOCKS:
+        if rng.random() < P_NO_EXTRAS:
+            return []
+        return [t for p, block in BLOCKS[panel] if rng.random() < p for t in block]
+    return [t for t in PANEL_ORDER[panel] if t in EXTRA_TESTS and rng.random() < P_OTHER_EXTRA]
 
 
 def prune_orphans(ids: list[str]) -> list[str]:
-    """Drop calculated tests whose inputs are not printed.
+    """Drop calculated tests whose inputs are not printed, and any partial differential.
 
     Repeats until nothing changes, since dropping one test can orphan another.
     """
@@ -138,7 +147,9 @@ def prune_orphans(ids: list[str]) -> list[str]:
     while True:
         present = set(kept)
         drop = {t for t in kept if not REQUIRES.get(t, set()) <= present}
-        if not drop:
+        if present & set(DIFFERENTIAL) and not set(DIFFERENTIAL) <= present:
+            drop |= set(DIFFERENTIAL)
+        if not drop & present:
             return kept
         kept = [t for t in kept if t not in drop]
 
