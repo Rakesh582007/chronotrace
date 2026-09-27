@@ -1,0 +1,26 @@
+{
+  "reports": 200,
+  "layout_families": [
+    "flag_emphasis",
+    "inline_unit"
+  ],
+  "dictionary_tests": 1726,
+  "correct": 1726,
+  "accuracy": 1.0,
+  "target": 0.98,
+  "failures_by_cause": {},
+  "failure_examples": [],
+  "spurious_tracked_results": {
+    "count": 0,
+    "examples": []
+  },
+  "collected_date_correct": "200/200",
+  "date_labels": {
+    "Collected": 200
+  },
+  "lab_name_correct": "200/200",
+  "layouts": {
+    "header": 200
+  },
+  "model": "C:\\Users\\sweet\\Desktop\\ONTRACK\\chronotrace\\ml\\models\\chronotrace-ner"
+}
