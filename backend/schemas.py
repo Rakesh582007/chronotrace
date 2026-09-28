@@ -53,6 +53,8 @@ class ReportOut(BaseModel):
     reported_at: dt.date | None
     layout: str
     pages: int
+    page_width: float | None          # first page in PDF points; the frame of each observation's bbox
+    page_height: float | None
     status: str
     uploaded_at: dt.datetime
     confirmed_at: dt.datetime | None
@@ -91,6 +93,7 @@ class ObservationOut(BaseModel):
     canonical_unit: str | None
     page: int
     line: int
+    bbox: list[float] | None          # [x0, top, x1, bottom] in PDF points from the top left; None if not read
     status: str
     status_reason: str
     edited: bool

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import io
 import tempfile
 from collections import Counter
 from contextlib import asynccontextmanager
@@ -20,6 +21,7 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+import pdfplumber
 from fastapi.responses import FileResponse
 from pdfplumber.utils.exceptions import PdfminerException
 from sqlalchemy.exc import IntegrityError
@@ -45,6 +47,7 @@ from .schemas import (ConfirmIn, Counts, DocumentOut, Flags, MedicationIn, Medic
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 15 * 1024 * 1024
+PAGE_DPI = 110
 ENTERED_BY_DOCTOR = "Entered by doctor"
 UNREADABLE_PDF = "could not read this PDF: it is damaged or password-protected"
 
@@ -266,7 +269,8 @@ def upload_report(patient_id: int, file: UploadFile = File(...), session: Sessio
     filename = Path(file.filename or "report.pdf").name
     report = Report(patient_id=patient.id, file_sha256=sha, filename=filename,
                     lab=ex.meta.lab, collected_at=ex.meta.date, date_label=ex.meta.date_label,
-                    reported_at=ex.meta.reported_at, layout=ex.layout, pages=ex.pages, skipped=skipped)
+                    reported_at=ex.meta.reported_at, layout=ex.layout, pages=ex.pages, skipped=skipped,
+                    page_width=ex.page_width, page_height=ex.page_height)
     stored = None
     try:
         session.add(report)
@@ -382,6 +386,7 @@ def delete_document(document_id: int, session: Session = Depends(get_session),
         raise HTTPException(409, {"message": "this lab report has confirmed values in the timeline and cannot be "
                                              "deleted", "report_id": report.id})
     stored = d.stored_path
+    pages = [_page_cache(report.id, n) for n in range(1, report.pages + 1)] if report is not None else []
     session.delete(d)
     if report is not None:
         session.flush()
@@ -389,7 +394,8 @@ def delete_document(document_id: int, session: Session = Depends(get_session),
             session.delete(o)
         session.delete(report)
     session.commit()
-    storage.remove(stored)
+    for path in [stored, *pages]:
+        storage.remove(path)
     return Response(status_code=204)
 
 
@@ -397,6 +403,31 @@ def delete_document(document_id: int, session: Session = Depends(get_session),
 def get_report(report_id: int, session: Session = Depends(get_session),
                doctor: Doctor = Depends(current_doctor)) -> ReportDetail:
     return _detail(session, _report_or_404(session, report_id, doctor))
+
+
+def _page_cache(report_id: int, page: int) -> str:
+    return f"pages/report-{report_id}-p{page}-{PAGE_DPI}dpi.png"
+
+
+@app.get("/reports/{report_id}/pages/{page}.png", response_class=FileResponse)
+def report_page(report_id: int, page: int, session: Session = Depends(get_session),
+                doctor: Doctor = Depends(current_doctor)) -> FileResponse:
+    """One page of the report's PDF as a PNG at 110 dpi (rendered once, then served from the cache).
+    Pixels = PDF points x 110 / 72, so an observation's bbox maps onto it with that scale."""
+    report = _report_or_404(session, report_id, doctor)
+    if not 1 <= page <= report.pages:
+        raise HTTPException(404, f"page {page} not found (the report has {report.pages})")
+    cached = _page_cache(report.id, page)
+    if not storage.absolute(cached).exists():
+        doc = session.exec(select(Document).where(Document.report_id == report.id)).first()
+        if doc is None or not doc.stored_path or not storage.absolute(doc.stored_path).exists():
+            raise HTTPException(404, "the report's PDF is not stored (uploaded before documents were kept)")
+        with pdfplumber.open(storage.absolute(doc.stored_path)) as pdf:
+            image = pdf.pages[page - 1].to_image(resolution=PAGE_DPI).original
+        buf = io.BytesIO()
+        image.save(buf, format="PNG", optimize=True)
+        storage.save(cached, buf.getvalue())
+    return FileResponse(storage.absolute(cached), media_type="image/png")
 
 
 @app.post("/reports/{report_id}/confirm", response_model=ReportDetail)

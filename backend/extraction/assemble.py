@@ -72,6 +72,7 @@ class Result:
     range_lines: list[str] = field(default_factory=list)   # first range line + continuation range lines
     notes: list[str] = field(default_factory=list)          # Method / Specimen / codes / other text
     continuation_lines: list[int] = field(default_factory=list)   # line numbers attached to this result
+    bbox: list[float] | None = None     # [x0, top, x1, bottom] of the row's words, PDF points from the top left
 
 
 @dataclass

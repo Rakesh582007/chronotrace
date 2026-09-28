@@ -49,6 +49,8 @@ class Report(SQLModel, table=True):
     reported_at: dt.date | None = None
     layout: str = "header"                     # "header" | "no header"
     pages: int = 0
+    page_width: float | None = None            # first page in PDF points: the frame of Observation.bbox
+    page_height: float | None = None           # (None for reports read before step 7)
     status: str = "extracted"                  # "extracted" | "confirmed"
     skipped: list[dict] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     uploaded_at: dt.datetime = Field(default_factory=_now)
@@ -90,6 +92,7 @@ class Observation(SQLModel, table=True):
     canonical_unit: str | None = None
     page: int
     line: int
+    bbox: list[float] | None = Field(default=None, sa_column=Column(JSON, nullable=True))  # [x0, top, x1, bottom]
     status: str                                # extracted | confirmed | needs_review | not_tracked | rejected
     status_reason: str = ""
     edited: bool = False                       # changed by the doctor at confirmation
