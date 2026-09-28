@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { PatientCard, Sex } from "../api/types";
-import { AppHeader } from "../components/shell";
+import { AppHeader, useTitle } from "../components/shell";
 import { Avatar, BlueDot, ConditionChip, ErrorBanner, Icon, Skeleton, Spinner, Triangle } from "../components/ui";
 import { age, capitalise, fmtDate, plural, sexLabel } from "../lib/format";
-import { usePatients } from "../lib/patient";
+import { prefetchPatient, usePatients } from "../lib/patient";
 
 type Sort = "needs_review" | "name" | "latest_report";
 type Filter = "all" | "review" | "few";
@@ -19,6 +19,7 @@ export default function Patients() {
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  useTitle("My patients");
   const { data, isLoading, error, refetch } = usePatients(sort);
 
   const shown = useMemo(() => {
@@ -37,7 +38,7 @@ export default function Patients() {
       <main className="flex flex-col gap-7 px-4 py-8 sm:px-8 lg:px-14 lg:py-11">
         <div className="flex flex-wrap items-end gap-6">
           <div className="flex flex-col gap-1.5">
-            <h1 className="m-0 font-serif text-[44px] font-medium leading-none tracking-[-0.02em]">My patients</h1>
+            <h1 className="m-0 font-serif text-[40px] font-medium leading-none tracking-[-0.02em]">My patients</h1>
             <p className="m-0 text-[15px] text-ink-3">
               {isLoading ? "Loading…" : `${plural(all.length, "patient")} assigned to you · ${sortText}`}
             </p>
@@ -61,7 +62,7 @@ export default function Patients() {
             </select>
           </div>
           <button type="button" onClick={() => setAdding(true)}
-            className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-[18px] text-[15px] font-semibold text-white hover:bg-blue-hover">
+            className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-5 text-[15px] font-semibold text-white hover:bg-blue-hover">
             {Icon.plus}Add patient
           </button>
         </div>
@@ -101,12 +102,15 @@ export default function Patients() {
 
 function PatientCardView({ p }: { p: PatientCard }) {
   const changes = p.change_flags;
+  const qc = useQueryClient();
+  const warm = () => prefetchPatient(qc, p.id);
   return (
-    <Link to={`/patients/${p.patient_code}`} className="plain lift flex min-h-[300px] flex-col gap-4 rounded-[18px] border border-line bg-card p-[22px] shadow-[0_1px_0_rgba(29,39,51,0.03)]">
+    <Link to={`/patients/${p.patient_code}`} onMouseEnter={warm} onFocus={warm}
+      className="plain lift flex min-h-[300px] flex-col gap-4 rounded-[18px] border border-line bg-card p-6 shadow-soft">
       <div className="flex items-center gap-3.5">
         <Avatar id={p.id} name={p.name} hasPhoto={p.has_photo} size={56} />
         <div className="flex min-w-0 flex-col gap-[3px]">
-          <span className="font-serif text-[23px] font-medium leading-[1.1] tracking-[-0.01em]">{p.name}</span>
+          <span className="font-serif text-[22px] font-medium leading-[1.1] tracking-[-0.01em]">{p.name}</span>
           <span className="font-mono text-[13px] text-ink-3">{p.patient_code}</span>
         </div>
       </div>
@@ -117,7 +121,7 @@ function PatientCardView({ p }: { p: PatientCard }) {
       <div className="h-px bg-paper-2" />
       <div className="flex grow flex-col gap-2">
         {p.guideline_flags > 0 && (
-          <span className="flex items-center gap-[7px] self-start rounded-full border border-amber-line bg-amber-fill px-[11px] py-[5px] text-[13px] font-semibold text-amber-ink">
+          <span className="flex items-center gap-2 self-start rounded-full border border-amber-line bg-amber-fill px-[11px] py-[5px] text-[13px] font-semibold text-amber-ink">
             <Triangle />{plural(p.guideline_flags, "guideline alert")}
           </span>
         )}
@@ -235,7 +239,7 @@ function AddPatientDialog({ onClose }: { onClose: () => void }) {
         {err && <p role="alert" className="m-0 text-sm font-medium text-amber-ink">{err}</p>}
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onClose} className="h-11 rounded-[10px] border border-field-line bg-card px-4 text-[15px] font-medium">Cancel</button>
-          <button type="submit" disabled={m.isPending} className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-[18px] text-[15px] font-semibold text-white hover:bg-blue-hover">
+          <button type="submit" disabled={m.isPending} className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-5 text-[15px] font-semibold text-white hover:bg-blue-hover">
             {m.isPending && <Spinner />}Add patient
           </button>
         </div>

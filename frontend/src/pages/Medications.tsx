@@ -45,15 +45,15 @@ export default function Medications() {
         <div className="flex flex-wrap items-baseline gap-4">
           <h2 className="m-0 font-serif text-[26px] font-medium">Medications and lab response</h2>
           <div className="grow" />
-          <button type="button" onClick={() => setAdding(true)} className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-[18px] text-[15px] font-semibold text-white hover:bg-blue-hover">
+          <button type="button" onClick={() => setAdding(true)} className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-5 text-[15px] font-semibold text-white hover:bg-blue-hover">
             {Icon.plus}Add medication change
           </button>
         </div>
         {meds.error && <ErrorBanner error={meds.error} onRetry={() => meds.refetch()} />}
         {meds.isLoading && <Skeleton className="h-60 rounded-[18px]" />}
         {meds.data && (
-          <section aria-label="Medication lanes" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card px-[22px] py-5">
-            <div className="flex items-center gap-[18px]">
+          <section aria-label="Medication lanes" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card px-6 py-5">
+            <div className="flex items-center gap-5">
               <span className="w-[150px] shrink-0 text-[13px] text-ink-3">Reports</span>
               <div ref={ref} className="relative h-[34px] min-w-0 grow">
                 <div className="absolute inset-x-0 top-2.5 h-px bg-line" />
@@ -68,7 +68,7 @@ export default function Medications() {
             {ls.length === 0 && <p className="m-0 text-sm text-ink-3">No medication changes recorded yet.</p>}
             {ls.map((l) => (
               <button key={l.id} type="button" onClick={() => setSelected(l.id)} aria-pressed={current === l.id}
-                className={`flex items-center gap-[18px] rounded-[10px] px-2 py-1.5 text-left -mx-2 ${current === l.id ? "bg-blue-tint-2" : "hover:bg-[#FBF8F2]"}`}>
+                className={`flex items-center gap-5 rounded-[10px] px-2 py-1.5 text-left -mx-2 ${current === l.id ? "bg-blue-tint-2" : "hover:bg-[#FBF8F2]"}`}>
                 <span className="flex w-[150px] shrink-0 flex-col">
                   <span className="truncate text-sm font-semibold">{l.drug}</span>
                   <span className="text-xs text-ink-3">{l.dose ?? ""} · {fmtDate(l.start)}</span>
@@ -80,7 +80,7 @@ export default function Medications() {
                 </span>
               </button>
             ))}
-            <div className="flex items-center gap-[18px]">
+            <div className="flex items-center gap-5">
               <span className="w-[150px] shrink-0" />
               <div className="relative h-4 min-w-0 grow">
                 {axis.years.map((y) => <span key={y} className="num absolute -translate-x-1/2 text-xs text-ink-3" style={{ left: axis.x(y, W) }}>{y.slice(0, 4)}</span>)}
@@ -130,12 +130,12 @@ function ResponsePanel({ id, reports, targets }: { id: number; reports: Paramete
   const others = assessed.filter((a) => !a.expected?.applies);
   return (
     <section className="flex flex-col gap-4 overflow-hidden rounded-[18px] border border-line bg-card" aria-label={`${r.event.drug} response`}>
-      <div className="flex flex-col gap-1 border-b border-blue-line bg-blue-tint-2 px-[22px] py-4">
+      <div className="flex flex-col gap-1 border-b border-blue-line bg-blue-tint-2 px-6 py-4">
         <span className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-ink">Lab response</span>
-        <h3 className="m-0 font-serif text-2xl font-medium">{r.event.drug} {r.event.dose_text ?? ""}</h3>
+        <h3 className="m-0 font-serif text-[22px] font-medium">{r.event.drug} {r.event.dose_text ?? ""}</h3>
         <span className="text-[13px] text-ink-2">Started {fmtDate(r.event.date)}{r.event.drug_class_name ? ` · ${r.event.drug_class_name}` : ""}</span>
       </div>
-      <div className="flex flex-col gap-3 px-[22px] pb-5">
+      <div className="flex flex-col gap-3 px-6 pb-5">
         {r.note && <p className="m-0 text-sm text-ink-2">{capitalise(r.note)}</p>}
         <VerdictSummary entries={assessed} />
         {assessed.length === 0 && <p className="m-0 text-sm text-ink-3">Not enough results before and after this start to compare.</p>}
@@ -247,7 +247,7 @@ function AddMedDialog({ patientId, onClose }: { patientId: number; onClose: () =
         {err && <p role="alert" className="m-0 text-sm font-medium text-amber-ink">{err}</p>}
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onClose} className="h-11 rounded-[10px] border border-field-line bg-card px-4 text-[15px] font-medium">Cancel</button>
-          <button type="submit" disabled={m.isPending || !drug} className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-[18px] text-[15px] font-semibold text-white hover:bg-blue-hover disabled:opacity-70">
+          <button type="submit" disabled={m.isPending || !drug} className="flex h-11 items-center gap-2 rounded-[10px] bg-blue px-5 text-[15px] font-semibold text-white hover:bg-blue-hover disabled:opacity-70">
             {m.isPending && <Spinner />}Add
           </button>
         </div>

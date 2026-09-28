@@ -110,7 +110,7 @@ export function Avatar({ id, name, hasPhoto, size }: { id: number; name: string;
 
 export function PrimaryLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="plain flex h-11 items-center gap-2 rounded-[10px] bg-blue px-[18px] text-[15px] font-semibold text-white hover:bg-blue-hover hover:text-white">
+    <Link to={to} className="plain flex h-11 items-center gap-2 rounded-[10px] bg-blue px-5 text-[15px] font-semibold text-white hover:bg-blue-hover hover:text-white">
       {children}
     </Link>
   );

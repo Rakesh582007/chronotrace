@@ -45,7 +45,7 @@ export default function Parameter() {
         <div className="flex flex-col gap-1.5">
           {system && <Link to={`${base}/systems/${system.id}`} className="text-sm">← {system.name}</Link>}
           <div className="flex flex-wrap items-baseline gap-3.5">
-            <h2 className="m-0 font-serif text-[44px] font-medium leading-none tracking-[-0.02em]">{shortName(t.name)}</h2>
+            <h2 className="m-0 font-serif text-[40px] font-medium leading-none tracking-[-0.02em]">{shortName(t.name)}</h2>
             <span className="text-[15px] text-ink-3">{fmtUnit(t.canonical_unit)}{egfr ? " · CKD-EPI 2021, recalculated from creatinine for every report" : ""}</span>
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function Parameter() {
           {guideline && <GuidelinePanel f={guideline} t={t} all={all} reports={reports.byId} trends={trends.analytes} />}
           {t.projection && <ProjectionPanel p={t.projection} />}
           {excludedForDrug.length > 0 && t.slope && (
-            <section className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card px-[22px] py-[18px]">
+            <section className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card px-6 py-5">
               <h3 className="m-0 font-serif text-xl font-medium">Why the early {t.slope.per_year < 0 ? "drop" : "change"} is not in the trend</h3>
               <p className="m-0 text-sm leading-[1.6] text-ink-2">
                 {(() => { const l = labelRuns(t.points.filter((p) => p.in_window.length).map((p) => p.report_id), reports.byId); return `${l.join(", ")} ${l.length === 1 && !l[0].includes("–") ? "falls" : "fall"}`; })()} inside the expected-effect
@@ -73,7 +73,7 @@ export default function Parameter() {
             </section>
           )}
           {baseFlag || t.baseline !== null ? <BaselinePanel t={t} f={baseFlag} reports={reports.byId} /> : null}
-          <section className="flex flex-col gap-2 rounded-[18px] border border-dashed border-dash px-[22px] py-4">
+          <section className="flex flex-col gap-2 rounded-[18px] border border-dashed border-dash px-6 py-4">
             <h3 className="m-0 text-sm font-semibold text-ink-2">Data notes</h3>
             <p className="m-0 text-[13px] leading-[1.55] text-ink-3">
               {new Set(t.points.map((p) => p.lab)).size > 1 ? `Results come from ${new Set(t.points.map((p) => p.lab)).size} labs, which adds uncertainty to the comparisons. ` : ""}
@@ -91,12 +91,12 @@ export default function Parameter() {
 function Legend({ slope, hasWindows, noise, projection }: { slope: string | null; hasWindows: boolean; noise: boolean; projection: string | null }) {
   return (
     <div className="flex flex-wrap gap-5 border-t border-paper-2 pt-2.5 text-[13px] text-ink-2">
-      <span className="flex items-center gap-[7px]"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#2F6DA3" /></svg>Used in the trend</span>
-      <span className="flex items-center gap-[7px]"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="#FFFDF9" stroke="#6A7280" strokeWidth="1.5" /></svg>Before or inside a drug window</span>
-      {hasWindows && <span className="flex items-center gap-[7px]"><svg width="16" height="12" aria-hidden="true"><rect width="16" height="12" fill="#EFE7D6" /></svg>Expected-effect window</span>}
-      {slope && <span className="flex items-center gap-[7px]"><svg width="24" height="6" aria-hidden="true"><line x1="0" y1="3" x2="24" y2="3" stroke="#C8741F" strokeWidth="2.5" strokeDasharray="7 5" /></svg>Slope {slope}</span>}
-      {noise && <span className="flex items-center gap-[7px]"><svg width="16" height="12" aria-hidden="true"><rect width="16" height="12" fill="#1D2733" opacity="0.1" /></svg>Range from lab and biological noise alone</span>}
-      {projection && <span className="flex items-center gap-[7px]"><svg width="24" height="6" aria-hidden="true"><line x1="0" y1="3" x2="24" y2="3" stroke="#C8741F" strokeWidth="1.6" strokeDasharray="2 4" /></svg>{projection}</span>}
+      <span className="flex items-center gap-2"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#2F6DA3" /></svg>Used in the trend</span>
+      <span className="flex items-center gap-2"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="#FFFDF9" stroke="#6A7280" strokeWidth="1.5" /></svg>Before or inside a drug window</span>
+      {hasWindows && <span className="flex items-center gap-2"><svg width="16" height="12" aria-hidden="true"><rect width="16" height="12" fill="#EFE7D6" /></svg>Expected-effect window</span>}
+      {slope && <span className="flex items-center gap-2"><svg width="24" height="6" aria-hidden="true"><line x1="0" y1="3" x2="24" y2="3" stroke="#C8741F" strokeWidth="2.5" strokeDasharray="7 5" /></svg>Slope {slope}</span>}
+      {noise && <span className="flex items-center gap-2"><svg width="16" height="12" aria-hidden="true"><rect width="16" height="12" fill="#1D2733" opacity="0.1" /></svg>Range from lab and biological noise alone</span>}
+      {projection && <span className="flex items-center gap-2"><svg width="24" height="6" aria-hidden="true"><line x1="0" y1="3" x2="24" y2="3" stroke="#C8741F" strokeWidth="1.6" strokeDasharray="2 4" /></svg>{projection}</span>}
     </div>
   );
 }
@@ -106,7 +106,7 @@ function GuidelinePanel({ f, t, all, reports, trends }: { f: Flag; t: Trend; all
   const { body } = guidelineText(f, trends, all);
   const labels = f.report_ids.map((id) => reports.get(id)?.label).filter(Boolean);
   return (
-    <section className="flex flex-col gap-3 rounded-[18px] border border-amber-line bg-amber-fill px-[22px] py-5">
+    <section className="flex flex-col gap-3 rounded-[18px] border border-amber-line bg-amber-fill px-6 py-5">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-amber-ink"><Triangle />Guideline · KDIGO</div>
       {s && (
         <div className="flex items-baseline gap-2">
@@ -131,7 +131,7 @@ function BaselinePanel({ t, f, reports }: { t: Trend; f: Flag | undefined; repor
   const baseReports = t.points.filter((p) => t.baseline_observation_ids.includes(p.observation_id)).map((p) => p.report_id);
   const drugs = f?.drug_events_since_baseline ?? [];
   return (
-    <section className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card px-[22px] py-[18px]">
+    <section className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card px-6 py-5">
       <div className="flex items-baseline gap-2.5">
         <h3 className="m-0 font-serif text-xl font-medium">Change from baseline</h3>
         <div className="grow" />
@@ -207,7 +207,7 @@ function targetDir(t: Trend, a: number, b: number): "toward" | "away" | "within"
 
 function ProjectionPanel({ p }: { p: NonNullable<Trend["projection"]> }) {
   return (
-    <section className="flex flex-col gap-2.5 rounded-[18px] border border-amber-line bg-card px-[22px] py-[18px]" data-testid="projection">
+    <section className="flex flex-col gap-2.5 rounded-[18px] border border-amber-line bg-card px-6 py-5" data-testid="projection">
       <span className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-ink">Straight-line projection</span>
       <div className="flex items-baseline gap-2">
         <span className="num font-serif text-[34px] font-medium leading-none">{fmtMonth(p.date)}</span>

@@ -62,7 +62,7 @@ export default function AskPanel({ patientId, name, flags, onClose }: { patientI
   const review = flags.filter((f) => !f.expected_effect);
 
   return (
-    <aside role="dialog" aria-label={`Ask about ${name}`} className="no-print fixed inset-y-0 right-0 z-40 flex w-[min(460px,100vw)] flex-col border-l border-line bg-card shadow-panel">
+    <aside role="dialog" aria-label={`Ask about ${name}`} className="slide-in no-print fixed inset-y-0 right-0 z-50 flex w-[min(460px,100vw)] flex-col border-l border-line bg-card shadow-panel">
       <div className="flex items-start gap-3 border-b border-line px-5 py-4">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-ink">Ask about this patient</span>
@@ -92,7 +92,7 @@ export default function AskPanel({ patientId, name, flags, onClose }: { patientI
                 {t.a.map((s, j) => (
                   <p key={j} className="m-0">{s.text}{s.labels.filter(Boolean).map((l) => <span key={l} className="ml-1"><ReportChip label={l} tone="blue" /></span>)}</p>
                 ))}
-                <span className="text-[11px] text-ink-3">{t.inFacts ? "From the computed results" : "Not in the computed results"} · {t.model}</span>
+                <span className="text-xs text-ink-3">{t.inFacts ? "From the computed results" : "Not in the computed results"} · {t.model}</span>
               </div>
             )}
             {t.failed && (

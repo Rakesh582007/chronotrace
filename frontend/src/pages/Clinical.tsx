@@ -86,7 +86,7 @@ function KdigoGrid({ c, reports }: { c: Clinical; reports: Map<number, ReportRef
                     <td key={a} className={`h-12 rounded-lg px-2 align-middle ${isCur ? "bg-blue-tint-2 outline outline-2 outline-offset-[-2px] outline-blue" : here.length ? "bg-paper" : "border border-line bg-card"}`}
                       title={`${g} ${a}${here.length ? ` · ${here.map((h) => reports.get(h.egfr.report_id)?.label).join(", ")}` : ""}`}>
                       <div className="flex items-center gap-1.5">
-                        {isCur && <span className="text-[11px] font-semibold text-blue-ink">latest</span>}
+                        {isCur && <span className="text-xs font-semibold text-blue-ink">latest</span>}
                         <div className="grow" />
                         {here.map((h) => (
                           <span key={h.date} className={`rounded font-mono text-[10px] ${isCur && h === cur ? "bg-ink px-1 text-card" : "text-ink-2"}`}>
@@ -134,7 +134,7 @@ const STATUS: Record<string, [string, string]> = {
 function CriterionCard({ c, reports }: { c: Criterion; reports: Map<number, ReportRef> }) {
   const [s, tone] = STATUS[c.status];
   return (
-    <article className="flex flex-col gap-2 rounded-[14px] border border-line bg-card px-[18px] py-4" data-testid={`criterion-${c.id}`}>
+    <article className="flex flex-col gap-2 rounded-[14px] border border-line bg-card px-5 py-4" data-testid={`criterion-${c.id}`}>
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="m-0 text-base font-semibold">{c.title}</h3>
         <div className="grow" />
@@ -157,7 +157,7 @@ function CriterionCard({ c, reports }: { c: Criterion; reports: Map<number, Repo
       )}
       <div className="flex flex-wrap items-center gap-1.5">
         {labelRuns(c.report_ids, reports).map((l) => <ReportChip key={l} label={l} />)}
-        <span className="text-[11px] leading-normal text-ink-3">{c.source}</span>
+        <span className="text-xs leading-normal text-ink-3">{c.source}</span>
       </div>
     </article>
   );
@@ -291,7 +291,7 @@ function Amount({ n }: { n: NutritionItem }) {
   return (
     <span className="flex shrink-0 flex-col items-end leading-tight">
       <span className="num font-serif text-[22px]">{v} <span className="font-sans text-xs text-ink-3">{unit}</span></span>
-      {qualifier && <span className="text-[11px] text-ink-3">{qualifier.replace(/\)$/, "")}</span>}
+      {qualifier && <span className="text-xs text-ink-3">{qualifier.replace(/\)$/, "")}</span>}
     </span>
   );
 }
@@ -318,7 +318,7 @@ function NutritionRow({ n, reports, labels }: { n: NutritionItem; reports: Map<n
       {n.note && (
         <p className="m-0 rounded-[10px] border border-blue-line bg-blue-tint-2 px-3 py-2 text-[13px] leading-normal text-blue-ink">{n.note}</p>
       )}
-      <span className="text-[11px] leading-normal text-ink-3">{n.source}{n.status !== "verified" ? " · not yet verified" : ""}</span>
+      <span className="text-xs leading-normal text-ink-3">{n.source}{n.status !== "verified" ? " · not yet verified" : ""}</span>
     </li>
   );
 }

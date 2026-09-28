@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { valueRange, y as yOf, type TimeAxis } from "../lib/axis";
 import { fmtDate, fmtNum, fmtUnit, parseDate } from "../lib/format";
 import { useElementWidth } from "../lib/useWidth";
@@ -64,6 +64,11 @@ export default function TrendChart(props: ChartProps) {
   const ticks = niceTicks(range[0], range[1]);
   const drawn = points.filter((p) => !p.censored);
   const line = drawn.map((p, i) => `${i ? "L" : "M"}${X(p.date)} ${Y(p.value)}`).join(" ");
+  const gid = useId().replace(/:/g, "");
+  const area = drawn.length > 1 ? `${line} L${X(drawn[drawn.length - 1].date)} ${H} L${X(drawn[0].date)} ${H} Z` : "";
+  const end = drawn[drawn.length - 1];
+  const endText = end ? `${fmtNum(end.value)} ${fmtUnit(unit)}` : "";
+  const endW = endText.length * 6.6 + 14;
 
   const noisePath = u && drawn.length > 1
     ? `M${drawn.map((p) => `${X(p.date)} ${Y(p.value * (1 + u))}`).join(" L")} L${[...drawn].reverse().map((p) => `${X(p.date)} ${Y(p.value * (1 - u))}`).join(" L")} Z`
@@ -156,7 +161,14 @@ export default function TrendChart(props: ChartProps) {
               <circle cx={X(projection.date)} cy={Y(projection.threshold)} r={4} fill="#FFFDF9" stroke="#C8741F" strokeWidth="1.6" />
             </g>
           )}
-          <path d={line} stroke="#1D2733" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#2F6DA3" stopOpacity="0.13" />
+              <stop offset="1" stopColor="#2F6DA3" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {area && <path d={area} fill={`url(#${gid})`} className="fade-in" />}
+          <path d={line} pathLength={1} className="draw" stroke="#1D2733" strokeWidth="1.6" fill="none" strokeLinejoin="round" strokeLinecap="round" />
           {slopePath && <path d={slopePath} stroke="#C8741F" strokeWidth="2.5" strokeDasharray="7 5" fill="none" strokeLinecap="round" />}
           {points.map((p, i) => {
             const cx = X(p.date), cy = Y(p.value);
@@ -177,6 +189,17 @@ export default function TrendChart(props: ChartProps) {
               </g>
             );
           })}
+          {end && sel === null && (() => {
+            const ex = Math.min(Math.max(X(end.date) - endW / 2, 0), W - endW);
+            const ey = Y(end.value) > 36 ? Y(end.value) - 34 : Y(end.value) + 14;
+            return (
+              <g className="fade-in" aria-hidden="true" pointerEvents="none">
+                <rect x={ex} y={ey} width={endW} height={20} rx={10} fill="#1D2733" />
+                <text x={ex + endW / 2} y={ey + 14} textAnchor="middle" fontSize="12" fontWeight="600" fill="#FFFDF9"
+                  style={{ fontVariantNumeric: "tabular-nums" }}>{endText}</text>
+              </g>
+            );
+          })()}
           <line x1={0} x2={W} y1={H} y2={H} stroke="#CFC5B2" />
         </g>
       </svg>
