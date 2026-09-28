@@ -103,7 +103,7 @@ python tests/fixtures/make_fixtures.py                         # rebuild the tes
 - [x] Step 4 – Extraction pipeline
 - [x] Step 5 – Database and normalisation
 - [x] Step 6 – Trend engine and medication response
-- [ ] Step 7 – LLM summaries
+- [x] Step 7 – LLM summaries
 - [ ] Step 8 – Frontend
 - [ ] Step 9 – Demo patient and real-report evaluation
 - [ ] Step 10 – Pitch and demo checklist
