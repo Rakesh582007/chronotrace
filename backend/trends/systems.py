@@ -56,13 +56,16 @@ def change_vs_baseline(trend: dict) -> float | None:
 
 def headline(info: AnalyteInfo, trend: dict | None) -> dict:
     out = {"analyte_id": info.id, "name": info.name, "unit": info.unit, "latest": None, "baseline": None,
-           "change_vs_baseline_percent": None, "slope": None}
+           "change_vs_baseline_percent": None, "slope": None,
+           "target": info.target_json(), "target_direction": None}
     if trend is None or not trend["points"]:
         return out
     last = trend["points"][-1]                          # points are sorted by date
     out["latest"] = {k: last[k] for k in ("date", "value", "value_text", "comparator", "censored", "report_id")}
-    out.update(baseline=trend["baseline"], change_vs_baseline_percent=change_vs_baseline(trend),
-               slope=trend["slope"])
+    cvb = change_vs_baseline(trend)
+    out.update(baseline=trend["baseline"], change_vs_baseline_percent=cvb, slope=trend["slope"],
+               target_direction=info.target_direction(trend["baseline"], trend["baseline"] * (1 + cvb / 100))
+               if cvb is not None and trend["baseline"] is not None else None)
     return out
 
 

@@ -108,6 +108,8 @@ def validate(data: dict, analytes: dict | None = None) -> list[str]:
             seen.add((a, d))
             if not e.get("note"):
                 errors.append(f"{where} effect {a} needs a note")
+            if e.get("size") not in (None, "small"):
+                errors.append(f"{where} effect {a} size must be 'small' when given")
             mx = e.get("max_expected_percent")
             if mx is not None and not (isinstance(mx, (int, float)) and mx > 0):
                 errors.append(f"{where} effect {a} max_expected_percent must be a positive number")

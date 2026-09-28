@@ -29,7 +29,8 @@ export function useWindows(meds: Medication[] | undefined) {
 
 export function chartProps(t: Trend, reports: Map<number, ReportRef>, meds: Medication[], windows: Map<string, { from: string; to: string; label: string }[]>,
   flags: Flag[]): Omit<ChartProps, "axis" | "onOpenReport" | "height"> {
-  const inTrend = new Set(t.slope && t.slope.status === "ok" ? t.slope.observation_ids : []);
+  // Solid = not held back for a drug window (the points the slope may use); hollow = before or inside a window.
+  const heldBack = new Set((t.slope?.excluded_points ?? []).flatMap((e) => e.observation_ids));
   const guideline = flags.find((f) => f.analyte_id === t.analyte_id && f.level === "guideline");
   const fall = t.points.length && t.baseline !== null ? t.points[t.points.length - 1].value < t.baseline : true;
   const touched = new Set(t.points.flatMap((p) => p.in_window));
@@ -40,13 +41,14 @@ export function chartProps(t: Trend, reports: Map<number, ReportRef>, meds: Medi
     points: t.points.map((p) => ({
       date: p.date, value: p.value, censored: p.censored, comparator: p.comparator,
       reportLabel: reports.get(p.report_id)?.label ?? "R?", reportId: p.report_id, lab: p.lab, page: p.page,
-      inTrend: inTrend.size ? inTrend.has(p.observation_id) : p.in_window.length === 0,
+      inTrend: !heldBack.has(p.observation_id) && p.in_window.length === 0,
     })),
     baseline: t.baseline,
     baselineLabel: t.baseline !== null ? `Baseline ${fmtNum(t.baseline)} · ${baseRuns}` : undefined,
     threshold: t.baseline !== null && t.rcv_percent
       ? { value: t.baseline * (fall ? 1 - t.rcv_percent / 100 : 1 + t.rcv_percent / 100), label: `${fall ? "−" : "+"}${fmtPct(t.rcv_percent)}% from baseline · ${fmtNum(t.baseline * (fall ? 1 - t.rcv_percent / 100 : 1 + t.rcv_percent / 100))}` }
       : null,
+    target: t.target,
     windows: windows.get(t.analyte_id) ?? [],
     drugStarts: meds.filter((m) => m.change === "start" && touched.has(m.id)).map((m) => ({ date: m.date, label: m.drug })),
     slope: t.slope && guideline ? { from: t.slope.first_date, to: t.slope.last_date, perYear: t.slope.per_year } : null,

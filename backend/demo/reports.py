@@ -173,11 +173,12 @@ def write_pdf(r: demo.DemoReport, out_dir: Path) -> Path:
     return path
 
 
-def write_prescription(path: Path, who: Header, date: dt.date, drug: str, dose: str, how: str) -> Path:
+def write_prescription(path: Path, who: Header, date: dt.date, drug: str, dose: str, how: str,
+                       clinic: str = "EXAMPLE DIABETES & KIDNEY CLINIC") -> Path:
     """A one-drug prescription from an invented clinic (a document only: ChronoTrace never reads it)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(path), pagesize=letter, invariant=1)
-    _text(c, 40, 50, "EXAMPLE DIABETES & KIDNEY CLINIC", 13, BOLD)
+    _text(c, 40, 50, clinic, 13, BOLD)
     _text(c, 40, 68, "12, Example Road, Chennai 600001  ·  Tel: +91-00-4400-1300", 8)
     c.line(40, PAGE_H - 84, 572, PAGE_H - 84)
     _text(c, 40, 100, f"Patient : {who.name}    Age / Sex : {date.year - who.birth_year} / {who.sex}", 9)

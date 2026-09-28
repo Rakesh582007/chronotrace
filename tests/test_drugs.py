@@ -20,16 +20,18 @@ def test_catalogue_is_valid(data):
 
 def test_classes_as_specified(data):
     by = {c["id"]: c for c in data["classes"]}
-    assert set(by) == {"acei_arb", "sglt2i", "biguanide"}
+    assert set(by) == {"acei_arb", "sglt2i", "biguanide", "thyroid_hormone"}
     assert by["acei_arb"]["window_days"] == [7, 60] and by["sglt2i"]["window_days"] == [7, 90]
     assert by["biguanide"]["window_days"] == [90, 180]
     effects = {(c["id"], e["analyte"], e["direction"]) for c in data["classes"] for e in c["effects"]}
     assert effects == {("acei_arb", "creatinine", "rise"), ("acei_arb", "egfr", "fall"),
                        ("acei_arb", "potassium", "rise"), ("sglt2i", "egfr", "fall"), ("sglt2i", "creatinine", "rise"),
-                       ("biguanide", "hba1c", "fall")}
+                       ("biguanide", "hba1c", "fall"), ("thyroid_hormone", "tsh", "fall"),
+                       ("thyroid_hormone", "free_t4", "rise")}
+    assert by["thyroid_hormone"]["window_days"] == [42, 90]
     assert next(e for e in by["acei_arb"]["effects"] if e["analyte"] == "creatinine")["max_expected_percent"] == 30
     assert {c["id"]: c["status"] for c in data["classes"]} == {
-        "acei_arb": "verified", "sglt2i": "verified", "biguanide": "unverified"}
+        "acei_arb": "verified", "sglt2i": "verified", "biguanide": "unverified", "thyroid_hormone": "unverified"}
     assert "Practice Point 3.6.4" in by["acei_arb"]["source"] and "Practice Point 3.7.3" in by["sglt2i"]["source"]
     assert all("Practice Point 2.1.4" in by[c]["source"] for c in ("acei_arb", "sglt2i"))
 

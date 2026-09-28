@@ -24,6 +24,16 @@ Rules
   guideline flag. KDIGO_RAPID_EGFR: eGFR slope below -5 mL/min/1.73 m2 per year.
 - Medication response: last result <= event date (within 180 days) against the first result inside the
   class's window; confounders are other medication events from 90 days before the event to that result.
+  `verdict` compares what was observed with what the catalogue expects: seen (expected direction and beyond
+  the RCV, or any change in that direction for an effect marked small), not seen (within the RCV, or the
+  other way within it), opposite (the other way, beyond the RCV), above expected (beyond the class's
+  max_expected_percent). It says whether the expected lab change appeared, never whether the drug works.
+- Target direction: when the analyte has a guideline target (data/analytes.yaml), a change is "toward" the
+  target if the later value is closer to the target range than the earlier one, "away" if farther,
+  "within" if both are inside it, "unchanged" if equally far. It describes position, not benefit.
+- Lab change (RCV_PREV only): the two results come from different single labs. If the result from the
+  same lab on the other side agrees with the earlier one within the RCV, `same_lab_agrees` is true: the
+  change may reflect the lab rather than the patient.
 """
 
 from __future__ import annotations
@@ -56,6 +66,8 @@ CROSS_LAB_NOTE = "values from different labs; between-lab variation is larger th
 CROSS_LAB_SLOPE_NOTE = "values from different labs; between-lab variation adds uncertainty to the slope"
 SINGLE_PRIOR_NOTE = "single prior value"
 BEFORE_MAX_VALUES = 3
+TARGET_TOWARD, TARGET_AWAY, TARGET_WITHIN, TARGET_UNCHANGED = "toward", "away", "within", "unchanged"
+VERDICT_SEEN, VERDICT_NOT_SEEN, VERDICT_OPPOSITE, VERDICT_ABOVE = "seen", "not seen", "opposite", "above expected"
 REGRESSION_CAVEAT = ("If this treatment was started because of a high value, some change is expected anyway "
                      "(regression to the mean). Adherence is not recorded.")
 
@@ -97,6 +109,36 @@ class Event:
 
 
 @dataclass(frozen=True)
+class Target:
+    low: float | None
+    high: float | None
+    label: str
+    source: str
+    status: str                    # verified | unverified
+
+    def distance(self, v: float) -> float:
+        if self.low is not None and v < self.low:
+            return self.low - v
+        if self.high is not None and v > self.high:
+            return v - self.high
+        return 0.0
+
+    def direction(self, before: float | None, after: float | None) -> str | None:
+        """toward | away | within | unchanged: where `after` sits against the target compared with `before`."""
+        if before is None or after is None:
+            return None
+        d0, d1 = self.distance(before), self.distance(after)
+        if d0 == 0 and d1 == 0:
+            return TARGET_WITHIN
+        if abs(d1 - d0) < 1e-9:
+            return TARGET_UNCHANGED
+        return TARGET_TOWARD if d1 < d0 else TARGET_AWAY
+
+    def json(self) -> dict:
+        return {"low": self.low, "high": self.high, "label": self.label, "source": self.source, "status": self.status}
+
+
+@dataclass(frozen=True)
 class AnalyteInfo:
     id: str
     name: str
@@ -104,6 +146,13 @@ class AnalyteInfo:
     rcv_percent: float | None
     rcv_status: str                # verified | unverified | not established
     rcv_source: str = ""
+    target: Target | None = None
+
+    def target_json(self) -> dict | None:
+        return self.target.json() if self.target else None
+
+    def target_direction(self, before: float | None, after: float | None) -> str | None:
+        return self.target.direction(before, after) if self.target else None
 
 
 # ---------------------------------------------------------------- derived values
@@ -262,6 +311,8 @@ def _flag(rule_id: str, a: AnalyteInfo, later: DayValue, ref_value: float, ref_l
         "expected_effect": expected_effect(windows, later.date, direction, change),
         "drug_events_since_baseline": [], "source": a.rcv_source or None,
         "cross_lab": crossed, "cross_lab_note": CROSS_LAB_NOTE if crossed else None,
+        "target": a.target_json(), "target_direction": a.target_direction(ref_value, later.value),
+        "lab_change": None,
     }
 
 
@@ -272,9 +323,10 @@ def rcv_flags(a: AnalyteInfo, days: list[DayValue], base: Baseline, events: list
         return []
     windows = windows_for(a.id, events)
     flags = []
-    for prev, cur in zip(days, days[1:]):
+    for i, (prev, cur) in enumerate(zip(days, days[1:]), start=1):
         f = _flag("RCV_PREV", a, cur, prev.value, "previous result", [prev], windows)
         if f:
+            f["lab_change"] = lab_change(a, days, i)
             flags.append(f)
     if base.value is not None and base.days and days[-1].date > base.days[-1].date:
         cur, last_base = days[-1], base.days[-1].date
@@ -284,6 +336,41 @@ def rcv_flags(a: AnalyteInfo, days: list[DayValue], base: Baseline, events: list
                                                if last_base < e.date <= cur.date]
             flags.append(f)
     return flags
+
+
+def single_lab(d: DayValue) -> str | None:
+    labs = d.labs
+    return next(iter(labs)) if len(labs) == 1 and None not in labs else None
+
+
+def lab_change(a: AnalyteInfo, days: list[DayValue], i: int) -> dict | None:
+    """For the step days[i-1] -> days[i]: the change of lab, and whether a result from the same lab on the
+    other side of the step agrees with the earlier value within the RCV (the next result from the earlier
+    lab, or the previous result from the later lab)."""
+    prev, cur = days[i - 1], days[i]
+    lab_a, lab_b = single_lab(prev), single_lab(cur)
+    if lab_a is None or lab_b is None or lab_a == lab_b:
+        return None
+    within = lambda x, y: a.rcv_percent is not None and (c := pct_change(x, y)) is not None and abs(c) <= a.rcv_percent
+    check = None
+    nxt = days[i + 1] if i + 1 < len(days) else None
+    before = days[i - 2] if i >= 2 else None
+    if nxt is not None and single_lab(nxt) == lab_a:
+        check = (nxt, prev, lab_a, within(nxt.value, prev.value))
+    elif before is not None and single_lab(before) == lab_b:
+        check = (before, cur, lab_b, within(cur.value, before.value))
+    note = f"This change coincides with a change of lab, from {lab_a} to {lab_b}."
+    agrees = None
+    if check:
+        other, ref, lab, agrees = check
+        if agrees:
+            note += (f" The {lab} result of {other.date.isoformat()} ({other.value:.4g}) is within the reference "
+                     f"change value of the {lab} result of {ref.date.isoformat()} ({ref.value:.4g}): this change "
+                     f"may reflect the difference between the labs rather than the patient.")
+        else:
+            note += f" Results from {lab} alone show a change as well ({other.date.isoformat()}: {other.value:.4g})."
+    return {"from_lab": lab_a, "to_lab": lab_b, "same_lab_agrees": agrees,
+            "same_lab_report_ids": check[0].report_ids if check else [], "note": note}
 
 
 # ---------------------------------------------------------------- slope
@@ -337,6 +424,8 @@ def slope_flags(a: AnalyteInfo, s: dict, days: list[DayValue]) -> list[dict]:
                     f"of 5 per year."),
         "expected_effect": None, "drug_events_since_baseline": [], "source": KDIGO_SOURCE,
         "cross_lab": cross_lab(used), "cross_lab_note": CROSS_LAB_SLOPE_NOTE if cross_lab(used) else None,
+        "target": a.target_json(), "target_direction": a.target_direction(used[0].value, used[-1].value),
+        "lab_change": None,
     }]
 
 
@@ -353,7 +442,7 @@ def analyse(a: AnalyteInfo, points: list[Point], events: list[Event]) -> tuple[d
         "baseline_observation_ids": [],
         "points": [{**_point_json(p), "censored": p.censored,
                     "in_window": [w.event.id for w in windows if w.contains(p.date)]} for p in points],
-        "slope": None, "status": STATUS_OK,
+        "slope": None, "status": STATUS_OK, "target": a.target_json(),
     }
     if points and not days:
         trend["status"] = STATUS_CENSORED_ONLY
@@ -406,6 +495,23 @@ def _before_days(days: list[DayValue], event: Event, analyte_id: str, events: li
     return eligible[-BEFORE_MAX_VALUES:]
 
 
+def verdict(a: AnalyteInfo, eff, change: float, beyond: bool | None) -> tuple[str, str]:
+    """Whether the change the catalogue expects appeared: seen | not seen | opposite | above expected."""
+    word = "rose" if change > 0 else "fell"
+    moved = f"{a.name} {word} {abs(change):.1f}%"
+    same = ("rise" if change > 0 else "fall") == eff.direction
+    rcv = f"its reference change value of {a.rcv_percent:g}%" if a.rcv_percent is not None else None
+    if same and eff.max_expected_percent is not None and abs(change) > eff.max_expected_percent:
+        return VERDICT_ABOVE, (f"Expected {eff.direction} seen, larger than expected: {moved}, above the "
+                               f"{eff.max_expected_percent:g}% usually seen.")
+    if same and (beyond or beyond is None or eff.size == "small"):
+        extra = f", beyond {rcv}" if beyond else (" (a small change is expected)" if eff.size == "small" else "")
+        return VERDICT_SEEN, f"Expected {eff.direction} seen: {moved}{extra}."
+    if not same and beyond:
+        return VERDICT_OPPOSITE, f"The expected {eff.direction} was not seen: {moved}, the other way, beyond {rcv}."
+    return VERDICT_NOT_SEEN, f"Expected {eff.direction} not seen: {moved}, within {rcv}."
+
+
 def response(event: Event, analytes: dict[str, AnalyteInfo], points_by_analyte: dict[str, list[Point]],
              events: list[Event]) -> dict:
     c = event.klass
@@ -436,7 +542,8 @@ def response(event: Event, analytes: dict[str, AnalyteInfo], points_by_analyte: 
                  "after": after.ref() if after else None, "change_abs": None, "change_percent": None,
                  "rcv_percent": a.rcv_percent, "rcv_status": a.rcv_status, "beyond_rcv": None,
                  "cross_lab": None, "cross_lab_note": None,
-                 "expected_effect": None, "confounders": [], "status": None}
+                 "expected_effect": None, "confounders": [], "status": None,
+                 "target_direction": None, "verdict": None, "verdict_note": None}
         if not any(d.date >= ws for d in days):
             entry["status"] = RESP_TOO_EARLY
         elif not before_days:
@@ -454,6 +561,9 @@ def response(event: Event, analytes: dict[str, AnalyteInfo], points_by_analyte: 
             if event.change == "start" and change is not None and direction == eff.direction:
                 win = [Window(event, eff.direction, eff.note, eff.max_expected_percent, ws, we, c.source)]
                 entry["expected_effect"] = expected_effect(win, after.date, direction, change)
+            entry["target_direction"] = a.target_direction(before_value, after.value)
+            if event.change == "start" and change is not None:
+                entry["verdict"], entry["verdict_note"] = verdict(a, eff, change, entry["beyond_rcv"])
         until = after.date if after else we
         entry["confounders"] = [
             event_ref(o) | {"days_from_event": (o.date - event.date).days}

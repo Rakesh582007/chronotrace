@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import type { BodySystem, Flag, Trend } from "../api/types";
 import { ChangeCard, CrossLabNote, ExpectedGroup, GuidelineCard } from "../components/flags";
 import { Sparkline, TimeStrip } from "../components/timeline";
-import { BlueDot, ErrorBanner, HollowDot, Skeleton, StatusPill, Triangle } from "../components/ui";
+import { BlueDot, DirectionTag, ErrorBanner, HollowDot, Skeleton, StatusPill, Triangle } from "../components/ui";
 import { makeAxis, type TimeAxis } from "../lib/axis";
 import { fmtNum, fmtPercent, fmtUnit, plural, shortName } from "../lib/format";
 import { useFlags, useMedications, useSystems } from "../lib/patient";
@@ -54,6 +54,15 @@ export default function Overview() {
         {guideline.map((f) => (
           <GuidelineCard key={f.id} f={f} trends={trends?.analytes} allFlags={all} reports={reports.byId} base={base} arrive={f.id === newGuideline} />
         ))}
+        {(() => {
+          const lab = change.filter((f) => f.lab_change?.same_lab_agrees);
+          return lab.length > 0 && (
+            <p className="m-0 rounded-[14px] border border-amber-line bg-amber-soft px-[18px] py-3 text-sm leading-normal text-amber-deep" data-testid="lab-change-summary">
+              <strong className="font-semibold">{lab.length} of {change.length} changes</strong> coincide with a change of lab, and results from the
+              same lab agree within noise. They may reflect the labs rather than the patient.
+            </p>
+          );
+        })()}
         {change.map((f) => <ChangeCard key={f.id} f={f} reports={reports.byId} />)}
         <ExpectedGroup flags={expected} reports={reports.byId} />
         {flags.data && all.length === 0 && (
@@ -130,6 +139,9 @@ function SystemCard({ s, base, axis, trends, meds }: { s: BodySystem; base: stri
           <span className={`num text-sm ${side.cls}`}>{side.text}</span>
         </div>
       ) : <span className="text-sm text-ink-3">No headline value</span>}
+      {h?.target && h.target_direction && h.change_vs_baseline_percent != null && (
+        <div className="-mt-1"><DirectionTag direction={h.target_direction} rise={h.change_vs_baseline_percent > 0} target={h.target} /></div>
+      )}
       {trend && (
         <Sparkline points={trend.points} baseline={trend.baseline} axis={axis} lastColour={STATUS_COLOUR[status]}
           drugDates={drugDatesFor(trends, s.analytes_with_data.map((a) => a.analyte_id), meds)}

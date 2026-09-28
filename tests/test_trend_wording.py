@@ -11,7 +11,7 @@ import yaml
 
 from backend.trends import engine as E
 from backend.trends.dictionary import analyte_infos, infos_by_id
-from backend.trends.wording import BANNED
+from backend.trends.wording import BANNED, offending
 from tests.test_trends_engine import demo_patient
 from tests.test_trends_property import random_patient
 
@@ -31,9 +31,13 @@ def shown_texts(obj, key=None, out=None):
     return out
 
 
+LABS: set[str] = set()      # lab names are data printed on the reports (e.g. "... DIAGNOSTICS"), not wording
+
+
 def engine_texts():
     texts = set()
     runs = [demo_patient("R10")] + [random_patient(seed) for seed in range(50)]
+    LABS.update(p.lab for points, _ in runs for pts in points.values() for p in pts if p.lab)
     for points, events in runs:
         trends, flags = E.analyse_patient(list(analyte_infos()), points, events)
         responses = [E.response(e, infos_by_id(), points, events) for e in events]
@@ -56,8 +60,8 @@ CITATIONS = {E.KDIGO_SOURCE} | {" ".join(_CLASSES[c]["source"].split()) for c in
 def test_no_advice_scores_or_diagnosis_words():
     texts = (engine_texts() | catalogue_texts()) - CITATIONS
     assert len(texts) > 30
-    offending = sorted((m.group(0), t) for t in texts for m in [BANNED.search(t)] if m)
-    assert offending == []
+    bad = sorted((w, t) for t in texts for w in offending(t, tuple(LABS))[:1])
+    assert bad == []
 
 
 def test_the_scan_catches_advice():

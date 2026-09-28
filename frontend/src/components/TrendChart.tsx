@@ -20,6 +20,7 @@ export interface ChartProps {
   baseline: number | null;
   baselineLabel?: string;
   threshold?: { value: number; label: string } | null;
+  target?: { low: number | null; high: number | null; label: string; source: string } | null;
   windows: { from: string; to: string; label: string }[];
   drugStarts: { date: string; label: string }[];
   slope: { from: string; to: string; perYear: number } | null;
@@ -38,7 +39,7 @@ const DAY = 86_400_000;
  * the slope overlay and clickable source points have to match the design exactly).
  */
 export default function TrendChart(props: ChartProps) {
-  const { points, baseline, threshold, windows, drugStarts, slope, axis, unit, name, onOpenReport } = props;
+  const { points, baseline, threshold, target, windows, drugStarts, slope, axis, unit, name, onOpenReport } = props;
   const height = props.height ?? 384;
   const [wrap, width] = useElementWidth<HTMLDivElement>(832);
   const W = width - PAD_L - PAD_R;
@@ -89,6 +90,22 @@ export default function TrendChart(props: ChartProps) {
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" className="block"
         aria-label={`${name} across ${points.length} reports${baseline !== null ? `. Baseline ${fmtNum(baseline)}` : ""}${slope ? `. Slope ${fmtNum(slope.perYear)} per year` : ""}.`}>
         <g transform={`translate(${PAD_L} ${PAD_T})`}>
+          {target && (() => {
+            const top = target.high === null ? 0 : Math.max(0, Math.min(H, Y(target.high)));
+            const bottom = target.low === null ? H : Math.max(0, Math.min(H, Y(target.low)));
+            const org = target.source.match(/\b(ADA|KDIGO|ATA)\b/)?.[0];
+            const text = `Target ${target.label}${org ? ` · ${org}` : ""}`;
+            if (bottom - top < 1) {
+              const above = target.low !== null && Y(target.low) < 0;
+              return <text x={W} y={above ? 12 : H - 6} textAnchor="end" fontSize="11" fill="#1F5282">{text} ({above ? "above" : "below"} this chart)</text>;
+            }
+            return (
+              <g>
+                <rect x={0} y={top} width={W} height={bottom - top} fill="#EAF3FB" />
+                <text x={W - 4} y={bottom - 5} textAnchor="end" fontSize="11" fill="#1F5282">{text}</text>
+              </g>
+            );
+          })()}
           {windows.map((w, i) => (
             <rect key={i} x={X(w.from)} y={0} width={Math.max(2, X(w.to) - X(w.from))} height={H} fill={i % 2 ? "#F2EBDD" : "#EFE7D6"}>
               <title>{w.label}</title>

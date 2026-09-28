@@ -4,7 +4,7 @@ import { api } from "../api/client";
 import type { Medication } from "../api/types";
 import { lanes } from "../components/timeline";
 import { useToast } from "../components/shell";
-import { ErrorBanner, Icon, Skeleton, Spinner } from "../components/ui";
+import { DirectionTag, ErrorBanner, Icon, Skeleton, Spinner } from "../components/ui";
 import { makeAxis } from "../lib/axis";
 import { capitalise, fmtDate, fmtNum, fmtPct, fmtUnit, shortName } from "../lib/format";
 import { labelRuns, useMedications } from "../lib/patient";
@@ -19,13 +19,17 @@ interface RespAnalyte {
   before: Side | null; after: Side | null; change_percent: number | null; rcv_percent: number | null;
   beyond_rcv: boolean | null; cross_lab: boolean; expected_effect: { note: string } | null; status: string;
   confounders: { drug: string; date: string }[];
+  target_direction: "toward" | "away" | "within" | "unchanged" | null;
+  verdict: "seen" | "not seen" | "opposite" | "above expected" | null;
+  verdict_note: string | null;
 }
+interface TargetInfo { label: string; source: string; status: string }
 interface Resp { event: { drug: string; dose_text: string | null; date: string; drug_class_name: string | null }; note: string | null; caveat: string; analytes: RespAnalyte[] }
 
 const CHANGE: Record<string, string> = { start: "Start", stop: "Stop", dose_change: "Dose change" };
 
 export default function Medications() {
-  const { patient, reports } = usePatientCtx();
+  const { patient, reports, trends } = usePatientCtx();
   const meds = useMedications(patient.id);
   const [selected, setSelected] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
@@ -87,14 +91,36 @@ export default function Medications() {
         {meds.data && list.length > 0 && <EventsTable meds={list} />}
       </div>
       <aside className="flex flex-col gap-4">
-        {current !== null ? <ResponsePanel id={current} reports={reports.byId} /> : <p className="m-0 text-sm text-ink-3">Select a medication to see the lab response.</p>}
+        {current !== null ? <ResponsePanel id={current} reports={reports.byId} targets={new Map((trends?.analytes ?? []).map((t) => [t.analyte_id, t.target]))} /> : <p className="m-0 text-sm text-ink-3">Select a medication to see the lab response.</p>}
       </aside>
       {adding && <AddMedDialog patientId={patient.id} onClose={() => setAdding(false)} />}
     </main>
   );
 }
 
-function ResponsePanel({ id, reports }: { id: number; reports: Parameters<typeof labelRuns>[1] }) {
+const VERDICT: Record<string, [string, string, string]> = {
+  seen: ["Expected change seen", "bg-blue-tint text-blue-ink border-blue-line", "✓"],
+  "above expected": ["Larger than expected", "bg-amber-fill text-amber-ink border-amber-line", "▲"],
+  "not seen": ["Expected change not seen", "bg-amber-fill text-amber-ink border-amber-line", "–"],
+  opposite: ["Moved the other way", "bg-amber-fill text-amber-ink border-amber-line", "↺"],
+};
+
+function VerdictSummary({ entries }: { entries: RespAnalyte[] }) {
+  const judged = entries.filter((a) => a.verdict);
+  if (!judged.length) return null;
+  const seen = judged.filter((a) => a.verdict === "seen").length;
+  return (
+    <div className="flex flex-wrap items-baseline gap-2 rounded-xl border border-line bg-[#FBF8F2] px-3 py-2.5 text-sm">
+      <span className="font-semibold">{seen} of {judged.length}</span>
+      <span className="text-ink-2">expected lab changes were seen after this start.</span>
+      {judged.filter((a) => a.verdict !== "seen").map((a) => (
+        <span key={a.analyte_id} className="font-semibold text-amber-ink">{shortName(a.name)}: {VERDICT[a.verdict!][0].toLowerCase()}.</span>
+      ))}
+    </div>
+  );
+}
+
+function ResponsePanel({ id, reports, targets }: { id: number; reports: Parameters<typeof labelRuns>[1]; targets: Map<string, TargetInfo | null> }) {
   const q = useQuery({ queryKey: ["response", id], queryFn: () => api.medicationResponse(id) as unknown as Promise<Resp> });
   if (q.isLoading) return <Skeleton className="h-80 rounded-[18px]" />;
   if (q.error) return <ErrorBanner error={q.error} onRetry={() => q.refetch()} />;
@@ -111,7 +137,11 @@ function ResponsePanel({ id, reports }: { id: number; reports: Parameters<typeof
       </div>
       <div className="flex flex-col gap-3 px-[22px] pb-5">
         {r.note && <p className="m-0 text-sm text-ink-2">{capitalise(r.note)}</p>}
+        <VerdictSummary entries={assessed} />
         {assessed.length === 0 && <p className="m-0 text-sm text-ink-3">Not enough results before and after this start to compare.</p>}
+        {r.analytes.filter((a) => !(a.before && a.after)).map((a) => (
+          <p key={a.analyte_id} className="m-0 text-[13px] text-ink-3"><span className="font-semibold text-ink-2">{shortName(a.name)}:</span> {a.status}.</p>
+        ))}
         {[...withExpected, ...others].map((a) => {
           const pct = a.change_percent ?? 0;
           return (
@@ -130,6 +160,15 @@ function ResponsePanel({ id, reports }: { id: number; reports: Parameters<typeof
               <span className="text-xs text-ink-3">
                 {a.before!.label ?? "before"} ({labelRuns(a.before!.report_ids, reports).join(", ")}) → {labelRuns(a.after!.report_ids, reports).join(", ")}
               </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {a.verdict && (
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-xs font-semibold ${VERDICT[a.verdict][1]}`}>
+                    <span aria-hidden="true">{VERDICT[a.verdict][2]}</span>{VERDICT[a.verdict][0]}
+                  </span>
+                )}
+                <DirectionTag direction={a.target_direction} rise={pct > 0} target={targets.get(a.analyte_id)} compact />
+              </div>
+              {a.verdict_note && <p className="m-0 text-[13px] leading-normal text-ink">{a.verdict_note}</p>}
               {a.expected?.applies && (
                 <p className="m-0 text-[13px] leading-normal text-ink-2">
                   Expected: {a.expected.note}{a.expected_effect && a.expected_effect.note !== a.expected.note ? ` · ${a.expected_effect.note}` : ""}.{" "}

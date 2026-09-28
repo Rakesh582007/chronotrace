@@ -3,7 +3,7 @@ import type { Flag, Trend } from "../api/types";
 import TrendChart from "../components/TrendChart";
 import { guidelineText } from "../components/flags";
 import { useToast } from "../components/shell";
-import { ErrorBanner, Skeleton, Triangle } from "../components/ui";
+import { DirectionTag, ErrorBanner, Skeleton, Triangle } from "../components/ui";
 import { makeAxis } from "../lib/axis";
 import { chartProps, openReportPdf, useWindows } from "../lib/charts";
 import { fmtDate, fmtMonth, fmtNum, fmtPct, fmtUnit, shortName } from "../lib/format";
@@ -63,7 +63,7 @@ export default function Parameter() {
             <section className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card px-[22px] py-[18px]">
               <h3 className="m-0 font-serif text-xl font-medium">Why the early {t.slope.per_year < 0 ? "drop" : "change"} is not in the trend</h3>
               <p className="m-0 text-sm leading-[1.6] text-ink-2">
-                {labelRuns(t.points.filter((p) => p.in_window.length).map((p) => p.report_id), reports.byId).join(", ")} fall inside the expected-effect
+                {(() => { const l = labelRuns(t.points.filter((p) => p.in_window.length).map((p) => p.report_id), reports.byId); return `${l.join(", ")} ${l.length === 1 && !l[0].includes("–") ? "falls" : "fall"}`; })()} inside the expected-effect
                 {" "}{props.drugStarts.length > 1 ? "windows" : "window"} of {props.drugStarts.map((d) => d.label.toLowerCase()).join(" and ")}.
                 {" "}The slope starts after the last window closed, so an expected change after a drug start isn't counted in it.
               </p>
@@ -135,6 +135,8 @@ function BaselinePanel({ t, f, reports }: { t: Trend; f: Flag | undefined; repor
       <dl className="m-0 grid grid-cols-[110px_1fr] gap-y-1.5 text-[13px]">
         <dt className="text-ink-3">Baseline</dt><dd className="num m-0">{fmtNum(t.baseline)} · {baseReports.length > 1 ? `median of ${labelRuns(baseReports, reports).join(", ")}` : labelRuns(baseReports, reports).join("")}</dd>
         {last && <><dt className="text-ink-3">Latest</dt><dd className="num m-0">{fmtNum(last.value)} · {reports.get(last.report_id)?.label} · {fmtDate(last.date)}</dd></>}
+        {t.target && <><dt className="text-ink-3">Target</dt><dd className="m-0">{t.target.label} · {t.target.source.split(/[,:(]/)[0]}{t.target.status !== "verified" ? " (not yet verified)" : ""}
+          {t.baseline !== null && last && <> · <DirectionTag direction={targetDir(t, t.baseline, last.value)} rise={last.value > t.baseline} target={t.target} compact /></>}</dd></>}
         {t.rcv_percent !== null && <><dt className="text-ink-3">Threshold</dt><dd className="m-0">{fmtPct(t.rcv_percent)}% · {t.rcv_status === "verified" ? <span className="font-semibold text-[#2F5A3C]">verified</span> : "not yet verified"}</dd></>}
         {drugs.length > 0 && <><dt className="text-ink-3">Since baseline</dt><dd className="m-0">{drugs.map((d) => `${d.drug} (${fmtMonth(d.date)})`).join(", ")}</dd></>}
         <dt className="text-ink-3">Flag</dt><dd className="m-0">{f ? f.message : "Within the change threshold"}</dd>
@@ -187,4 +189,13 @@ function ResultsTable({ t, reports, creat, onOpen, inTrend }: { t: Trend; report
       </div>
     </section>
   );
+}
+
+function targetDir(t: Trend, a: number, b: number): "toward" | "away" | "within" | "unchanged" | null {
+  if (!t.target) return null;
+  const d = (v: number) => (t.target!.low !== null && v < t.target!.low ? t.target!.low - v : t.target!.high !== null && v > t.target!.high ? v - t.target!.high : 0);
+  const d0 = d(a), d1 = d(b);
+  if (d0 === 0 && d1 === 0) return "within";
+  if (Math.abs(d1 - d0) < 1e-9) return "unchanged";
+  return d1 < d0 ? "toward" : "away";
 }

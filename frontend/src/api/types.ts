@@ -60,6 +60,24 @@ export interface Slope {
   status: string;
 }
 
+export interface Target {
+  low: number | null;
+  high: number | null;
+  label: string;
+  source: string;
+  status: "verified" | "unverified";
+}
+
+export type TargetDirection = "toward" | "away" | "within" | "unchanged";
+
+export interface LabChange {
+  from_lab: string;
+  to_lab: string;
+  same_lab_agrees: boolean | null;
+  same_lab_report_ids: number[];
+  note: string;
+}
+
 export interface Trend {
   analyte_id: string;
   name: string;
@@ -73,6 +91,7 @@ export interface Trend {
   baseline_observation_ids: number[];
   points: TrendPoint[];
   slope: Slope | null;
+  target: Target | null;
 }
 
 export interface TrendsResponse {
@@ -126,6 +145,9 @@ export interface Flag {
   source: string;
   cross_lab: boolean;
   cross_lab_note: string | null;
+  target: Target | null;
+  target_direction: TargetDirection | null;
+  lab_change: LabChange | null;
 }
 
 export interface FlagsResponse {
@@ -155,6 +177,8 @@ export interface BodySystem {
     baseline: number | null;
     change_vs_baseline_percent: number | null;
     slope: Slope | null;
+    target: Target | null;
+    target_direction: TargetDirection | null;
   } | null;
   analytes_with_data: { analyte_id: string; name: string }[];
   flag_counts: { guideline: number; change: number; expected: number };
