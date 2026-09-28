@@ -314,6 +314,51 @@ class Trends(BaseModel):
     analytes: list[AnalyteTrend]
 
 
+class SystemLatest(BaseModel):
+    date: dt.date
+    value: float
+    value_text: str
+    comparator: str | None
+    censored: bool
+    report_id: int                    # the source report of the value shown
+
+
+class SystemHeadline(BaseModel):
+    analyte_id: str
+    name: str
+    unit: str
+    latest: SystemLatest | None       # None when the headline analyte has no result yet
+    baseline: float | None
+    change_vs_baseline_percent: float | None     # latest vs baseline, as RCV_BASELINE compares them
+    slope: Slope | None
+
+
+class AnalyteName(BaseModel):
+    analyte_id: str
+    name: str
+
+
+class FlagCounts(BaseModel):
+    guideline: int
+    change: int                       # change flags without an expected drug effect
+    expected: int                     # change flags explained by an expected drug effect
+
+
+class BodySystemOut(BaseModel):
+    id: str
+    name: str
+    order: int
+    status: Literal["guideline", "changed", "stable", "no_data"]
+    headline: SystemHeadline
+    analytes_with_data: list[AnalyteName]
+    flag_counts: FlagCounts
+
+
+class Systems(BaseModel):
+    patient_id: int
+    systems: list[BodySystemOut]      # every system in data/analytes.yaml, in order
+
+
 class Expected(BaseModel):
     direction: str
     note: str

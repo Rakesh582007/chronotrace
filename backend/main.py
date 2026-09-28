@@ -36,9 +36,10 @@ from .extraction import ScannedReportError, extract_report
 from .extraction.tagger import Tagger, get_tagger
 from .normalise.names import name_index
 from .trends import catalogue, engine
+from .trends import systems as body
 from .trends.dictionary import analyte_infos, infos_by_id
 from .schemas import (ConfirmIn, Counts, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
-                      PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, Trends,
+                      PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, Systems, Trends,
                       SkippedOut, Timeline, TimelinePoint, TimelineSeries)
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -164,12 +165,10 @@ def _list_item(session: Session, p: Patient) -> PatientListItem:
     points = _confirmed_points(session, p.id)
     _, flags = engine.analyse_patient(list(analyte_infos()), points, _events(session, p.id))
     reports = session.exec(select(Report).where(Report.patient_id == p.id, Report.status == "confirmed")).all()
-    change = [f for f in flags if f["level"] == "change"]
+    counts = body.flag_counts(flags)
     return PatientListItem(
         **_patient_out(p).model_dump(),
-        guideline_flags=sum(f["level"] == "guideline" for f in flags),
-        change_flags=sum(f["expected_effect"] is None for f in change),
-        expected_flags=sum(f["expected_effect"] is not None for f in change),
+        guideline_flags=counts["guideline"], change_flags=counts["change"], expected_flags=counts["expected"],
         latest_report_date=max((r.collected_at for r in reports if r.collected_at), default=None),
         report_count=len(reports), lab_count=len({r.lab for r in reports if r.lab}))
 
@@ -451,6 +450,16 @@ def flags(patient_id: int, session: Session = Depends(get_session),
     _, out = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
                                     _events(session, patient.id))
     return Flags(patient_id=patient.id, flags=out)
+
+
+@app.get("/patients/{patient_id}/systems", response_model=Systems)
+def systems(patient_id: int, session: Session = Depends(get_session),
+            doctor: Doctor = Depends(current_doctor)) -> Systems:
+    """Every body system with its status, headline value and flag counts (backend/trends/systems.py)."""
+    patient = _patient_or_404(session, patient_id, doctor)
+    series, out = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
+                                         _events(session, patient.id))
+    return Systems(patient_id=patient.id, systems=body.summarise(body.body_systems(), infos_by_id(), series, out))
 
 
 @app.get("/medications/{medication_id}/response", response_model=MedicationResponse, response_model_by_alias=True)
