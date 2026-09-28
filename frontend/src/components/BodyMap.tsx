@@ -6,7 +6,7 @@ import { useElementWidth } from "../lib/useWidth";
 
 /**
  * Body map for the Trends page: one continuous outline with the organs behind each body system, coloured by the
- * system's status (amber guideline alert, blue changed, grey stable, dashed no data). Hovering an organ highlights
+ * system's status (amber guideline alert, blue changed, grey stable). Only systems with results are drawn. Hovering an organ highlights
  * its system card and the other way round; clicking opens the system. Colours match the status pills.
  */
 
@@ -17,12 +17,6 @@ const OUTLINE =
   "176 256 C176 284 172 304 164 322 C150 330 134 334 120 334 C106 334 90 330 76 322 C68 304 64 284 64 256 C64 236 " +
   "68 218 68 192 C68 180 66 170 63 158 L58 249 C58 257 56 263 50 263 C43 263 40 254 41 242 L46 132 C47 117 52 104 " +
   "63 97 C75 90 91 88 107 83 L107 71 C100 64 94 55 94 43 C94 27 106 16 120 16 Z";
-
-// Faint landmarks: clavicles, sternum, lower ribs, pelvis.
-const LANDMARKS = [
-  "M112 94 C100 97 86 98 74 101", "M128 94 C140 97 154 98 166 101", "M120 100 L120 156",
-  "M84 150 C100 160 140 160 156 150", "M88 162 C104 170 136 170 152 162", "M84 300 C100 290 140 290 156 300",
-];
 
 interface Organ {
   system: string;
@@ -86,8 +80,9 @@ export function BodyMap({ systems, base, hot, onHot, pulse }: {
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id="bodymap-h" className="m-0 font-serif text-[22px] font-medium">Body map</h2>
         <span className="text-[13px] text-ink-3">
-          {counts.guideline > 0 && <span className="font-semibold text-amber-ink">{counts.guideline} guideline alert · </span>}
-          {counts.changed} changed · {counts.stable} stable
+          {counts.guideline > 0 && <span className="font-semibold text-amber-ink">{counts.guideline} guideline alert</span>}
+          {counts.guideline > 0 && counts.changed + counts.stable > 0 && " · "}
+          {[counts.changed && `${counts.changed} changed`, counts.stable && `${counts.stable} stable`].filter(Boolean).join(" · ")}
         </span>
         <div className="grow" />
         <span className="hidden text-xs text-ink-3 sm:inline">Select an organ to open its system</span>
@@ -107,59 +102,56 @@ export function BodyMap({ systems, base, hot, onHot, pulse }: {
           <g transform={`translate(${OFFSET} 0)`}>
             <ellipse cx="120" cy="336" rx="70" ry="7" fill="url(#bm-floor)" />
             <path d={OUTLINE} fill="url(#bm-skin)" stroke="#B9AE98" strokeWidth="1.4" strokeLinejoin="round" />
-            {LANDMARKS.map((d) => <path key={d} d={d} fill="none" stroke="#D9CFBB" strokeWidth="1" strokeLinecap="round" />)}
           </g>
 
           {ORGANS.map((o) => {
             const s = byId.get(o.system);
-            if (!s) return null;
+            if (!s || s.status === "no_data") return null;       // only organs with results are drawn
             const st = STYLE[s.status];
             const isHot = hot === o.system;
-            const clickable = s.status !== "no_data";
             const h = s.headline;
             const value = h?.latest ? `${shortName(h.name)} ${h.latest.comparator ?? ""}${fmtNum(h.latest.value)}` : "No results";
-            const label = `${s.name}: ${st.word}${h?.latest ? `, ${value} ${fmtUnit(h.unit)}` : ""}${clickable ? ". Open system" : ""}`;
+            const label = `${s.name}: ${st.word}${h?.latest ? `, ${value} ${fmtUnit(h.unit)}` : ""}. Open system`;
             const [ax, ay] = o.anchor;
             const lx = o.side === "left" ? LEFT_X : RIGHT_X;
-            const dash = s.status === "no_data" ? "3 3" : undefined;
             return (
-              <g key={o.system} role={clickable ? "link" : "img"} tabIndex={clickable ? 0 : -1} aria-label={label}
+              <g key={o.system} role="link" tabIndex={0} aria-label={label}
                 data-testid={`organ-${o.system}`} data-status={s.status}
                 onMouseEnter={() => onHot(o.system)} onMouseLeave={() => onHot(null)}
                 onFocus={() => onHot(o.system)} onBlur={() => onHot(null)}
                 onClick={() => open(o.system)} onKeyDown={(e) => key(e, o.system)}
-                className={`${clickable ? "cursor-pointer" : ""} outline-none`}>
+                className="cursor-pointer outline-none">
                 {!compact && (
                   <g aria-hidden="true">
                     <path d={`M${ax + OFFSET} ${ay} L${o.side === "left" ? lx + 6 : lx - 6} ${o.labelY + 4}`}
                       stroke={isHot ? st.stroke : "#CFC5B2"} strokeWidth={isHot ? 1.3 : 1} fill="none" className="organ" />
                     <circle cx={ax + OFFSET} cy={ay} r={2} fill={isHot ? st.stroke : "#B9AE98"} className="organ" />
                     <text x={lx} y={o.labelY} textAnchor={o.side === "left" ? "end" : "start"} fontSize="13" fontWeight="600"
-                      fill={isHot ? st.text : "#1D2733"} className="organ" style={{ textDecoration: isHot && clickable ? "underline" : undefined }}>
+                      fill={isHot ? st.text : "#1D2733"} className="organ" style={{ textDecoration: isHot ? "underline" : undefined }}>
                       {s.status === "guideline" ? "▲ " : ""}{s.name}
                     </text>
                     <text x={lx} y={o.labelY + 16} textAnchor={o.side === "left" ? "end" : "start"} fontSize="12" fill={st.text}
                       style={{ fontVariantNumeric: "tabular-nums" }}>
-                      {s.status === "no_data" ? "No results" : `${value} · ${st.word.toLowerCase()}`}
+                      {`${value} · ${st.word.toLowerCase()}`}
                     </text>
                   </g>
                 )}
                 <g transform={`translate(${OFFSET} 0)`}>
                   {o.paths.map((d) => (
                     <path key={d} d={d} className="organ" fill={isHot ? st.hotFill : st.fill} stroke={st.stroke}
-                      strokeWidth={isHot ? 2.2 : s.status === "no_data" ? 1.2 : 1.6} strokeDasharray={dash} strokeLinejoin="round" />
+                      strokeWidth={isHot ? 2.2 : 1.6} strokeLinejoin="round" />
                   ))}
                   {o.circle && (
                     <>
                       <circle cx={o.circle.cx} cy={o.circle.cy} r={o.circle.r} className="organ" fill={isHot ? st.hotFill : st.fill}
-                        stroke={st.stroke} strokeWidth={isHot ? 2.2 : s.status === "no_data" ? 1.2 : 1.6} strokeDasharray={dash} />
+                        stroke={st.stroke} strokeWidth={isHot ? 2.2 : 1.6} />
                       <text x={o.circle.cx} y={o.circle.cy + 3} textAnchor="middle" fontSize="7.5" fontWeight="600" fill={st.text} aria-hidden="true">{o.circle.text}</text>
                     </>
                   )}
                   {pulse === o.system && o.paths.map((d) => (
                     <path key={"p" + d} d={d} fill="none" stroke={st.stroke} strokeWidth="2" className="organ-pulse" aria-hidden="true" />
                   ))}
-                  {isHot && clickable && o.paths.map((d) => (
+                  {isHot && o.paths.map((d) => (
                     <path key={"f" + d} d={d} fill="none" stroke={st.stroke} strokeOpacity="0.25" strokeWidth="6" aria-hidden="true" />
                   ))}
                 </g>
@@ -170,11 +162,11 @@ export function BodyMap({ systems, base, hot, onHot, pulse }: {
       </div>
       {compact && (
         <ul className="m-0 grid list-none grid-cols-2 gap-x-4 gap-y-1.5 p-0 text-[13px]">
-          {ORGANS.map((o) => byId.get(o.system)).filter(Boolean).map((s) => (
+          {ORGANS.map((o) => byId.get(o.system)).filter((s) => s && s.status !== "no_data").map((s) => (
             <li key={s!.id} className="flex items-center gap-2">
               <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-full border"
-                style={{ background: STYLE[s!.status].fill, borderColor: STYLE[s!.status].stroke, borderStyle: s!.status === "no_data" ? "dashed" : "solid" }} />
-              <span className={s!.status === "no_data" ? "text-ink-3" : "text-ink-2"}>{s!.name}</span>
+                style={{ background: STYLE[s!.status].fill, borderColor: STYLE[s!.status].stroke }} />
+              <span className="text-ink-2">{s!.name}</span>
             </li>
           ))}
         </ul>
