@@ -90,16 +90,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 export const useToast = () => useContext(ToastCtx);
 
+/* ---------- page title ---------- */
+
+export function useTitle(...parts: (string | undefined | null | false)[]) {
+  const title = [...parts.filter(Boolean), "ChronoTrace"].join(" · ");
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
+}
+
 /* ---------- header ---------- */
 
-export function AppHeader({ crumb }: { crumb?: ReactNode }) {
+export function AppHeader({ crumb, actions }: { crumb?: ReactNode; actions?: ReactNode }) {
   const { doctor, signOut } = useAuth();
   const name = doctor?.name ?? "Doctor";
   return (
-    <header className="no-print flex h-16 shrink-0 items-center gap-6 border-b border-line bg-card px-6 lg:px-10">
+    <header className="no-print sticky top-0 z-40 flex h-14 shrink-0 items-center gap-4 border-b border-line bg-card/85 px-4 backdrop-blur-md backdrop-saturate-150 sm:gap-6 sm:px-6 lg:px-10">
       <Link to="/patients" className="plain flex items-center gap-2.5">
         <Logo />
-        <span className="font-serif text-[22px] font-semibold tracking-[-0.01em]">ChronoTrace</span>
+        <span className="hidden font-serif text-[22px] font-semibold tracking-[-0.01em] min-[420px]:inline">ChronoTrace</span>
       </Link>
       {crumb && (
         <nav aria-label="Breadcrumb" className="hidden items-center gap-2 text-sm text-ink-3 md:flex">
@@ -109,12 +118,13 @@ export function AppHeader({ crumb }: { crumb?: ReactNode }) {
         </nav>
       )}
       <div className="grow" />
-      <span className="hidden rounded-full border border-line px-2.5 py-1 text-xs text-ink-3 sm:inline">Demo login · synthetic data</span>
+      {actions}
+      <span className="hidden rounded-full border border-line px-2.5 py-1 text-xs text-ink-3 xl:inline">Demo login · synthetic data</span>
       <div className="flex items-center gap-2.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-tint text-[13px] font-semibold text-blue-ink">
           {initials(name.replace(/^Dr\.?\s*/i, ""))}
         </span>
-        <span className="hidden text-sm font-medium sm:inline">{name}</span>
+        <span className="hidden text-sm font-medium lg:inline">{name}</span>
       </div>
       <button type="button" onClick={() => signOut()} className="text-sm text-blue hover:text-blue-ink hover:underline">Sign out</button>
     </header>

@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { useAuth } from "../components/shell";
+import { useAuth, useTitle } from "../components/shell";
 import { Icon, Logo, Spinner } from "../components/ui";
 
 export default function Login() {
+  useTitle("Sign in");
   const { signIn, signedIn, notice } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();

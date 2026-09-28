@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Flag, TrendsResponse } from "../api/types";
 
@@ -73,4 +73,13 @@ export function labelRuns(ids: number[], byId: Map<number, ReportRef>): string[]
 
 export function isReview(f: Flag) {
   return !f.expected_effect;
+}
+
+/** Warm the cache for a patient's pages (on hover or focus of their card), so opening it shows data at once. */
+export function prefetchPatient(qc: QueryClient, id: number) {
+  const opts = { staleTime: 30_000 };
+  qc.prefetchQuery({ queryKey: keys.trends(id), queryFn: () => api.trends(id), ...opts });
+  qc.prefetchQuery({ queryKey: keys.flags(id), queryFn: () => api.flags(id), ...opts });
+  qc.prefetchQuery({ queryKey: keys.systems(id), queryFn: () => api.systems(id), ...opts });
+  qc.prefetchQuery({ queryKey: keys.medications(id), queryFn: () => api.medications(id), ...opts });
 }

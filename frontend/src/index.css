@@ -49,9 +49,17 @@
 
   --shadow-panel: 0 30px 60px -40px rgba(29, 39, 51, 0.45);
   --shadow-lift: 0 18px 36px -24px rgba(31, 82, 130, 0.45);
+  --shadow-soft: 0 1px 2px rgba(29, 39, 51, 0.04), 0 8px 24px -16px rgba(29, 39, 51, 0.18);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;            /* no sideways jump when a page gets a scrollbar */
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+  }
   html,
   body {
     background: var(--color-paper);
@@ -62,6 +70,16 @@
   a {
     color: var(--color-blue);
     text-decoration: none;
+    transition: color 150ms ease;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+  }
+  ::selection {
+    background: var(--color-blue-tint);
   }
   a:hover {
     color: var(--color-blue-ink);
@@ -91,8 +109,9 @@
   }
 }
 @utility lift {
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-  &:hover {
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out), border-color 200ms ease;
+  &:hover,
+  &[data-hot="true"] {
     transform: translateY(-2px);
     border-color: var(--color-blue-line-2);
     box-shadow: var(--shadow-lift);
@@ -127,6 +146,68 @@
 .arrive {
   animation: arrive 400ms ease-out both;
 }
+
+/* One motion language: short, eased, never bouncy. */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.page-in {
+  animation: page-in 220ms var(--ease-out) both;
+}
+@keyframes draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: draw 700ms var(--ease-out) both;
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in {
+  animation: fade 400ms ease 250ms both;
+}
+@keyframes organ-pulse {
+  0% { opacity: 0.55; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.1); }
+}
+.organ-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: organ-pulse 900ms var(--ease-out) 2 both;
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+.slide-in {
+  animation: slide-in 240ms var(--ease-out) both;
+}
+.organ {
+  transition: fill 180ms ease, stroke 180ms ease, stroke-width 180ms ease, opacity 180ms ease;
+}
+.tab-link {
+  position: relative;
+}
+.tab-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-blue);
+  transform: scaleX(0);
+  transition: transform 220ms var(--ease-out);
+}
+.tab-link[data-active="true"]::after {
+  transform: scaleX(1);
+}
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -134,7 +215,11 @@
   animation: spin 0.8s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .arrive, .skeleton, .lift { animation: none !important; transition: none !important; }
+  html { scroll-behavior: auto; }
+  .arrive, .skeleton, .lift, .page-in, .slide-in, .draw, .fade-in, .organ-pulse, .organ, .tab-link::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 @media print {
