@@ -4723,7 +4723,7 @@ it with its date. `503` has the same shape when the LLM is not configured.
 <!-- example: summary-failed response 502 -->
 ```json
 {
-  "detail": "the summary could not be written after 2 attempts: key_finding: the number 9.4 is not in the facts (\"eGFR fell by 9.4 per year; consider a review.\"); key_finding: uses the word(s) 'consider' (\"eGFR fell by 9.4 per year; consider a review.\")",
+  "detail": "the summary could not be written: key_finding: the number 9.4 is not in the facts (\"eGFR fell by 9.4 per year; consider a review.\"); key_finding: uses the word(s) 'consider' (\"eGFR fell by 9.4 per year; consider a review.\")",
   "last_saved": {
     "id": 1,
     "patient_id": 3,

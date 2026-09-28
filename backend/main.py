@@ -671,7 +671,7 @@ def create_summary(patient_id: int, request: SummaryIn, session: Session = Depen
     try:
         written = summaries.write_summary(llm, facts)
     except summaries.SummaryFailed as e:
-        return _summary_failure(502, f"the summary could not be written after 2 attempts: {e}", last)
+        return _summary_failure(502, f"the summary could not be written: {e}", last)
     s = Summary(patient_id=patient.id, period=period.kind, from_date=period.start, to_date=period.end,
                 model=llm.model, facts_sha256=facts.sha256, content=summaries.to_content(written, facts))
     session.add(s)
