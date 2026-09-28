@@ -340,7 +340,7 @@ export interface Summary {
 }
 
 export interface KdigoRef { date: string; value: number; report_id: number }
-export interface KdigoPosition { date: string; g: string; a: string | null; risk: string | null; egfr: KdigoRef; uacr: KdigoRef | null }
+export interface KdigoPosition { date: string; g: string; a: string | null; egfr: KdigoRef; uacr: KdigoRef | null }
 export interface SuggestedCode { system: string; code: string; title: string; why: string }
 export interface Criterion {
   id: string; title: string; status: "met" | "not met" | "not enough data"; evidence: string; report_ids: number[];

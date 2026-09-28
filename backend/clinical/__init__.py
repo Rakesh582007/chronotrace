@@ -1,4 +1,4 @@
-"""Clinical support computed from the trend engine's output (step 9c): KDIGO risk grid, guideline criteria,
+"""Clinical support computed from the trend engine's output (step 9c): KDIGO category grid, guideline criteria,
 condition codes (ICD-10, SNOMED CT, LOINC) and guideline nutrition figures.
 
 Everything here is a rule with a cited source applied to confirmed results. Nothing is a diagnosis: a
@@ -18,15 +18,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CONDITIONS = ROOT / "data" / "conditions.yaml"
 
-KDIGO_SOURCE = ("KDIGO 2024 CKD guideline: GFR categories G1–G5, albuminuria categories A1–A3 and the heat map "
-                "of prognosis by both")
+KDIGO_SOURCE = "KDIGO 2024 CKD guideline: GFR categories G1–G5 and albuminuria categories A1–A3"
 G_CATS = [(90, "G1"), (60, "G2"), (45, "G3a"), (30, "G3b"), (15, "G4"), (float("-inf"), "G5")]
-RISK = {
-    "G1": ("low", "moderate", "high"), "G2": ("low", "moderate", "high"),
-    "G3a": ("moderate", "high", "very high"), "G3b": ("high", "very high", "very high"),
-    "G4": ("very high", "very high", "very high"), "G5": ("very high", "very high", "very high"),
-}
-A_INDEX = {"A1": 0, "A2": 1, "A3": 2}
 MARKER_DAYS = 90                    # KDIGO: markers present for more than 3 months
 UACR_PAIR_DAYS = 365                # an eGFR is paired with the latest UACR up to a year before it
 
@@ -60,10 +53,6 @@ def a_category(uacr: float) -> str:
     return "A3" if uacr > 300 else "A2" if uacr >= 30 else "A1"
 
 
-def risk(g: str, a: str) -> str:
-    return RISK[g][A_INDEX[a]]
-
-
 def _values(trends: list[dict], analyte: str) -> list[dict]:
     t = next((t for t in trends if t["analyte_id"] == analyte), None)
     return [p for p in (t["points"] if t else []) if not p["censored"]]
@@ -87,7 +76,7 @@ def kdigo(trends: list[dict]) -> dict:
         u = pair[-1] if pair else None
         g = g_category(e["value"])
         a = a_category(u["value"]) if u else None
-        history.append({"date": e["date"], "g": g, "a": a, "risk": risk(g, a) if a else None,
+        history.append({"date": e["date"], "g": g, "a": a,
                         "egfr": _ref(e), "uacr": _ref(u) if u else None})
     return {"current": history[-1] if history else None, "history": history, "source": KDIGO_SOURCE}
 

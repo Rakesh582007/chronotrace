@@ -82,7 +82,7 @@ def with_clinical(facts: Facts, clinical: dict, projection: dict | None) -> Fact
     labels = lambda ids: [label[i] for i in ids if i in label]
     cur = clinical["kdigo"]["current"]
     extra = {
-        "kdigo_category": ({"g": cur["g"], "a": cur["a"], "risk": cur["risk"], "egfr": cur["egfr"]["value"],
+        "kdigo_category": ({"g": cur["g"], "a": cur["a"], "egfr": cur["egfr"]["value"],
                             "uacr": cur["uacr"]["value"] if cur["uacr"] else None,
                             "reports": labels([cur["egfr"]["report_id"]] + ([cur["uacr"]["report_id"]] if cur["uacr"] else []))}
                            if cur else None),

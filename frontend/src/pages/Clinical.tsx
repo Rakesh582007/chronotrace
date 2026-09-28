@@ -12,15 +12,6 @@ const G = ["G1", "G2", "G3a", "G3b", "G4", "G5"];
 const G_RANGE: Record<string, string> = { G1: "≥ 90", G2: "60–89", G3a: "45–59", G3b: "30–44", G4: "15–29", G5: "< 15" };
 const A = ["A1", "A2", "A3"];
 const A_RANGE: Record<string, string> = { A1: "< 30", A2: "30–300", A3: "> 300" };
-const RISK: Record<string, string[]> = {
-  G1: ["low", "moderate", "high"], G2: ["low", "moderate", "high"], G3a: ["moderate", "high", "very high"],
-  G3b: ["high", "very high", "very high"], G4: ["very high", "very high", "very high"], G5: ["very high", "very high", "very high"],
-};
-// Amber scale (design: one alarm colour; words carry the meaning).
-const TONE: Record<string, string> = {
-  low: "bg-card text-ink-2", moderate: "bg-amber-soft text-amber-ink", high: "bg-amber-fill text-amber-ink",
-  "very high": "bg-[#F3CF9C] text-[#5E2E02]",
-};
 
 export default function ClinicalPage() {
   const { patient, reports } = usePatientCtx();
@@ -55,20 +46,19 @@ function KdigoGrid({ c, reports }: { c: Clinical; reports: Map<number, ReportRef
   if (!cur)
     return (
       <section className="flex flex-col gap-2 rounded-[18px] border border-dashed border-dash px-6 py-5" data-testid="kdigo-grid">
-        <h2 className="m-0 font-serif text-[22px] font-medium text-ink-2">KDIGO risk grid</h2>
+        <h2 className="m-0 font-serif text-[22px] font-medium text-ink-2">KDIGO category grid</h2>
         <p className="m-0 text-sm text-ink-3">No eGFR in these reports. The grid appears once a confirmed report has creatinine (eGFR is computed from it).</p>
       </section>
     );
   return (
     <section aria-labelledby="kdigo-h" className="flex flex-col gap-4 rounded-[18px] border border-line bg-card px-6 py-5" data-testid="kdigo-grid">
       <div className="flex flex-wrap items-baseline gap-3">
-        <h2 id="kdigo-h" className="m-0 font-serif text-[26px] font-medium">KDIGO risk grid</h2>
-        <span className="text-[13px] text-ink-3">GFR category × albuminuria category · prognosis heat map</span>
+        <h2 id="kdigo-h" className="m-0 font-serif text-[26px] font-medium">KDIGO category grid</h2>
+        <span className="text-[13px] text-ink-3">GFR category × albuminuria category</span>
       </div>
       {cur ? (
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
           <span className="num font-serif text-[40px] font-medium leading-none">{cur.g}{cur.a ? ` ${cur.a}` : ""}</span>
-          {cur.risk && <span className={`rounded-full border border-amber-line px-3 py-1 text-sm font-semibold ${TONE[cur.risk]}`}>{capitalise(cur.risk)} risk</span>}
           <span className="text-sm text-ink-2">
             eGFR {fmtNum(cur.egfr.value)} ({reports.get(cur.egfr.report_id)?.label} · {fmtDate(cur.egfr.date)})
             {cur.uacr && <> · urine ACR {fmtNum(cur.uacr.value)} mg/g ({reports.get(cur.uacr.report_id)?.label} · {fmtDate(cur.uacr.date)})</>}
@@ -89,15 +79,14 @@ function KdigoGrid({ c, reports }: { c: Clinical; reports: Map<number, ReportRef
             {G.map((g) => (
               <tr key={g}>
                 <th scope="row" className="text-left text-xs font-semibold text-ink-2">{g} <span className="font-normal text-ink-3">{G_RANGE[g]}</span></th>
-                {A.map((a, i) => {
-                  const r = RISK[g][i];
+                {A.map((a) => {
                   const here = cell(g, a);
                   const isCur = cur && cur.g === g && cur.a === a;
                   return (
-                    <td key={a} className={`h-12 rounded-lg px-2 align-middle ${TONE[r]} ${isCur ? "outline outline-2 outline-offset-[-2px] outline-ink" : "border border-line"}`}
-                      title={`${g} ${a}: ${r} risk${here.length ? ` · ${here.map((h) => reports.get(h.egfr.report_id)?.label).join(", ")}` : ""}`}>
+                    <td key={a} className={`h-12 rounded-lg px-2 align-middle ${isCur ? "bg-blue-tint-2 outline outline-2 outline-offset-[-2px] outline-blue" : here.length ? "bg-paper" : "border border-line bg-card"}`}
+                      title={`${g} ${a}${here.length ? ` · ${here.map((h) => reports.get(h.egfr.report_id)?.label).join(", ")}` : ""}`}>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] opacity-80">{r}</span>
+                        {isCur && <span className="text-[11px] font-semibold text-blue-ink">latest</span>}
                         <div className="grow" />
                         {here.map((h) => (
                           <span key={h.date} className={`rounded font-mono text-[10px] ${isCur && h === cur ? "bg-ink px-1 text-card" : "text-ink-2"}`}>
@@ -114,7 +103,7 @@ function KdigoGrid({ c, reports }: { c: Clinical; reports: Map<number, ReportRef
         </table>
       </div>
       <Path history={paired} reports={reports} />
-      <p className="m-0 text-xs leading-normal text-ink-3">{c.kdigo.source}. Each eGFR is paired with the latest urine ACR up to a year before it. Colours follow the design's single alarm colour; the words give the KDIGO risk level.</p>
+      <p className="m-0 text-xs leading-normal text-ink-3">{c.kdigo.source}. Each eGFR is paired with the latest urine ACR up to a year before it.</p>
     </section>
   );
 }

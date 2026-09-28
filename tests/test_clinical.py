@@ -32,14 +32,10 @@ def test_a_category(acr, a):
     assert C.a_category(acr) == a
 
 
-def test_kdigo_heat_map():
-    assert C.risk("G2", "A1") == "low" and C.risk("G3a", "A2") == "high" and C.risk("G3b", "A2") == "very high"
-
-
 def test_selvam_grid_and_ckd_criterion():
     out = selvam()
     cur = out["kdigo"]["current"]
-    assert (cur["g"], cur["a"], cur["risk"]) == ("G3a", "A2", "high")
+    assert (cur["g"], cur["a"]) == ("G3a", "A2") and "risk" not in cur
     assert len(out["kdigo"]["history"]) == 10
     ckd = next(c for c in out["criteria"] if c["id"] == "ckd_kdigo")
     assert ckd["status"] == "met" and ckd["recorded"] is True

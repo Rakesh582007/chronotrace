@@ -557,7 +557,6 @@ class KdigoPosition(BaseModel):
     date: dt.date
     g: str                            # G1 .. G5
     a: str | None                     # A1 .. A3 (None without a urine ACR in the year before)
-    risk: str | None                  # low | moderate | high | very high (KDIGO heat map)
     egfr: KdigoRef
     uacr: KdigoRef | None
 

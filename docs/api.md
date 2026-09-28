@@ -5169,7 +5169,7 @@ guideline nutrition figures.
 
 Computed on read from the confirmed results (`backend/clinical`). Nothing here is a diagnosis:
 
-- `kdigo`: the patient's KDIGO GFR (G1–G5) and albuminuria (A1–A3) category and heat-map risk for every eGFR
+- `kdigo`: the patient's KDIGO GFR (G1–G5) and albuminuria (A1–A3) category for every eGFR
   result (paired with the latest urine ACR up to a year before it), `current` = the latest.
 - `criteria`: which published definitions the results meet (`met`, `not met`, `not enough data`): CKD
   (KDIGO: eGFR < 60 or ACR ≥ 30 for more than 3 months), diabetes or the prediabetes range (ADA), thyroid
@@ -5189,7 +5189,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
       "date": "2026-03-02",
       "g": "G3a",
       "a": "A2",
-      "risk": "high",
       "egfr": {
         "date": "2026-03-02",
         "value": 54.06,
@@ -5206,7 +5205,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2023-06-12",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2023-06-12",
           "value": 79.28,
@@ -5222,7 +5220,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2023-09-14",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2023-09-14",
           "value": 76.76,
@@ -5238,7 +5235,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2023-11-16",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2023-11-16",
           "value": 78.42,
@@ -5254,7 +5250,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2024-02-15",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2024-02-15",
           "value": 77.94,
@@ -5270,7 +5265,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2024-04-01",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2024-04-01",
           "value": 65.08,
@@ -5286,7 +5280,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2024-06-10",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2024-06-10",
           "value": 61.62,
@@ -5302,7 +5295,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2024-10-15",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2024-10-15",
           "value": 63.88,
@@ -5318,7 +5310,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2025-03-10",
         "g": "G2",
         "a": "A2",
-        "risk": "moderate",
         "egfr": {
           "date": "2025-03-10",
           "value": 61.24,
@@ -5334,7 +5325,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2025-09-01",
         "g": "G3a",
         "a": "A2",
-        "risk": "high",
         "egfr": {
           "date": "2025-09-01",
           "value": 58.12,
@@ -5350,7 +5340,6 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         "date": "2026-03-02",
         "g": "G3a",
         "a": "A2",
-        "risk": "high",
         "egfr": {
           "date": "2026-03-02",
           "value": 54.06,
@@ -5363,7 +5352,7 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
         }
       }
     ],
-    "source": "KDIGO 2024 CKD guideline: GFR categories G1–G5, albuminuria categories A1–A3 and the heat map of prognosis by both"
+    "source": "KDIGO 2024 CKD guideline: GFR categories G1–G5 and albuminuria categories A1–A3"
   },
   "criteria": [
     {
