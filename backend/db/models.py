@@ -16,8 +16,19 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
 
 
+class Doctor(SQLModel, table=True):
+    """A doctor who signs in (step 7: one demo doctor seeded from .env)."""
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    username: str = Field(unique=True, index=True)
+    password_hash: str                         # pbkdf2_sha256$iterations$salt$hash (backend/auth.py)
+
+
 class Patient(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    doctor_id: int = Field(foreign_key="doctor.id", index=True)
+    patient_code: str = Field(unique=True, index=True)     # CT-0001, CT-0002, ... (shown in the UI)
+    photo_path: str | None = None                          # file under the uploads folder
     name: str
     sex: str                                   # "male" | "female"
     birth_year: int
@@ -38,10 +49,27 @@ class Report(SQLModel, table=True):
     reported_at: dt.date | None = None
     layout: str = "header"                     # "header" | "no header"
     pages: int = 0
+    page_width: float | None = None            # first page in PDF points: the frame of Observation.bbox
+    page_height: float | None = None           # (None for reports read before step 7)
     status: str = "extracted"                  # "extracted" | "confirmed"
     skipped: list[dict] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     uploaded_at: dt.datetime = Field(default_factory=_now)
     confirmed_at: dt.datetime | None = None
+
+
+class Document(SQLModel, table=True):
+    """A file kept for a patient. Lab reports are parsed (their Report row is report_id); prescriptions and
+    doctor's notes are stored only, never parsed. The file itself is under the uploads folder."""
+    id: int | None = Field(default=None, primary_key=True)
+    patient_id: int = Field(foreign_key="patient.id", index=True)
+    kind: str                                  # "lab_report" | "prescription" | "doctor_note"
+    filename: str
+    sha256: str = Field(index=True)
+    size: int                                  # bytes
+    stored_path: str = ""                      # relative to the uploads folder (backend/storage.py)
+    uploaded_at: dt.datetime = Field(default_factory=_now)
+    report_id: int | None = Field(default=None, foreign_key="report.id", index=True)
+    document_date: dt.date | None = None       # date written on the document, when given
 
 
 class Observation(SQLModel, table=True):
@@ -64,9 +92,23 @@ class Observation(SQLModel, table=True):
     canonical_unit: str | None = None
     page: int
     line: int
+    bbox: list[float] | None = Field(default=None, sa_column=Column(JSON, nullable=True))  # [x0, top, x1, bottom]
     status: str                                # extracted | confirmed | needs_review | not_tracked | rejected
     status_reason: str = ""
     edited: bool = False                       # changed by the doctor at confirmation
+
+
+class Summary(SQLModel, table=True):
+    """An LLM summary that passed every check (backend/summaries/guard.py). Failed attempts are never saved."""
+    id: int | None = Field(default=None, primary_key=True)
+    patient_id: int = Field(foreign_key="patient.id", index=True)
+    period: str                                # "since_last_visit" | "range" | "all"
+    from_date: dt.date
+    to_date: dt.date
+    created_at: dt.datetime = Field(default_factory=_now)
+    model: str                                 # the LLM that wrote it
+    facts_sha256: str                          # hash of the facts it was written from
+    content: dict = Field(sa_column=Column(JSON, nullable=False))
 
 
 class MedicationEvent(SQLModel, table=True):

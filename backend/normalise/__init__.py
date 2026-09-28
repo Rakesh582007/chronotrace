@@ -56,6 +56,7 @@ class Observation:
     canonical_unit: str | None = None
     status: str = NOT_TRACKED
     status_reason: str = ""
+    bbox: list[float] | None = None      # the row on the page (extraction), for the report preview
 
 
 def analyte(analyte_id: str) -> dict:
@@ -152,7 +153,7 @@ def normalise(results, patient: Patient, date: dt.date | None) -> tuple[list[Obs
         o = normalise_value(Observation(
             test_text=r.test_text, value_text=r.value_text, unit_text=r.unit_text, range_text=r.range_text,
             flag_text=r.flag_text, row_text=r.row_text, page=r.page, line=r.line,
-            range_lines=list(r.range_lines), notes=list(r.notes)), index)
+            range_lines=list(r.range_lines), notes=list(r.notes), bbox=getattr(r, "bbox", None)), index)
         has_range = o.range_text.strip() or any(line.strip() for line in o.range_lines)
         if o.status == NOT_TRACKED and not o.unit_text.strip() and not has_range:
             skipped.append((r.page, r.line, r.row_text, NOT_A_RESULT))

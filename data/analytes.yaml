@@ -21,9 +21,21 @@
 
 version: 1
 
+# Body systems: how the patient page groups analytes. Every analyte names its `system`; `headline`
+# is the analyte shown on the system's card; `order` is the card order.
+systems:
+  - {id: kidney, name: Kidney, order: 1, headline: egfr}
+  - {id: glucose, name: Glucose control, order: 2, headline: hba1c}
+  - {id: electrolytes, name: Electrolytes, order: 3, headline: potassium}
+  - {id: lipids, name: Lipids, order: 4, headline: ldl}
+  - {id: liver, name: Liver, order: 5, headline: alt}
+  - {id: thyroid, name: Thyroid, order: 6, headline: tsh}
+  - {id: blood_count, name: Blood count, order: 7, headline: haemoglobin}
+
 analytes:
   # ---------------------------------------------------------------- Diabetes
   - id: hba1c
+    system: glucose
     canonical_name: HbA1c
     synonyms: [Glycated Haemoglobin, Glycated Hemoglobin, Glycosylated Haemoglobin, Glycosylated Hemoglobin, HbA1c, A1C, GHb]
     report_synonyms: ["HB A1C"]   # seen on a real report (data/SOURCES.md); matching only
@@ -48,6 +60,7 @@ analytes:
       note: "Diabetic cohorts show ~8% CVi, which includes true glycaemic change, so the healthy CVi is used as the noise estimate"
 
   - id: fasting_glucose
+    system: glucose
     canonical_name: Fasting Plasma Glucose
     synonyms: [Fasting Blood Sugar, FBS, Glucose Fasting, "Glucose, Fasting", Fasting Plasma Glucose, FPG, FBG, Blood Sugar Fasting]
     report_synonyms: ["GLUCOSE (FASTING)"]   # seen on a real report (data/SOURCES.md); matching only
@@ -65,6 +78,7 @@ analytes:
     rcv: {percent: 14.9, cv_i: 5.0, cv_a: 2.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: pp_glucose
+    system: glucose
     canonical_name: Postprandial Plasma Glucose (2 h)
     synonyms: [Post Prandial Blood Sugar, PPBS, PP Sugar, Glucose PP, "Glucose, Post Prandial", Blood Sugar PP, PPBG, 2 Hr Post Prandial Glucose]
     loinc: 1521-4
@@ -88,6 +102,7 @@ analytes:
 
   # ---------------------------------------------------------------- Kidney
   - id: creatinine
+    system: kidney
     canonical_name: Serum Creatinine
     synonyms: [Serum Creatinine, S. Creatinine, "Creatinine, Serum", Creatinine, S.Creatinine, Sr. Creatinine]
     report_synonyms: ["CREATININE - SERUM"]   # seen on a real report (data/SOURCES.md); matching only
@@ -106,6 +121,7 @@ analytes:
     rcv: {percent: 15.0, cv_i: 4.5, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: urea
+    system: kidney
     canonical_name: Blood Urea
     synonyms: [Blood Urea, S. Urea, "Urea, Serum", Serum Urea, Urea]
     report_synonyms: ["UREA - SERUM"]   # seen on a real report (data/SOURCES.md); matching only
@@ -130,6 +146,7 @@ analytes:
     rcv: {percent: 39.7, cv_i: 14.0, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: egfr
+    system: kidney
     canonical_name: eGFR (CKD-EPI 2021)
     synonyms: [eGFR, Estimated GFR, eGFR (CKD-EPI), Estimated Glomerular Filtration Rate, GFR Estimated]
     loinc: 98979-8
@@ -168,6 +185,7 @@ analytes:
       source: "KDIGO 2024 CKD guideline, Practice Point 2.1.3: \"For people with CKD, a change in eGFR of >20% on a subsequent test exceeds the expected variability and warrants evaluation.\""
 
   - id: uacr
+    system: kidney
     canonical_name: Urine Albumin/Creatinine Ratio
     synonyms: [Urine Microalbumin/Creatinine Ratio, Microalbumin Creatinine Ratio, UACR, ACR, Urine ACR, Albumin Creatinine Ratio, Urine Albumin Creatinine Ratio]
     loinc: 9318-7
@@ -193,6 +211,7 @@ analytes:
 
   # ---------------------------------------------------------------- Electrolytes
   - id: sodium
+    system: electrolytes
     canonical_name: Serum Sodium
     synonyms: [Serum Sodium, S. Sodium, Sodium, Na+, Na, "Sodium, Serum"]
     loinc: 2951-2
@@ -208,6 +227,7 @@ analytes:
     rcv: {percent: 2.9, cv_i: 0.5, cv_a: 0.9, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: potassium
+    system: electrolytes
     canonical_name: Serum Potassium
     synonyms: [Serum Potassium, S. Potassium, Potassium, K+, "Potassium, Serum"]
     loinc: 2823-3
@@ -224,6 +244,7 @@ analytes:
 
   # ---------------------------------------------------------------- Thyroid
   - id: tsh
+    system: thyroid
     canonical_name: TSH
     synonyms: [Thyroid Stimulating Hormone, TSH, TSH (Ultrasensitive), S. TSH, TSH 3rd Generation, Thyrotropin, US-TSH]
     loinc: 3016-3
@@ -240,6 +261,7 @@ analytes:
     rcv: {percent: 51.0, cv_i: 17.7, cv_a: 5.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: free_t4
+    system: thyroid
     canonical_name: Free T4
     synonyms: [Free T4, FT4, Free Thyroxine, "Thyroxine, Free", F.T4, S. Free T4]
     loinc: 3024-7
@@ -256,6 +278,7 @@ analytes:
 
   # ---------------------------------------------------------------- Lipids
   - id: total_cholesterol
+    system: lipids
     canonical_name: Total Cholesterol
     synonyms: [Total Cholesterol, "Cholesterol, Total", S. Cholesterol, Serum Cholesterol, Cholesterol]
     report_synonyms: ["CHOLESTEROL - SERUM"]   # seen on a real report (data/SOURCES.md); matching only
@@ -273,6 +296,7 @@ analytes:
     rcv: {percent: 15.7, cv_i: 5.3, cv_a: 2.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: ldl
+    system: lipids
     canonical_name: LDL Cholesterol
     synonyms: [LDL Cholesterol, LDL-C, LDL, LDL Cholesterol - Direct, LDL Cholesterol (Calculated), Low Density Lipoprotein, "Cholesterol, LDL"]
     report_synonyms: ["LDL CHOLESTEROL (DIRECT)"]   # seen on a real report (data/SOURCES.md); matching only
@@ -292,6 +316,7 @@ analytes:
     rcv: {percent: 24.5, cv_i: 8.3, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: hdl
+    system: lipids
     canonical_name: HDL Cholesterol
     synonyms: [HDL Cholesterol, HDL-C, HDL, HDL Cholesterol - Direct, High Density Lipoprotein, "Cholesterol, HDL"]
     report_synonyms: ["HDL CHOLESTEROL (DIRECT)"]   # seen on a real report (data/SOURCES.md); matching only
@@ -310,6 +335,7 @@ analytes:
     rcv: {percent: 17.3, cv_i: 5.7, cv_a: 2.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: triglycerides
+    system: lipids
     canonical_name: Triglycerides
     synonyms: [Triglycerides, Triglyceride, TG, S. Triglycerides, Serum Triglycerides, TGL]
     loinc: 2571-8
@@ -333,6 +359,7 @@ analytes:
 
   # ---------------------------------------------------------------- Liver
   - id: alt
+    system: liver
     canonical_name: ALT (SGPT)
     synonyms: [SGPT, SGPT (ALT), ALT, ALT (SGPT), Alanine Aminotransferase, Alanine Transaminase, S.G.P.T]
     loinc: 1742-6
@@ -350,6 +377,7 @@ analytes:
     rcv: {percent: 28.1, cv_i: 9.3, cv_a: 4.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: ast
+    system: liver
     canonical_name: AST (SGOT)
     synonyms: [SGOT, SGOT (AST), AST, AST (SGOT), Aspartate Aminotransferase, Aspartate Transaminase, S.G.O.T]
     loinc: 1920-8
@@ -368,6 +396,7 @@ analytes:
 
   # ---------------------------------------------------------------- Haematology
   - id: haemoglobin
+    system: blood_count
     canonical_name: Haemoglobin
     synonyms: [Haemoglobin, Hemoglobin, Hb, HGB, Hb%, "Haemoglobin (Hb)"]
     loinc: 718-7
@@ -388,6 +417,7 @@ analytes:
     rcv: {percent: 8.6, cv_i: 2.7, cv_a: 1.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: platelets
+    system: blood_count
     canonical_name: Platelet Count
     synonyms: [Platelet Count, Platelets, PLT, Platelet, Total Platelet Count]
     loinc: 777-3
@@ -414,6 +444,7 @@ analytes:
     rcv: {percent: 21.9, cv_i: 7.3, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: wbc
+    system: blood_count
     canonical_name: Total Leucocyte Count (WBC)
     synonyms: [Total Leucocyte Count, Total Leukocyte Count, TLC, Total WBC Count, WBC Count, WBC, Total Count]
     loinc: 6690-2

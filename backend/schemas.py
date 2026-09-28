@@ -24,10 +24,22 @@ class PatientIn(BaseModel):
 
 class PatientOut(BaseModel):
     id: int
+    patient_code: str                 # "CT-0001": what the UI shows; routes take the id
     name: str
     sex: str
     birth_year: int
     conditions: list[str]
+    has_photo: bool
+
+
+class PatientListItem(PatientOut):
+    """A patient card: the flag counts come from the same engine as GET /patients/{id}/flags."""
+    guideline_flags: int
+    change_flags: int                 # change flags without an expected drug effect
+    expected_flags: int               # change flags explained by an expected drug effect
+    latest_report_date: dt.date | None
+    report_count: int                 # confirmed reports
+    lab_count: int                    # distinct labs among them
 
 
 class ReportOut(BaseModel):
@@ -41,9 +53,24 @@ class ReportOut(BaseModel):
     reported_at: dt.date | None
     layout: str
     pages: int
+    page_width: float | None          # first page in PDF points; the frame of each observation's bbox
+    page_height: float | None
     status: str
     uploaded_at: dt.datetime
     confirmed_at: dt.datetime | None
+
+
+class DocumentOut(BaseModel):
+    id: int
+    patient_id: int
+    kind: Literal["lab_report", "prescription", "doctor_note"]
+    filename: str
+    sha256: str
+    size: int                         # bytes
+    uploaded_at: dt.datetime
+    document_date: dt.date | None
+    report_id: int | None             # lab reports: the parsed report
+    report_status: str | None         # lab reports: "extracted" | "confirmed"
 
 
 class ObservationOut(BaseModel):
@@ -66,6 +93,7 @@ class ObservationOut(BaseModel):
     canonical_unit: str | None
     page: int
     line: int
+    bbox: list[float] | None          # [x0, top, x1, bottom] in PDF points from the top left; None if not read
     status: str
     status_reason: str
     edited: bool
@@ -300,6 +328,113 @@ class AnalyteTrend(BaseModel):
 class Trends(BaseModel):
     patient: PatientOut
     analytes: list[AnalyteTrend]
+
+
+class SystemLatest(BaseModel):
+    date: dt.date
+    value: float
+    value_text: str
+    comparator: str | None
+    censored: bool
+    report_id: int                    # the source report of the value shown
+
+
+class SystemHeadline(BaseModel):
+    analyte_id: str
+    name: str
+    unit: str
+    latest: SystemLatest | None       # None when the headline analyte has no result yet
+    baseline: float | None
+    change_vs_baseline_percent: float | None     # latest vs baseline, as RCV_BASELINE compares them
+    slope: Slope | None
+
+
+class AnalyteName(BaseModel):
+    analyte_id: str
+    name: str
+
+
+class FlagCounts(BaseModel):
+    guideline: int
+    change: int                       # change flags without an expected drug effect
+    expected: int                     # change flags explained by an expected drug effect
+
+
+class BodySystemOut(BaseModel):
+    id: str
+    name: str
+    order: int
+    status: Literal["guideline", "changed", "stable", "no_data"]
+    headline: SystemHeadline
+    analytes_with_data: list[AnalyteName]
+    flag_counts: FlagCounts
+
+
+class Systems(BaseModel):
+    patient_id: int
+    systems: list[BodySystemOut]      # every system in data/analytes.yaml, in order
+
+
+class SummaryIn(BaseModel):
+    period: Literal["since_last_visit", "range", "all"]
+    from_: dt.date | None = Field(default=None, alias="from")     # range only
+    to: dt.date | None = None                                      # range only
+
+    model_config = {"populate_by_name": True}
+
+
+class SummaryCited(BaseModel):
+    text: str
+    report_ids: list[int]             # the source reports (labels in SummaryContent.reports)
+
+
+class SummarySection(BaseModel):
+    title: str
+    sentences: list[SummaryCited]
+
+
+class SummaryMedicationRow(BaseModel):
+    date: str
+    drug: str
+    dose: str
+    observed: str
+
+
+class SummaryReport(BaseModel):
+    report_id: int
+    label: str                        # "R7": numbered over the patient's whole history
+    date: dt.date                     # confirmed reports always have one
+    lab: str
+
+
+class SummaryBasis(BaseModel):
+    flags: int                        # computed flags the summary was written from
+    medication_responses: int
+    reports: int                      # confirmed reports in the period
+    labs: int
+
+
+class SummaryContent(BaseModel):
+    key_finding: SummaryCited
+    sections: list[SummarySection]
+    medication_rows: list[SummaryMedicationRow]
+    data_notes: list[str]
+    reports: list[SummaryReport]
+    basis: SummaryBasis
+
+
+class SummaryOut(BaseModel):
+    id: int
+    patient_id: int
+    period: str
+    from_: dt.date = Field(alias="from", serialization_alias="from")
+    to: dt.date
+    created_at: dt.datetime
+    model: str
+    facts_sha256: str
+    content: SummaryContent
+
+    model_config = {"populate_by_name": True}
 
 
 class Expected(BaseModel):

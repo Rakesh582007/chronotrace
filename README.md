@@ -60,17 +60,25 @@ Training takes about 4 minutes on an RTX 3050 (6 GB, 1.6 GB peak VRAM). Results:
 
 ```bash
 pip install -r requirements.txt -r requirements-ml.txt       # plus torch (see Training)
+python -m backend.demo.seed --reset                          # four synthetic demo patients, through the API
+python -m backend.demo.seed --reset --with-summary           # ... plus a saved summary for K. Selvam (calls the LLM)
 uvicorn backend.main:app --reload                            # http://127.0.0.1:8000, docs at /docs
 ```
 
 The API is documented for the frontend in [`docs/api.md`](docs/api.md) (checked against the running
-API by `tests/test_api_contract.py`). Settings (environment variables, all optional):
+API by `tests/test_api_contract.py`). Every endpoint except sign-in needs the demo doctor's token; CORS
+allows `http://localhost:5173` only. `--reset` rebuilds the demo database and empties the uploads folder
+(needed after a schema change: the API refuses to start on an outdated database).
+
+Required in `.env` (see `.env.example`): `DEMO_DOCTOR_NAME`, `DEMO_DOCTOR_USER`, `DEMO_DOCTOR_PASSWORD`,
+`AUTH_SECRET` (at least 32 characters) for the demo login, and `LLM_PROVIDER=gemini`, `LLM_API_KEY`,
+`LLM_MODEL` for summaries (`LLM_MODEL_FALLBACKS`: models tried in order when it is overloaded). Optional environment variables:
 
 | Variable | Default |
 | --- | --- |
 | `CHRONOTRACE_MODEL` | `ml/models/chronotrace-ner` if present, else the Hub model `Rip-Shadw/chronotrace-report-ner` |
-| `CHRONOTRACE_DB` | `sqlite:///backend/chronotrace.db` (git-ignored) |
-| `CHRONOTRACE_CORS` | `http://localhost:5173` |
+| `CHRONOTRACE_DB` | `sqlite:///backend/chronotrace.db` (git-ignored); also read from `.env` |
+| `CHRONOTRACE_UPLOADS` | `backend/uploads/` (git-ignored): report PDFs, prescriptions, notes, photos, page images |
 
 How a report is read: pdfplumber rows (the same code that built the training data, `shared/pdf_rows.py`)
 are tagged by the model; the table's column-header line then decides which rows are results (a

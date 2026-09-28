@@ -1,27 +1,40 @@
 # ChronoTrace API
 
 Reference for the frontend (step 8). Everything the UI needs is here: each endpoint has a complete
-example request and the complete response it produced. The examples come from real runs on the
-demo patient (type 2 diabetes + chronic kidney disease) and are checked in the test suite
+example request and the complete response it produced. The examples come from real runs on synthetic
+patients (type 2 diabetes + chronic kidney disease) and are checked in the test suite
 (`tests/test_api_contract.py`): every response below must have exactly the same keys and value
 types as the running API, so this file and the code cannot drift apart.
 
 ## Basics
 
 - Run locally from the repo root: `uvicorn backend.main:app --reload` → `http://127.0.0.1:8000`.
-  Interactive docs are at `/docs`. CORS allows `http://localhost:5173` (Vite) by default; set
-  `CHRONOTRACE_CORS` to a comma-separated list to change it.
-- JSON everywhere except the report upload (multipart form). Dates are `YYYY-MM-DD`; timestamps are
-  ISO 8601 in UTC. Ids are integers.
+  Interactive docs are at `/docs`. CORS allows `http://localhost:5173` (Vite) only.
+- **Sign-in**: every endpoint except `POST /auth/login` needs `Authorization: Bearer <token>`; without a
+  valid token it answers `401`. Tokens last 12 hours. Data belongs to the signed-in doctor: another
+  doctor's patient, report, document or medication answers `404`, as if it did not exist. The app refuses
+  to start without `DEMO_DOCTOR_NAME`, `DEMO_DOCTOR_USER`, `DEMO_DOCTOR_PASSWORD` and `AUTH_SECRET`
+  (at least 32 characters) in `.env`; that doctor is created on startup.
+- JSON everywhere except uploads (multipart form) and files (PDF, PNG, JPG). Dates are `YYYY-MM-DD`;
+  timestamps are ISO 8601 in UTC. Ids are integers; `patient_code` (`CT-0001`) is what the UI shows.
 - Errors are `{"detail": ...}` where `detail` is a string or an object (see [Errors](#errors)).
 - Database: SQLite file `backend/chronotrace.db` (git-ignored), or `CHRONOTRACE_DB` (SQLAlchemy URL).
+  The app refuses to start on a database created by an older version; rebuild the demo data with
+  `python -m backend.demo.seed --reset` (four synthetic patients, through this API).
+- Files (report PDFs, prescriptions, notes, photos, rendered pages): `backend/uploads/` (git-ignored), or
+  `CHRONOTRACE_UPLOADS`.
+- Summaries: Gemini through `LLM_PROVIDER=gemini`, `LLM_API_KEY` and `LLM_MODEL` in `.env`. When the model
+  answers 429/503 it is retried after 2 s and 5 s, then `LLM_MODEL_FALLBACKS` are tried in order; one call
+  stops after about 60 s. The summary's `model` is the model that wrote it.
 - Model: `ml/models/chronotrace-ner` if present, else the Hugging Face Hub model
   `Rip-Shadw/chronotrace-report-ner`; `CHRONOTRACE_MODEL` overrides both. It loads on the first upload
   (a few seconds) and runs on CPU.
 
 ## How the screens use it
 
-1. **Patients**: `GET /patients`, `POST /patients`.
+0. **Sign in**: `POST /auth/login` → keep `token`; `GET /auth/me` for the doctor's name.
+1. **Patients**: `GET /patients?sort=needs_review` (cards with flag counts, latest report date, report and
+   lab counts), `POST /patients`, `POST`/`GET /patients/{id}/photo`.
 2. **Upload**: `POST /patients/{id}/reports` with the PDF. The response is the report with its
    extracted observations. Nothing is in the timeline yet.
 3. **Review**: show `observations` grouped by `status`, and `skipped` lines with their reasons. The
@@ -35,6 +48,13 @@ types as the running API, so this file and the code cannot drift apart.
 6. **Medications**: `POST /patients/{id}/medications` (start, stop, dose change), `GET`, `DELETE`.
 7. **Trends and flags**: `GET /patients/{id}/trends`, `GET /patients/{id}/flags` and
    `GET /medications/{id}/response`, all recomputed from confirmed data on each request.
+8. **Overview**: `GET /patients/{id}/systems`: one card per body system with its status and headline value.
+9. **Documents**: `GET /patients/{id}/documents` (lab reports, prescriptions, notes), `POST` a prescription
+   or note, `GET /documents/{id}/file` to open one, `DELETE` one.
+10. **Source preview**: `GET /reports/{id}/pages/{n}.png` with each observation's `bbox` to highlight the
+    printed row a value came from.
+11. **Summary**: `GET /patients/{id}/summaries/latest?period=…` shows the saved one;
+    `POST /patients/{id}/summaries` writes a new one.
 
 ## Statuses and fields
 
@@ -64,6 +84,7 @@ types as the running API, so this file and the code cannot drift apart.
 | `value_number` | number or null | the printed number, in the printed unit |
 | `canonical_value`, `canonical_unit` | number / string or null | value converted to the dictionary's unit; eGFR is always recomputed (CKD-EPI 2021) from the same report's creatinine and the patient's age and sex, never taken from the report |
 | `page`, `line` | int | where it was printed: page number and line on that page (1-based, counted from the top) |
+| `bbox` | number[4] or null | `[x0, top, x1, bottom]` of the printed row in PDF points from the page's top left; multiply by 110/72 for pixels of the page PNG. null for rows added by the doctor |
 | `status`, `status_reason` | string | see above; the reason is `""` when there is nothing to say |
 | `edited` | bool | changed, added or rejected by the doctor |
 
@@ -76,6 +97,8 @@ types as the running API, so this file and the code cannot drift apart.
 | `reported_at` | date or null | the report's "Reported" date when printed |
 | `lab` | string or null | lab name found in the page header, if any |
 | `layout` | string | `header` (columns found from the table header line) or `no header` (fell back to the model's tags alone; review more carefully) |
+| `pages` | int | number of pages |
+| `page_width`, `page_height` | number or null | first page in PDF points: the frame of each observation's `bbox` |
 | `status` | string | `extracted` or `confirmed` |
 | `file_sha256` | string | the same file cannot be uploaded twice |
 
@@ -90,9 +113,69 @@ skipped line into an observation with `add` in the confirm request.
 
 ## Endpoints
 
+### `POST /auth/login`: sign in
+
+The only endpoint without a token. A wrong username and a wrong password get the same `401`.
+
+<!-- example: login request -->
+```json
+{
+  "username": "dr.example",
+  "password": "example-password"
+}
+```
+
+Response `200` (the doc shows `<signed token>` in place of the token):
+
+<!-- example: login response 200 -->
+```json
+{
+  "token": "<signed token>",
+  "doctor": {
+    "id": 1,
+    "name": "Dr. A. Example"
+  }
+}
+```
+
+<!-- example: login-failed request -->
+```json
+{
+  "username": "dr.example",
+  "password": "not-the-password"
+}
+```
+
+<!-- example: login-failed response 401 -->
+```json
+{
+  "detail": "Username or password is incorrect"
+}
+```
+
+Any other endpoint without a valid token:
+
+<!-- example: unauthorized response 401 -->
+```json
+{
+  "detail": "sign in required"
+}
+```
+
+### `GET /auth/me`: the signed-in doctor
+
+<!-- example: me response 200 -->
+```json
+{
+  "id": 1,
+  "name": "Dr. A. Example"
+}
+```
+
 ### `POST /patients`: create a patient
 
-`sex` is `male` or `female` (needed for eGFR). `birth_year` is used for the age in eGFR.
+`sex` is `male` or `female` (needed for eGFR). `birth_year` is used for the age in eGFR. The patient gets
+the next `patient_code` (`CT-0001`, `CT-0002`, ...) and belongs to the signed-in doctor.
 
 <!-- example: create-patient request -->
 ```json
@@ -113,17 +196,25 @@ Response `201`:
 ```json
 {
   "id": 1,
+  "patient_code": "CT-0001",
   "name": "Ravi Kumar",
   "sex": "male",
   "birth_year": 1966,
   "conditions": [
     "type 2 diabetes",
     "CKD stage 3"
-  ]
+  ],
+  "has_photo": false
 }
 ```
 
 ### `GET /patients`: list patients
+
+The signed-in doctor's patients, as cards. The counts come from the same engine as
+`GET /patients/{id}/flags`: `guideline_flags`, `change_flags` (change flags without an expected drug
+effect), `expected_flags` (change flags explained by an expected drug effect); `report_count` and
+`lab_count` count confirmed reports. `?sort=` is `needs_review` (default: guideline flags, then change
+flags, then the latest report first), `name` (A-Z) or `latest_report` (newest first).
 
 Response `200`:
 
@@ -131,16 +222,92 @@ Response `200`:
 ```json
 [
   {
+    "id": 3,
+    "patient_code": "CT-0003",
+    "name": "K. Selvam",
+    "sex": "male",
+    "birth_year": 1968,
+    "conditions": [
+      "type 2 diabetes",
+      "chronic kidney disease"
+    ],
+    "has_photo": false,
+    "guideline_flags": 1,
+    "change_flags": 3,
+    "expected_flags": 2,
+    "latest_report_date": "2026-03-02",
+    "report_count": 10,
+    "lab_count": 3
+  },
+  {
     "id": 1,
+    "patient_code": "CT-0001",
     "name": "Ravi Kumar",
     "sex": "male",
     "birth_year": 1966,
     "conditions": [
       "type 2 diabetes",
       "CKD stage 3"
-    ]
+    ],
+    "has_photo": true,
+    "guideline_flags": 0,
+    "change_flags": 1,
+    "expected_flags": 0,
+    "latest_report_date": "2024-04-11",
+    "report_count": 2,
+    "lab_count": 1
+  },
+  {
+    "id": 2,
+    "patient_code": "CT-0002",
+    "name": "Edge Case",
+    "sex": "male",
+    "birth_year": 1967,
+    "conditions": [
+      "type 2 diabetes",
+      "CKD stage 3"
+    ],
+    "has_photo": false,
+    "guideline_flags": 0,
+    "change_flags": 0,
+    "expected_flags": 0,
+    "latest_report_date": null,
+    "report_count": 0,
+    "lab_count": 0
   }
 ]
+```
+
+### `POST /patients/{patient_id}/photo`: add or replace the patient's photo
+
+Multipart form with `file`: JPG or PNG (checked by content), at most 5 MB (`413`), otherwise `415`.
+Returns the patient with `has_photo: true`.
+
+<!-- example: upload-photo response 200 -->
+```json
+{
+  "id": 1,
+  "patient_code": "CT-0001",
+  "name": "Ravi Kumar",
+  "sex": "male",
+  "birth_year": 1966,
+  "conditions": [
+    "type 2 diabetes",
+    "CKD stage 3"
+  ],
+  "has_photo": true
+}
+```
+
+### `GET /patients/{patient_id}/photo`: the photo
+
+The image (`image/jpeg` or `image/png`), or `404` when there is none:
+
+<!-- example: photo-missing response 404 -->
+```json
+{
+  "detail": "no photo for this patient"
+}
 ```
 
 ### `POST /patients/{patient_id}/reports`: upload a report PDF
@@ -183,8 +350,10 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
     "reported_at": "2024-01-08",
     "layout": "header",
     "pages": 1,
+    "page_width": 612.0,
+    "page_height": 792.0,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T17:23:48Z",
+    "uploaded_at": "2026-09-28T06:04:33Z",
     "confirmed_at": null
   },
   "counts": {
@@ -221,6 +390,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 10,
+      "bbox": [
+        46.0,
+        280.1,
+        522.4,
+        288.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -249,6 +424,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "%",
       "page": 1,
       "line": 12,
+      "bbox": [
+        46.0,
+        306.1,
+        547.3,
+        314.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -275,6 +456,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 14,
+      "bbox": [
+        46.0,
+        332.1,
+        470.4,
+        340.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -301,6 +488,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 15,
+      "bbox": [
+        46.0,
+        348.1,
+        465.9,
+        356.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -327,6 +520,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "mL/min/1.73m²",
       "page": 1,
       "line": 16,
+      "bbox": [
+        46.0,
+        364.1,
+        456.8,
+        372.1
+      ],
       "status": "extracted",
       "status_reason": "recomputed with CKD-EPI 2021 from creatinine 1.58 mg/dL (page 1, line 14), age 58, male; printed eGFR '49' kept as text",
       "edited": false
@@ -353,6 +552,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "mmol/L",
       "page": 1,
       "line": 17,
+      "bbox": [
+        46.0,
+        380.1,
+        470.4,
+        388.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -379,6 +584,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "mg/g",
       "page": 1,
       "line": 18,
+      "bbox": [
+        46.0,
+        396.1,
+        486.8,
+        404.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -405,6 +616,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": "mIU/L",
       "page": 1,
       "line": 19,
+      "bbox": [
+        46.0,
+        412.1,
+        474.8,
+        420.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -431,6 +648,12 @@ report. `URINE KETONES Negative` is skipped because the model did not read `Nega
       "canonical_unit": null,
       "page": 1,
       "line": 20,
+      "bbox": [
+        46.0,
+        428.1,
+        474.8,
+        436.1
+      ],
       "status": "not_tracked",
       "status_reason": "test is not in the ChronoTrace dictionary",
       "edited": false
@@ -475,8 +698,10 @@ Same body as the upload response. Response `200`:
     "reported_at": "2024-01-08",
     "layout": "header",
     "pages": 1,
+    "page_width": 612.0,
+    "page_height": 792.0,
     "status": "extracted",
-    "uploaded_at": "2026-09-27T17:23:48Z",
+    "uploaded_at": "2026-09-28T06:04:33Z",
     "confirmed_at": null
   },
   "counts": {
@@ -513,6 +738,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 10,
+      "bbox": [
+        46.0,
+        280.1,
+        522.4,
+        288.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -541,6 +772,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "%",
       "page": 1,
       "line": 12,
+      "bbox": [
+        46.0,
+        306.1,
+        547.3,
+        314.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -567,6 +804,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 14,
+      "bbox": [
+        46.0,
+        332.1,
+        470.4,
+        340.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -593,6 +836,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 15,
+      "bbox": [
+        46.0,
+        348.1,
+        465.9,
+        356.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -619,6 +868,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "mL/min/1.73m²",
       "page": 1,
       "line": 16,
+      "bbox": [
+        46.0,
+        364.1,
+        456.8,
+        372.1
+      ],
       "status": "extracted",
       "status_reason": "recomputed with CKD-EPI 2021 from creatinine 1.58 mg/dL (page 1, line 14), age 58, male; printed eGFR '49' kept as text",
       "edited": false
@@ -645,6 +900,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "mmol/L",
       "page": 1,
       "line": 17,
+      "bbox": [
+        46.0,
+        380.1,
+        470.4,
+        388.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -671,6 +932,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "mg/g",
       "page": 1,
       "line": 18,
+      "bbox": [
+        46.0,
+        396.1,
+        486.8,
+        404.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -697,6 +964,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": "mIU/L",
       "page": 1,
       "line": 19,
+      "bbox": [
+        46.0,
+        412.1,
+        474.8,
+        420.1
+      ],
       "status": "extracted",
       "status_reason": "",
       "edited": false
@@ -723,6 +996,12 @@ Same body as the upload response. Response `200`:
       "canonical_unit": null,
       "page": 1,
       "line": 20,
+      "bbox": [
+        46.0,
+        428.1,
+        474.8,
+        436.1
+      ],
       "status": "not_tracked",
       "status_reason": "test is not in the ChronoTrace dictionary",
       "edited": false
@@ -806,9 +1085,11 @@ Response `200`:
     "reported_at": "2024-01-08",
     "layout": "header",
     "pages": 1,
+    "page_width": 612.0,
+    "page_height": 792.0,
     "status": "confirmed",
-    "uploaded_at": "2026-09-27T17:23:48Z",
-    "confirmed_at": "2026-09-27T17:23:48Z"
+    "uploaded_at": "2026-09-28T06:04:33Z",
+    "confirmed_at": "2026-09-28T06:04:33Z"
   },
   "counts": {
     "extracted": 0,
@@ -844,6 +1125,12 @@ Response `200`:
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 10,
+      "bbox": [
+        46.0,
+        280.1,
+        522.4,
+        288.1
+      ],
       "status": "confirmed",
       "status_reason": "",
       "edited": false
@@ -872,6 +1159,12 @@ Response `200`:
       "canonical_unit": "%",
       "page": 1,
       "line": 12,
+      "bbox": [
+        46.0,
+        306.1,
+        547.3,
+        314.1
+      ],
       "status": "confirmed",
       "status_reason": "",
       "edited": false
@@ -898,6 +1191,12 @@ Response `200`:
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 14,
+      "bbox": [
+        46.0,
+        332.1,
+        470.4,
+        340.1
+      ],
       "status": "confirmed",
       "status_reason": "",
       "edited": false
@@ -924,6 +1223,12 @@ Response `200`:
       "canonical_unit": "mg/dL",
       "page": 1,
       "line": 15,
+      "bbox": [
+        46.0,
+        348.1,
+        465.9,
+        356.1
+      ],
       "status": "confirmed",
       "status_reason": "",
       "edited": false
@@ -950,6 +1255,12 @@ Response `200`:
       "canonical_unit": "mL/min/1.73m²",
       "page": 1,
       "line": 16,
+      "bbox": [
+        46.0,
+        364.1,
+        456.8,
+        372.1
+      ],
       "status": "confirmed",
       "status_reason": "recomputed with CKD-EPI 2021 from creatinine 1.58 mg/dL (page 1, line 14), age 58, male; printed eGFR '49' kept as text",
       "edited": false
@@ -976,6 +1287,12 @@ Response `200`:
       "canonical_unit": "mmol/L",
       "page": 1,
       "line": 17,
+      "bbox": [
+        46.0,
+        380.1,
+        470.4,
+        388.1
+      ],
       "status": "confirmed",
       "status_reason": "",
       "edited": true
@@ -1002,6 +1319,12 @@ Response `200`:
       "canonical_unit": "mg/g",
       "page": 1,
       "line": 18,
+      "bbox": [
+        46.0,
+        396.1,
+        486.8,
+        404.1
+      ],
       "status": "confirmed",
       "status_reason": "",
       "edited": false
@@ -1028,6 +1351,12 @@ Response `200`:
       "canonical_unit": "mIU/L",
       "page": 1,
       "line": 19,
+      "bbox": [
+        46.0,
+        412.1,
+        474.8,
+        420.1
+      ],
       "status": "confirmed",
       "status_reason": "",
       "edited": false
@@ -1054,6 +1383,12 @@ Response `200`:
       "canonical_unit": null,
       "page": 1,
       "line": 20,
+      "bbox": [
+        46.0,
+        428.1,
+        474.8,
+        436.1
+      ],
       "status": "rejected",
       "status_reason": "rejected by the doctor",
       "edited": true
@@ -1078,6 +1413,7 @@ Response `200`:
       "canonical_unit": null,
       "page": 1,
       "line": 22,
+      "bbox": null,
       "status": "not_tracked",
       "status_reason": "test is not in the ChronoTrace dictionary",
       "edited": true
@@ -1143,13 +1479,15 @@ confirmation. The point keeps `"comparator": ">"` (the true value is above 300):
 {
   "patient": {
     "id": 1,
+    "patient_code": "CT-0001",
     "name": "Ravi Kumar",
     "sex": "male",
     "birth_year": 1966,
     "conditions": [
       "type 2 diabetes",
       "CKD stage 3"
-    ]
+    ],
+    "has_photo": false
   },
   "analytes": [
     {
@@ -1572,13 +1910,15 @@ ramipril and empagliflozin starts), after the latest report:
 {
   "patient": {
     "id": 3,
+    "patient_code": "CT-0003",
     "name": "K. Selvam",
     "sex": "male",
     "birth_year": 1968,
     "conditions": [
       "type 2 diabetes",
       "chronic kidney disease"
-    ]
+    ],
+    "has_photo": false
   },
   "analytes": [
     {
@@ -3544,6 +3884,1012 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
       "status": "assessed"
     }
   ]
+}
+```
+
+## Body systems, documents, report pages and summaries (step 7)
+
+### `GET /patients/{patient_id}/systems`: one card per body system
+
+Every system in `data/analytes.yaml` (Kidney, Glucose control, Electrolytes, Lipids, Liver, Thyroid, Blood
+count), in card order, computed from the same trends and flags as `/trends` and `/flags` (whole history):
+
+- `status`: `guideline` (a guideline flag), `changed` (a change flag, with or without an expected drug
+  effect), `stable` (results, no flag) or `no_data`.
+- `headline`: the system's headline analyte (eGFR, HbA1c, potassium, LDL, ALT, TSH, haemoglobin) with its
+  latest value (`report_id` is its source), `baseline`, `change_vs_baseline_percent` (the latest date's
+  mean against the baseline, only after the baseline period; as `RCV_BASELINE` compares them) and `slope`.
+  `latest` is null when the headline analyte has no result even if other analytes of the system do.
+- `analytes_with_data` and `flag_counts` (`guideline`, `change`, `expected`, as in the patient list).
+
+<!-- example: systems response 200 -->
+```json
+{
+  "patient_id": 3,
+  "systems": [
+    {
+      "id": "kidney",
+      "name": "Kidney",
+      "order": 1,
+      "status": "guideline",
+      "headline": {
+        "analyte_id": "egfr",
+        "name": "eGFR (CKD-EPI 2021)",
+        "unit": "mL/min/1.73m²",
+        "latest": {
+          "date": "2026-03-02",
+          "value": 54.06,
+          "value_text": "54",
+          "comparator": null,
+          "censored": false,
+          "report_id": 14
+        },
+        "baseline": 78.42,
+        "change_vs_baseline_percent": -31.1,
+        "slope": {
+          "per_year": -7.081,
+          "unit": "mL/min/1.73m² per year",
+          "n_points": 4,
+          "span_days": 503,
+          "first_date": "2024-10-15",
+          "last_date": "2026-03-02",
+          "observation_ids": [
+            72,
+            78,
+            84,
+            90
+          ],
+          "excluded_points": [
+            {
+              "date": "2023-06-12",
+              "observation_ids": [
+                36
+              ],
+              "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+            },
+            {
+              "date": "2023-09-14",
+              "observation_ids": [
+                42
+              ],
+              "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+            },
+            {
+              "date": "2023-11-16",
+              "observation_ids": [
+                48
+              ],
+              "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+            },
+            {
+              "date": "2024-02-15",
+              "observation_ids": [
+                54
+              ],
+              "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+            },
+            {
+              "date": "2024-04-01",
+              "observation_ids": [
+                60
+              ],
+              "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+            },
+            {
+              "date": "2024-06-10",
+              "observation_ids": [
+                66
+              ],
+              "reason": "on or before the end of the expected-effect window of Empagliflozin started 2024-05-06 (window ends 2024-08-04)"
+            }
+          ],
+          "status": "ok"
+        }
+      },
+      "analytes_with_data": [
+        {
+          "analyte_id": "creatinine",
+          "name": "Serum Creatinine"
+        },
+        {
+          "analyte_id": "egfr",
+          "name": "eGFR (CKD-EPI 2021)"
+        },
+        {
+          "analyte_id": "uacr",
+          "name": "Urine Albumin/Creatinine Ratio"
+        }
+      ],
+      "flag_counts": {
+        "guideline": 1,
+        "change": 2,
+        "expected": 1
+      }
+    },
+    {
+      "id": "glucose",
+      "name": "Glucose control",
+      "order": 2,
+      "status": "changed",
+      "headline": {
+        "analyte_id": "hba1c",
+        "name": "HbA1c",
+        "unit": "%",
+        "latest": {
+          "date": "2026-03-02",
+          "value": 7.1,
+          "value_text": "7.1",
+          "comparator": null,
+          "censored": false,
+          "report_id": 14
+        },
+        "baseline": 8.8,
+        "change_vs_baseline_percent": -19.3,
+        "slope": {
+          "per_year": -0.032,
+          "unit": "% per year",
+          "n_points": 6,
+          "span_days": 700,
+          "first_date": "2024-04-01",
+          "last_date": "2026-03-02",
+          "observation_ids": [
+            58,
+            64,
+            70,
+            76,
+            82,
+            88
+          ],
+          "excluded_points": [
+            {
+              "date": "2023-06-12",
+              "observation_ids": [
+                34
+              ],
+              "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+            },
+            {
+              "date": "2023-09-14",
+              "observation_ids": [
+                40
+              ],
+              "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+            },
+            {
+              "date": "2023-11-16",
+              "observation_ids": [
+                46
+              ],
+              "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+            },
+            {
+              "date": "2024-02-15",
+              "observation_ids": [
+                52
+              ],
+              "reason": "on or before the end of the expected-effect window of Metformin started 2023-10-02 (window ends 2024-03-30)"
+            }
+          ],
+          "status": "ok"
+        }
+      },
+      "analytes_with_data": [
+        {
+          "analyte_id": "hba1c",
+          "name": "HbA1c"
+        },
+        {
+          "analyte_id": "fasting_glucose",
+          "name": "Fasting Plasma Glucose"
+        }
+      ],
+      "flag_counts": {
+        "guideline": 0,
+        "change": 1,
+        "expected": 1
+      }
+    },
+    {
+      "id": "electrolytes",
+      "name": "Electrolytes",
+      "order": 3,
+      "status": "stable",
+      "headline": {
+        "analyte_id": "potassium",
+        "name": "Serum Potassium",
+        "unit": "mmol/L",
+        "latest": {
+          "date": "2026-03-02",
+          "value": 5.0,
+          "value_text": "5.0",
+          "comparator": null,
+          "censored": false,
+          "report_id": 14
+        },
+        "baseline": 4.5,
+        "change_vs_baseline_percent": 11.1,
+        "slope": {
+          "per_year": 0.095,
+          "unit": "mmol/L per year",
+          "n_points": 5,
+          "span_days": 630,
+          "first_date": "2024-06-10",
+          "last_date": "2026-03-02",
+          "observation_ids": [
+            67,
+            73,
+            79,
+            85,
+            91
+          ],
+          "excluded_points": [
+            {
+              "date": "2023-06-12",
+              "observation_ids": [
+                37
+              ],
+              "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            },
+            {
+              "date": "2023-09-14",
+              "observation_ids": [
+                43
+              ],
+              "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            },
+            {
+              "date": "2023-11-16",
+              "observation_ids": [
+                49
+              ],
+              "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            },
+            {
+              "date": "2024-02-15",
+              "observation_ids": [
+                55
+              ],
+              "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            },
+            {
+              "date": "2024-04-01",
+              "observation_ids": [
+                61
+              ],
+              "reason": "on or before the end of the expected-effect window of Ramipril started 2024-03-04 (window ends 2024-05-03)"
+            }
+          ],
+          "status": "ok"
+        }
+      },
+      "analytes_with_data": [
+        {
+          "analyte_id": "potassium",
+          "name": "Serum Potassium"
+        }
+      ],
+      "flag_counts": {
+        "guideline": 0,
+        "change": 0,
+        "expected": 0
+      }
+    },
+    {
+      "id": "lipids",
+      "name": "Lipids",
+      "order": 4,
+      "status": "no_data",
+      "headline": {
+        "analyte_id": "ldl",
+        "name": "LDL Cholesterol",
+        "unit": "mg/dL",
+        "latest": null,
+        "baseline": null,
+        "change_vs_baseline_percent": null,
+        "slope": null
+      },
+      "analytes_with_data": [],
+      "flag_counts": {
+        "guideline": 0,
+        "change": 0,
+        "expected": 0
+      }
+    },
+    {
+      "id": "liver",
+      "name": "Liver",
+      "order": 5,
+      "status": "no_data",
+      "headline": {
+        "analyte_id": "alt",
+        "name": "ALT (SGPT)",
+        "unit": "U/L",
+        "latest": null,
+        "baseline": null,
+        "change_vs_baseline_percent": null,
+        "slope": null
+      },
+      "analytes_with_data": [],
+      "flag_counts": {
+        "guideline": 0,
+        "change": 0,
+        "expected": 0
+      }
+    },
+    {
+      "id": "thyroid",
+      "name": "Thyroid",
+      "order": 6,
+      "status": "no_data",
+      "headline": {
+        "analyte_id": "tsh",
+        "name": "TSH",
+        "unit": "mIU/L",
+        "latest": null,
+        "baseline": null,
+        "change_vs_baseline_percent": null,
+        "slope": null
+      },
+      "analytes_with_data": [],
+      "flag_counts": {
+        "guideline": 0,
+        "change": 0,
+        "expected": 0
+      }
+    },
+    {
+      "id": "blood_count",
+      "name": "Blood count",
+      "order": 7,
+      "status": "no_data",
+      "headline": {
+        "analyte_id": "haemoglobin",
+        "name": "Haemoglobin",
+        "unit": "g/dL",
+        "latest": null,
+        "baseline": null,
+        "change_vs_baseline_percent": null,
+        "slope": null
+      },
+      "analytes_with_data": [],
+      "flag_counts": {
+        "guideline": 0,
+        "change": 0,
+        "expected": 0
+      }
+    }
+  ]
+}
+```
+
+### `POST /patients/{patient_id}/documents`: store a prescription or a doctor's note
+
+Multipart form: `kind` (`prescription` or `doctor_note`), `file` (PDF, JPG or PNG, checked by content,
+at most 15 MB), optional `document_date` (`YYYY-MM-DD`). The file is stored and never read. Lab reports
+are uploaded with `POST /patients/{id}/reports` (which also keeps the PDF as a `lab_report` document);
+`kind=lab_report` here answers `422`.
+
+<!-- example: upload-document response 201 -->
+```json
+{
+  "id": 5,
+  "patient_id": 1,
+  "kind": "prescription",
+  "filename": "prescription.pdf",
+  "sha256": "f782f61973da5ab8450e412fd5f0a47fb859c3e926a21b60431e930e70fc92aa",
+  "size": 1880,
+  "uploaded_at": "2026-09-28T06:04:36Z",
+  "document_date": "2024-01-10",
+  "report_id": null,
+  "report_status": null
+}
+```
+
+The same file again (for any of this doctor's patients):
+
+<!-- example: document-duplicate response 409 -->
+```json
+{
+  "detail": {
+    "message": "this file was already uploaded",
+    "document_id": 5,
+    "patient_id": 1
+  }
+}
+```
+
+Not a PDF, JPG or PNG:
+
+<!-- example: document-wrong-type response 415 -->
+```json
+{
+  "detail": "only PDF, JPG and PNG files are accepted"
+}
+```
+
+### `GET /patients/{patient_id}/documents`: the patient's documents, newest first
+
+`report_id` and `report_status` (`extracted` or `confirmed`) are set for lab reports.
+
+<!-- example: list-documents response 200 -->
+```json
+[
+  {
+    "id": 5,
+    "patient_id": 1,
+    "kind": "prescription",
+    "filename": "prescription.pdf",
+    "sha256": "f782f61973da5ab8450e412fd5f0a47fb859c3e926a21b60431e930e70fc92aa",
+    "size": 1880,
+    "uploaded_at": "2026-09-28T06:04:36Z",
+    "document_date": "2024-01-10",
+    "report_id": null,
+    "report_status": null
+  },
+  {
+    "id": 3,
+    "patient_id": 1,
+    "kind": "lab_report",
+    "filename": "undated.pdf",
+    "sha256": "3f078beb1ffbecefa803a427a5afc0c06affe5525a827aa2c3b8e381ecd742ac",
+    "size": 2558,
+    "uploaded_at": "2026-09-28T06:04:35Z",
+    "document_date": null,
+    "report_id": 3,
+    "report_status": "extracted"
+  },
+  {
+    "id": 2,
+    "patient_id": 1,
+    "kind": "lab_report",
+    "filename": "demo_t2d_ckd_2.pdf",
+    "sha256": "f9b2e876080ee27f54393719fd5f4d4f6b9ceceb8d858b1ef50d96219dfd04c9",
+    "size": 2634,
+    "uploaded_at": "2026-09-28T06:04:34Z",
+    "document_date": "2024-04-11",
+    "report_id": 2,
+    "report_status": "confirmed"
+  },
+  {
+    "id": 1,
+    "patient_id": 1,
+    "kind": "lab_report",
+    "filename": "demo_t2d_ckd_1.pdf",
+    "sha256": "a1eb3c683aa8154f14349153ea0d236dcf0bf86578b19829809591c7e0f45821",
+    "size": 2633,
+    "uploaded_at": "2026-09-28T06:04:33Z",
+    "document_date": "2024-01-08",
+    "report_id": 1,
+    "report_status": "confirmed"
+  }
+]
+```
+
+### `GET /documents/{document_id}/file`: open a document
+
+The stored file (`application/pdf`, `image/jpeg` or `image/png`), shown inline with its file name.
+
+### `DELETE /documents/{document_id}`: delete a document
+
+`204` and the file is removed. An unconfirmed lab report goes with its report and extracted values. A lab
+report with confirmed values is part of the timeline and cannot be deleted:
+
+<!-- example: delete-confirmed-report response 409 -->
+```json
+{
+  "detail": {
+    "message": "this lab report has confirmed values in the timeline and cannot be deleted",
+    "report_id": 1
+  }
+}
+```
+
+### `GET /reports/{report_id}/pages/{page}.png`: a report page as an image
+
+Page `page` (1-based) of the report's PDF rendered at 110 dpi (pixels = PDF points × 110/72), made once
+and then served from a cache. Draw each observation's `bbox` (scaled by 110/72) on it to show the printed
+row. A page outside the report, or a report whose PDF was not kept, answers `404`:
+
+<!-- example: page-not-found response 404 -->
+```json
+{
+  "detail": "page 99 not found (the report has 1)"
+}
+```
+
+### `POST /patients/{patient_id}/summaries`: write a summary
+
+`period`: `since_last_visit` (the second-latest confirmed report date to the latest; flags after the
+previous visit), `all` (first to latest report) or `range` (with `from` and `to`, holding at least one
+confirmed report). The LLM is given only facts computed by the trend engine: the patient's code, sex, age
+and recorded conditions, report labels `R1`, `R2`, ... (numbered over the whole history, with dates and
+labs), flags, trends, medication events and responses, and data notes. It never sees the name, a PDF or
+any text printed on a report. Before saving, code checks the answer: every number must be in the facts,
+every cited report must exist, every medication row must be a recorded event, and no advice, judgement,
+diagnosis or causal wording is allowed. A rejected answer is retried once with the errors listed.
+
+In `content`, `report_ids` are report ids; `reports` gives each one's `label` for the chips (`R7–R10`).
+`basis` counts what the summary was written from. The examples below were written by a fixed test answer,
+not a live model.
+
+<!-- example: create-summary request -->
+```json
+{
+  "period": "all"
+}
+```
+
+<!-- example: create-summary response 201 -->
+```json
+{
+  "id": 1,
+  "patient_id": 3,
+  "period": "all",
+  "from": "2023-06-12",
+  "to": "2026-03-02",
+  "created_at": "2026-09-28T06:04:41Z",
+  "model": "fake-llm",
+  "facts_sha256": "593f870a9d35ff9774958a80835b13c68d65c7e3c6aa9696c36d3a1017a8c5f8",
+  "content": {
+    "key_finding": {
+      "text": "eGFR fell by 7.1 mL/min/1.73 m² per year from October 2024 to March 2026 (63.9 to 54.1 over 4 results, 503 days), faster than the KDIGO 2012 threshold of 5 per year.",
+      "report_ids": [
+        11,
+        12,
+        13,
+        14
+      ]
+    },
+    "sections": [
+      {
+        "title": "Kidney",
+        "sentences": [
+          {
+            "text": "eGFR is 31% below the baseline (78.4 to 54.1) and creatinine is 34% above it (1.11 to 1.49 mg/dL); the values come from different labs.",
+            "report_ids": [
+              5,
+              6,
+              7,
+              14
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Glucose control",
+        "sentences": [
+          {
+            "text": "HbA1c fell from a baseline of 8.8% to 7.1%.",
+            "report_ids": [
+              5,
+              6,
+              14
+            ]
+          }
+        ]
+      }
+    ],
+    "medication_rows": [
+      {
+        "date": "2023-10-02",
+        "drug": "Metformin",
+        "dose": "500 mg BD",
+        "observed": "HbA1c -15.9% (mean 8.8 to 7.4); expected fall"
+      },
+      {
+        "date": "2024-03-04",
+        "drug": "Ramipril",
+        "dose": "2.5 mg OD",
+        "observed": "Creatinine +15.5%, within the ≤30% rise expected after ACEi/ARB start"
+      },
+      {
+        "date": "2024-05-06",
+        "drug": "Empagliflozin",
+        "dose": "10 mg OD",
+        "observed": "eGFR fell after the start"
+      }
+    ],
+    "data_notes": [
+      "Reports come from 3 labs; between-lab variation is larger than the change thresholds assume.",
+      "Adherence is not recorded."
+    ],
+    "reports": [
+      {
+        "report_id": 5,
+        "label": "R1",
+        "date": "2023-06-12",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 6,
+        "label": "R2",
+        "date": "2023-09-14",
+        "lab": "Kestrelline Labs"
+      },
+      {
+        "report_id": 7,
+        "label": "R3",
+        "date": "2023-11-16",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 8,
+        "label": "R4",
+        "date": "2024-02-15",
+        "lab": "Varnika Clinical Labs"
+      },
+      {
+        "report_id": 9,
+        "label": "R5",
+        "date": "2024-04-01",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 10,
+        "label": "R6",
+        "date": "2024-06-10",
+        "lab": "Kestrelline Labs"
+      },
+      {
+        "report_id": 11,
+        "label": "R7",
+        "date": "2024-10-15",
+        "lab": "Varnika Clinical Labs"
+      },
+      {
+        "report_id": 12,
+        "label": "R8",
+        "date": "2025-03-10",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 13,
+        "label": "R9",
+        "date": "2025-09-01",
+        "lab": "Kestrelline Labs"
+      },
+      {
+        "report_id": 14,
+        "label": "R10",
+        "date": "2026-03-02",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      }
+    ],
+    "basis": {
+      "flags": 6,
+      "medication_responses": 3,
+      "reports": 10,
+      "labs": 3
+    }
+  }
+}
+```
+
+When the second answer also fails a check (or the model times out twice), nothing is saved and the
+response is `502` with the last saved summary of the same period (or null), so the page can keep showing
+it with its date. `503` has the same shape when the LLM is not configured.
+
+<!-- example: summary-failed request -->
+```json
+{
+  "period": "all"
+}
+```
+
+<!-- example: summary-failed response 502 -->
+```json
+{
+  "detail": "the summary could not be written after 2 attempts: key_finding: the number 9.4 is not in the facts (\"eGFR fell by 9.4 per year; consider a review.\"); key_finding: uses the word(s) 'consider' (\"eGFR fell by 9.4 per year; consider a review.\")",
+  "last_saved": {
+    "id": 1,
+    "patient_id": 3,
+    "period": "all",
+    "from": "2023-06-12",
+    "to": "2026-03-02",
+    "created_at": "2026-09-28T06:04:41Z",
+    "model": "fake-llm",
+    "facts_sha256": "593f870a9d35ff9774958a80835b13c68d65c7e3c6aa9696c36d3a1017a8c5f8",
+    "content": {
+      "key_finding": {
+        "text": "eGFR fell by 7.1 mL/min/1.73 m² per year from October 2024 to March 2026 (63.9 to 54.1 over 4 results, 503 days), faster than the KDIGO 2012 threshold of 5 per year.",
+        "report_ids": [
+          11,
+          12,
+          13,
+          14
+        ]
+      },
+      "sections": [
+        {
+          "title": "Kidney",
+          "sentences": [
+            {
+              "text": "eGFR is 31% below the baseline (78.4 to 54.1) and creatinine is 34% above it (1.11 to 1.49 mg/dL); the values come from different labs.",
+              "report_ids": [
+                5,
+                6,
+                7,
+                14
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Glucose control",
+          "sentences": [
+            {
+              "text": "HbA1c fell from a baseline of 8.8% to 7.1%.",
+              "report_ids": [
+                5,
+                6,
+                14
+              ]
+            }
+          ]
+        }
+      ],
+      "medication_rows": [
+        {
+          "date": "2023-10-02",
+          "drug": "Metformin",
+          "dose": "500 mg BD",
+          "observed": "HbA1c -15.9% (mean 8.8 to 7.4); expected fall"
+        },
+        {
+          "date": "2024-03-04",
+          "drug": "Ramipril",
+          "dose": "2.5 mg OD",
+          "observed": "Creatinine +15.5%, within the ≤30% rise expected after ACEi/ARB start"
+        },
+        {
+          "date": "2024-05-06",
+          "drug": "Empagliflozin",
+          "dose": "10 mg OD",
+          "observed": "eGFR fell after the start"
+        }
+      ],
+      "data_notes": [
+        "Reports come from 3 labs; between-lab variation is larger than the change thresholds assume.",
+        "Adherence is not recorded."
+      ],
+      "reports": [
+        {
+          "report_id": 5,
+          "label": "R1",
+          "date": "2023-06-12",
+          "lab": "ASTERLANE DIAGNOSTICS"
+        },
+        {
+          "report_id": 6,
+          "label": "R2",
+          "date": "2023-09-14",
+          "lab": "Kestrelline Labs"
+        },
+        {
+          "report_id": 7,
+          "label": "R3",
+          "date": "2023-11-16",
+          "lab": "ASTERLANE DIAGNOSTICS"
+        },
+        {
+          "report_id": 8,
+          "label": "R4",
+          "date": "2024-02-15",
+          "lab": "Varnika Clinical Labs"
+        },
+        {
+          "report_id": 9,
+          "label": "R5",
+          "date": "2024-04-01",
+          "lab": "ASTERLANE DIAGNOSTICS"
+        },
+        {
+          "report_id": 10,
+          "label": "R6",
+          "date": "2024-06-10",
+          "lab": "Kestrelline Labs"
+        },
+        {
+          "report_id": 11,
+          "label": "R7",
+          "date": "2024-10-15",
+          "lab": "Varnika Clinical Labs"
+        },
+        {
+          "report_id": 12,
+          "label": "R8",
+          "date": "2025-03-10",
+          "lab": "ASTERLANE DIAGNOSTICS"
+        },
+        {
+          "report_id": 13,
+          "label": "R9",
+          "date": "2025-09-01",
+          "lab": "Kestrelline Labs"
+        },
+        {
+          "report_id": 14,
+          "label": "R10",
+          "date": "2026-03-02",
+          "lab": "ASTERLANE DIAGNOSTICS"
+        }
+      ],
+      "basis": {
+        "flags": 6,
+        "medication_responses": 3,
+        "reports": 10,
+        "labs": 3
+      }
+    }
+  }
+}
+```
+
+A period without confirmed reports:
+
+<!-- example: summary-bad-period request -->
+```json
+{
+  "period": "range",
+  "from": "2022-01-01",
+  "to": "2022-12-31"
+}
+```
+
+<!-- example: summary-bad-period response 422 -->
+```json
+{
+  "detail": "there is no confirmed report in this range"
+}
+```
+
+### `GET /patients/{patient_id}/summaries/latest`: the last saved summary
+
+`?period=since_last_visit|range|all` (required). `404` when none was saved for that period.
+
+<!-- example: latest-summary response 200 -->
+```json
+{
+  "id": 1,
+  "patient_id": 3,
+  "period": "all",
+  "from": "2023-06-12",
+  "to": "2026-03-02",
+  "created_at": "2026-09-28T06:04:41Z",
+  "model": "fake-llm",
+  "facts_sha256": "593f870a9d35ff9774958a80835b13c68d65c7e3c6aa9696c36d3a1017a8c5f8",
+  "content": {
+    "key_finding": {
+      "text": "eGFR fell by 7.1 mL/min/1.73 m² per year from October 2024 to March 2026 (63.9 to 54.1 over 4 results, 503 days), faster than the KDIGO 2012 threshold of 5 per year.",
+      "report_ids": [
+        11,
+        12,
+        13,
+        14
+      ]
+    },
+    "sections": [
+      {
+        "title": "Kidney",
+        "sentences": [
+          {
+            "text": "eGFR is 31% below the baseline (78.4 to 54.1) and creatinine is 34% above it (1.11 to 1.49 mg/dL); the values come from different labs.",
+            "report_ids": [
+              5,
+              6,
+              7,
+              14
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Glucose control",
+        "sentences": [
+          {
+            "text": "HbA1c fell from a baseline of 8.8% to 7.1%.",
+            "report_ids": [
+              5,
+              6,
+              14
+            ]
+          }
+        ]
+      }
+    ],
+    "medication_rows": [
+      {
+        "date": "2023-10-02",
+        "drug": "Metformin",
+        "dose": "500 mg BD",
+        "observed": "HbA1c -15.9% (mean 8.8 to 7.4); expected fall"
+      },
+      {
+        "date": "2024-03-04",
+        "drug": "Ramipril",
+        "dose": "2.5 mg OD",
+        "observed": "Creatinine +15.5%, within the ≤30% rise expected after ACEi/ARB start"
+      },
+      {
+        "date": "2024-05-06",
+        "drug": "Empagliflozin",
+        "dose": "10 mg OD",
+        "observed": "eGFR fell after the start"
+      }
+    ],
+    "data_notes": [
+      "Reports come from 3 labs; between-lab variation is larger than the change thresholds assume.",
+      "Adherence is not recorded."
+    ],
+    "reports": [
+      {
+        "report_id": 5,
+        "label": "R1",
+        "date": "2023-06-12",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 6,
+        "label": "R2",
+        "date": "2023-09-14",
+        "lab": "Kestrelline Labs"
+      },
+      {
+        "report_id": 7,
+        "label": "R3",
+        "date": "2023-11-16",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 8,
+        "label": "R4",
+        "date": "2024-02-15",
+        "lab": "Varnika Clinical Labs"
+      },
+      {
+        "report_id": 9,
+        "label": "R5",
+        "date": "2024-04-01",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 10,
+        "label": "R6",
+        "date": "2024-06-10",
+        "lab": "Kestrelline Labs"
+      },
+      {
+        "report_id": 11,
+        "label": "R7",
+        "date": "2024-10-15",
+        "lab": "Varnika Clinical Labs"
+      },
+      {
+        "report_id": 12,
+        "label": "R8",
+        "date": "2025-03-10",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      },
+      {
+        "report_id": 13,
+        "label": "R9",
+        "date": "2025-09-01",
+        "lab": "Kestrelline Labs"
+      },
+      {
+        "report_id": 14,
+        "label": "R10",
+        "date": "2026-03-02",
+        "lab": "ASTERLANE DIAGNOSTICS"
+      }
+    ],
+    "basis": {
+      "flags": 6,
+      "medication_responses": 3,
+      "reports": 10,
+      "labs": 3
+    }
+  }
 }
 ```
 

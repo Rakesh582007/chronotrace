@@ -18,8 +18,9 @@ DEFAULT_PATH = Path(__file__).with_name("analytes.yaml")
 EXPECTED_COUNT = 20
 REQUIRED_FIELDS = [
     "id", "canonical_name", "synonyms", "loinc", "loinc_name", "specimen",
-    "canonical_unit", "conversions", "reference_ranges", "reference_range_source", "rcv",
+    "canonical_unit", "conversions", "reference_ranges", "reference_range_source", "rcv", "system",
 ]
+SYSTEM_FIELDS = ["id", "name", "order", "headline"]
 RCV_STATUSES = {"verified", "unverified", "not_established"}
 SEXES = {"any", "male", "female"}
 RCV_Z = 1.96 * math.sqrt(2)  # two-sided 95%, two measurements
@@ -183,6 +184,7 @@ def validate(data: dict) -> list[str]:
 
     # Cross-analyte checks that need every id loaded first.
     by_id = {a.get("id"): a for a in analytes}
+    errors += validate_systems(data.get("systems"), analytes)
     for a in analytes:
         if a.get("derived"):
             for inp in (a.get("formula") or {}).get("inputs", []):
@@ -197,6 +199,38 @@ def validate(data: dict) -> list[str]:
                 if abs(expected - rcv["percent"]) > RCV_TOLERANCE:
                     errors.append(f"[{a['id']}] rcv.percent should be {expected:.1f} from creatinine RCV")
 
+    return errors
+
+
+def validate_systems(systems, analytes: list[dict]) -> list[str]:
+    """Every analyte's system is listed; each system has analytes and a headline analyte of its own."""
+    if not isinstance(systems, list) or not systems:
+        return ["top-level 'systems' list is missing"]
+    errors: list[str] = []
+    ids: set[str] = set()
+    orders: set = set()
+    members: dict[str, list[str]] = {}
+    for a in analytes:
+        members.setdefault(a.get("system"), []).append(a.get("id"))
+    for s in systems:
+        sid = s.get("id", "<missing id>")
+        where = f"system [{sid}]"
+        for field in SYSTEM_FIELDS:
+            if s.get(field) in (None, ""):
+                errors.append(f"{where} missing field '{field}'")
+        if sid in ids:
+            errors.append(f"{where} duplicate id")
+        ids.add(sid)
+        if not isinstance(s.get("order"), int) or s.get("order") in orders:
+            errors.append(f"{where} order must be a whole number used by one system only")
+        orders.add(s.get("order"))
+        if not members.get(sid):
+            errors.append(f"{where} has no analytes")
+        elif s.get("headline") not in members[sid]:
+            errors.append(f"{where} headline '{s.get('headline')}' is not one of its analytes")
+    for a in analytes:
+        if a.get("system") and a.get("system") not in ids:
+            errors.append(f"[{a.get('id')}] system '{a.get('system')}' is not in the systems list")
     return errors
 
 

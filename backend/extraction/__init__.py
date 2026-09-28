@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import pdfplumber
+
 from shared.pdf_rows import extract_rows
 
 from .assemble import Assembly, Line, Result, Skipped, assemble
@@ -31,6 +33,8 @@ class Extraction:
     layout: str                  # "header" or "no header"
     header_text: str | None
     pages: int
+    page_width: float | None = None      # first page, PDF points (the frame for Result.bbox)
+    page_height: float | None = None
 
 
 def read_lines(pdf_path) -> tuple[list[tuple[int, list[Line]]], dict[int, float]]:
@@ -40,6 +44,19 @@ def read_lines(pdf_path) -> tuple[list[tuple[int, list[Line]]], dict[int, float]
         pages.append((page_no, [Line(page_no, i, row, ["O"] * len(row)) for i, row in enumerate(rows, 1)]))
         heights[page_no] = height
     return pages, heights
+
+
+def row_bbox(words: list[dict]) -> list[float]:
+    """[x0, top, x1, bottom] around a row's words, in PDF points from the page's top left (1 decimal)."""
+    return [round(min(w["x0"] for w in words), 1), round(min(w["top"] for w in words), 1),
+            round(max(w["x1"] for w in words), 1), round(max(w["bottom"] for w in words), 1)]
+
+
+def page_size(pdf_path) -> tuple[float, float] | tuple[None, None]:
+    with pdfplumber.open(pdf_path) as pdf:
+        if not pdf.pages:
+            return None, None
+        return round(float(pdf.pages[0].width), 1), round(float(pdf.pages[0].height), 1)
 
 
 def extract_report(pdf_path: str | Path, tagger: Tagger | None = None) -> Extraction:
@@ -54,6 +71,11 @@ def extract_report(pdf_path: str | Path, tagger: Tagger | None = None) -> Extrac
         ln.tags = tags
 
     asm: Assembly = assemble(pages, heights)
+    rows = {(ln.page, ln.line): ln for ln in all_lines}
+    for r in asm.results:
+        if (r.page, r.line) in rows and rows[(r.page, r.line)].words:
+            r.bbox = row_bbox(rows[(r.page, r.line)].words)
+    width, height = page_size(pdf_path)
     header_rows = [ln.text for ln in all_lines if ln.page == 1 and (1, ln.line) in asm.page_header_lines]
     meta = read_metadata(header_rows, [ln.text for ln in all_lines])
-    return Extraction(asm.results, asm.skipped, meta, asm.layout, asm.header_text, len(pages))
+    return Extraction(asm.results, asm.skipped, meta, asm.layout, asm.header_text, len(pages), width, height)

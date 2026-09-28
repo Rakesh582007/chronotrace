@@ -26,8 +26,9 @@ def by_test(detail):
 
 def test_create_and_list_patients(client):
     p = new_patient(client)
-    assert p == {"id": p["id"], **DEMO}
-    assert client.get("/patients").json() == [p]
+    assert p == {"id": p["id"], "patient_code": "CT-0001", "has_photo": False, **DEMO}
+    listed = client.get("/patients").json()
+    assert [{k: item[k] for k in p} for item in listed] == [p]
 
 
 @pytest.mark.parametrize("body", [
@@ -249,10 +250,10 @@ def test_simultaneous_duplicate_upload_is_409_not_500(client, monkeypatch):
     upload(client, p["id"], "demo_t2d_ckd_1.pdf")
     real, calls = main._raise_if_duplicate, []
 
-    def first_check_misses(session, sha):          # as if the other request had not committed yet
+    def first_check_misses(session, sha, doctor):  # as if the other request had not committed yet
         calls.append(sha)
         if len(calls) > 1:
-            real(session, sha)
+            real(session, sha, doctor)
     monkeypatch.setattr(main, "_raise_if_duplicate", first_check_misses)
     r = upload(client, p["id"], "demo_t2d_ckd_1.pdf")
     assert r.status_code == 409 and len(calls) == 2
