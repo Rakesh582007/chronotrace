@@ -11,7 +11,9 @@ extraction model and normalisation):
   CT-0004 S. Priya   3 reports from 1 lab, no flags.
 
 --reset drops and recreates every table of the demo database and empties the uploads folder (documents,
-photos, rendered pages). The database is the API's (CHRONOTRACE_DB, default backend/chronotrace.db).
+photos, rendered pages). --with-summary then saves one whole-history summary for K. Selvam (R1-R9) through
+POST /patients/{id}/summaries, so the summary page has a saved version (needs the LLM settings in .env).
+The database is the API's (CHRONOTRACE_DB, default backend/chronotrace.db).
 """
 
 from __future__ import annotations
@@ -107,6 +109,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--reset", action="store_true",
                     help="drop and recreate the demo database and empty the uploads folder first")
     ap.add_argument("--out", type=Path, default=OUT_DIR, help="where to write the PDFs (default: git-ignored)")
+    ap.add_argument("--with-summary", action="store_true",
+                    help="also save a whole-history LLM summary for K. Selvam (R1-R9)")
     args = ap.parse_args(argv)
 
     from fastapi.testclient import TestClient
@@ -144,6 +148,20 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{p['patient_code']:<8} {p['name']:<11} {p['guideline_flags']:>9} {p['change_flags']:>6} "
                   f"{p['expected_flags']:>8} {p['report_count']:>7} {p['lab_count']:>4} {docs[p['id']]:>9}")
         print(f"live upload for the demo: {out['selvam']['live_report']}")
+        if args.with_summary:
+            return _save_summary(client, out["selvam"]["patient_id"])
+    return 0
+
+
+def _save_summary(client, patient_id: int) -> int:
+    r = client.post(f"/patients/{patient_id}/summaries", json={"period": "all"})
+    if r.status_code != 201:
+        detail = r.json().get("detail") if r.headers.get("content-type", "").startswith("application/json") else r.text
+        print(f"demo data seeded, but the summary was not saved ({r.status_code}): {detail}")
+        return 1
+    s = r.json()
+    print(f"summary saved for CT-0001 ({s['from']} to {s['to']}, {s['content']['basis']['reports']} reports) "
+          f"by {s['model']}")
     return 0
 
 

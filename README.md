@@ -61,6 +61,7 @@ Training takes about 4 minutes on an RTX 3050 (6 GB, 1.6 GB peak VRAM). Results:
 ```bash
 pip install -r requirements.txt -r requirements-ml.txt       # plus torch (see Training)
 python -m backend.demo.seed --reset                          # four synthetic demo patients, through the API
+python -m backend.demo.seed --reset --with-summary           # ... plus a saved summary for K. Selvam (calls the LLM)
 uvicorn backend.main:app --reload                            # http://127.0.0.1:8000, docs at /docs
 ```
 
