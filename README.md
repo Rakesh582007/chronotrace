@@ -122,6 +122,6 @@ override), checks that the KDIGO card appears and saves screenshots to `frontend
 - [x] Step 5 – Database and normalisation
 - [x] Step 6 – Trend engine and medication response
 - [x] Step 7 – LLM summaries
-- [ ] Step 8 – Frontend
+- [x] Step 8 – Frontend
 - [ ] Step 9 – Demo patient and real-report evaluation
 - [ ] Step 10 – Pitch and demo checklist
