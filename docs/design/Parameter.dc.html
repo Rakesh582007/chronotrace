@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ChronoTrace · K. Selvam · eGFR</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap">
+<style>
+body{margin:0;background:#F4EEE2;color:#1D2733;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Newsreader',Georgia,'Times New Roman',serif}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums}
+a{color:#2F6DA3;text-decoration:none}a:hover{color:#1F5282;text-decoration:underline}
+.plain,.plain:hover{color:inherit;text-decoration:none}
+.row:hover{background:#F8F3EA}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1160px; box-sizing: border-box; background: #F4EEE2; display: flex; flex-direction: column">
+
+  <header style="height: 64px; flex-shrink: 0; box-sizing: border-box; padding: 0 40px; display: flex; align-items: center; gap: 24px; background: #FFFDF9; border-bottom: 1px solid #E3D9C6">
+    <a href="Patients.dc.html" class="plain" style="display: flex; align-items: center; gap: 10px">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#2F6DA3"></rect><path d="M5 17h5l2.5-7 3.5 10 2.5-6H23" stroke="#FFFDF9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <span class="serif" style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em">ChronoTrace</span>
+    </a>
+    <nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4A5563">
+      <a href="Patients.dc.html">My patients</a><span aria-hidden="true">/</span>
+      <a href="Overview.dc.html">K. Selvam</a><span aria-hidden="true">/</span>
+      <a href="System.dc.html">Kidney</a><span aria-hidden="true">/</span>
+      <span style="color: #1D2733; font-weight: 500">eGFR</span>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="font-size: 12px; color: #4A5563; padding: 4px 10px; border: 1px solid #E3D9C6; border-radius: 999px">Demo login · synthetic data</span>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="width: 32px; height: 32px; border-radius: 50%; background: #E4EEF8; color: #1F5282; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600">DD</span>
+      <span style="font-size: 14px; font-weight: 500">Demo doctor</span>
+    </div>
+    <a href="Main.dc.html" style="font-size: 14px">Sign out</a>
+  </header>
+
+  <section style="padding: 26px 56px 18px; display: flex; align-items: flex-end; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <a href="System.dc.html" style="font-size: 14px">← Kidney</a>
+      <div style="display: flex; align-items: baseline; gap: 14px">
+        <h1 class="serif" style="margin: 0; font-size: 44px; font-weight: 500; letter-spacing: -0.02em; line-height: 1">eGFR</h1>
+        <span style="font-size: 15px; color: #4A5563">mL/min/1.73 m² · CKD-EPI 2021, recalculated from creatinine for every report</span>
+      </div>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <div role="group" aria-label="Time range" style="display: flex; padding: 3px; background: #EDE5D5; border-radius: 10px">
+      <button type="button" aria-pressed="true" style="height: 34px; padding: 0 14px; border: 0; border-radius: 8px; background: #FFFDF9; font: inherit; font-size: 14px; font-weight: 600; color: #1D2733; box-shadow: 0 1px 2px rgba(29,39,51,0.12); cursor: pointer">All</button>
+      <button type="button" aria-pressed="false" style="height: 34px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; color: #3F4855; cursor: pointer">2 years</button>
+      <button type="button" aria-pressed="false" style="height: 34px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; color: #3F4855; cursor: pointer">1 year</button>
+    </div>
+    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #3F4855; height: 40px"><input type="checkbox" style="width: 18px; height: 18px; accent-color: #2F6DA3">Show all drugs</label>
+  </section>
+
+  <main style="padding: 0 56px 40px; display: grid; grid-template-columns: 880px 416px; gap: 32px; align-items: start">
+    <div style="display: flex; flex-direction: column; gap: 20px">
+
+      <section aria-label="eGFR chart" style="padding: 22px 24px 18px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 18px; display: flex; flex-direction: column; gap: 14px">
+        <div style="position: relative; width: 832px; height: 384px">
+          <svg width="832" height="384" viewBox="0 0 832 384" role="img" aria-label="eGFR across 10 reports. Baseline 78.4, threshold 62.7. Values fall after ramipril and empagliflozin start, then decline 7.1 per year from R7 to R10.">
+            <g transform="translate(44 12)">
+              <rect x="{{c.w1x}}" y="0" width="{{c.w1w}}" height="320" fill="#EFE7D6"></rect>
+              <rect x="{{c.w2x}}" y="0" width="{{c.w2w}}" height="320" fill="#F2EBDD"></rect>
+              <line x1="0" y1="{{c.g50}}" x2="772" y2="{{c.g50}}" stroke="#EDE5D5"></line>
+              <line x1="0" y1="{{c.g60}}" x2="772" y2="{{c.g60}}" stroke="#EDE5D5"></line>
+              <line x1="0" y1="{{c.g70}}" x2="772" y2="{{c.g70}}" stroke="#EDE5D5"></line>
+              <line x1="0" y1="{{c.g80}}" x2="772" y2="{{c.g80}}" stroke="#EDE5D5"></line>
+              <text x="-10" y="{{c.g50}}" dy="4" text-anchor="end" font-size="12" fill="#4A5563">50</text>
+              <text x="-10" y="{{c.g60}}" dy="4" text-anchor="end" font-size="12" fill="#4A5563">60</text>
+              <text x="-10" y="{{c.g70}}" dy="4" text-anchor="end" font-size="12" fill="#4A5563">70</text>
+              <text x="-10" y="{{c.g80}}" dy="4" text-anchor="end" font-size="12" fill="#4A5563">80</text>
+
+              <line x1="0" y1="{{c.base}}" x2="772" y2="{{c.base}}" stroke="#6A7280" stroke-width="1.2" stroke-dasharray="5 5"></line>
+              <text x="772" y="{{c.base}}" dy="-7" text-anchor="end" font-size="12" fill="#3F4855">Baseline 78.4 · median of R1–R3</text>
+              <line x1="0" y1="{{c.thr}}" x2="772" y2="{{c.thr}}" stroke="#B9A98A" stroke-width="1" stroke-dasharray="2 4"></line>
+              <text x="6" y="{{c.thr}}" dy="-7" text-anchor="start" font-size="12" fill="#5B4C2E">−20% from baseline · 62.7</text>
+
+              <line x1="{{c.ram}}" y1="0" x2="{{c.ram}}" y2="320" stroke="#2F6DA3" stroke-width="1.5"></line>
+              <line x1="{{c.emp}}" y1="0" x2="{{c.emp}}" y2="320" stroke="#2F6DA3" stroke-width="1.5"></line>
+
+              <path d="{{c.line}}" stroke="#1D2733" stroke-width="1.5" fill="none" stroke-linejoin="round"></path>
+              <path d="{{c.slope}}" stroke="#C8741F" stroke-width="2.5" stroke-dasharray="7 5" fill="none" stroke-linecap="round"></path>
+              <path d="{{c.hollow}}" fill="#FFFDF9" stroke="#6A7280" stroke-width="1.6"></path>
+              <path d="{{c.solid}}" fill="#2F6DA3"></path>
+              <circle cx="{{c.selx}}" cy="{{c.sely}}" r="10" fill="none" stroke="#2F6DA3" stroke-width="1.6"></circle>
+
+              <line x1="0" y1="320" x2="772" y2="320" stroke="#CFC5B2"></line>
+            </g>
+          </svg>
+
+          <div style="position: absolute; top: 14px; left: {{c.ramL}}px; font-size: 12px; font-weight: 600; color: #1F5282; background: #FFFDF9; padding: 1px 6px; border-radius: 4px">Ramipril</div>
+          <div style="position: absolute; top: 34px; left: {{c.empL}}px; font-size: 12px; font-weight: 600; color: #1F5282; background: #FFFDF9; padding: 1px 6px; border-radius: 4px">Empagliflozin</div>
+
+          <div style="position: absolute; left: 44px; top: 338px; width: 772px; height: 40px">
+            <sc-for list="{{c.labels}}" as="r" hint-placeholder-count="10">
+              <span class="mono" style="position: absolute; left: {{r.x}}px; top: 0; transform: translateX(-50%); font-size: 11px; color: {{r.color}}">{{r.label}}</span>
+            </sc-for>
+            <sc-for list="{{c.years}}" as="y" hint-placeholder-count="3">
+              <span class="num" style="position: absolute; left: {{y.x}}px; top: 20px; transform: translateX(-50%); font-size: 12px; color: #4A5563">{{y.label}}</span>
+            </sc-for>
+          </div>
+
+          <div role="dialog" aria-label="Selected result R10" style="position: absolute; left: 598px; top: 78px; width: 214px; box-sizing: border-box; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: #1D2733; color: #F4EEE2; border-radius: 12px; box-shadow: 0 16px 30px -18px rgba(29,39,51,0.7)">
+            <div style="display: flex; align-items: baseline; justify-content: space-between"><span class="mono" style="font-size: 12px; color: #C9D6E4">R10 · 02 Mar 2026</span></div>
+            <div style="display: flex; align-items: baseline; gap: 6px"><span class="serif num" style="font-size: 28px; line-height: 1">54.06</span><span style="font-size: 12px; color: #C9D6E4">mL/min/1.73 m²</span></div>
+            <span style="font-size: 12px; line-height: 1.45; color: #DCE3EA">From creatinine 1.49 mg/dL · ASTERLANE DIAGNOSTICS · page 1</span>
+            <a href="Upload.dc.html" style="font-size: 13px; font-weight: 600; color: #9DC6EE">Open report →</a>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; color: #3F4855; padding-top: 2px; border-top: 1px solid #EDE5D5">
+          <span style="display: flex; align-items: center; gap: 7px; padding-top: 10px"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#2F6DA3"></circle></svg>Used in the trend</span>
+          <span style="display: flex; align-items: center; gap: 7px; padding-top: 10px"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="#FFFDF9" stroke="#6A7280" stroke-width="1.5"></circle></svg>Before or inside a drug window</span>
+          <span style="display: flex; align-items: center; gap: 7px; padding-top: 10px"><svg width="16" height="12" aria-hidden="true"><rect width="16" height="12" fill="#EFE7D6"></rect></svg>Expected-effect window</span>
+          <span style="display: flex; align-items: center; gap: 7px; padding-top: 10px"><svg width="24" height="6" aria-hidden="true"><line x1="0" y1="3" x2="24" y2="3" stroke="#C8741F" stroke-width="2.5" stroke-dasharray="7 5"></line></svg>Slope R7–R10</span>
+        </div>
+      </section>
+
+      <section aria-labelledby="results-h" style="background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 18px; overflow: hidden">
+        <div style="padding: 16px 24px; display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid #EDE5D5">
+          <h2 id="results-h" class="serif" style="margin: 0; font-size: 22px; font-weight: 500">Results</h2>
+          <span style="font-size: 13px; color: #4A5563">10 confirmed reports · click a row to open the report</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+          <thead>
+            <tr style="text-align: left; color: #4A5563; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase">
+              <th scope="col" style="padding: 10px 24px; font-weight: 600">Report</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600">Collected</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600">Lab</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; text-align: right">Creatinine</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; text-align: right">eGFR</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; text-align: right">vs previous</th>
+              <th scope="col" style="padding: 10px 24px 10px 20px; font-weight: 600">In trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+              <tr class="row" style="border-top: 1px solid #F0E9DB">
+                <td class="mono" style="padding: 8px 24px; font-size: 13px">{{r.id}}</td>
+                <td class="num" style="padding: 8px">{{r.date}}</td>
+                <td style="padding: 8px; color: #3F4855">{{r.lab}}</td>
+                <td class="num" style="padding: 8px; text-align: right">{{r.creat}}</td>
+                <td class="num" style="padding: 8px; text-align: right; font-weight: 600">{{r.egfr}}</td>
+                <td class="num" style="padding: 8px; text-align: right; color: #3F4855">{{r.delta}}</td>
+                <td style="padding: 8px 24px 8px 20px; color: {{r.useColor}}; font-size: 13px">{{r.use}}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <aside style="display: flex; flex-direction: column; gap: 16px">
+      <section style="padding: 20px 22px; background: #FBEBD3; border: 1px solid #EBC48E; border-radius: 18px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A4507">
+          <svg width="12" height="11" viewBox="0 0 12 11" aria-hidden="true"><path d="M6 0.5L11.5 10.5H0.5Z" fill="#C8741F"></path></svg>
+          Guideline · rapid decline
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 8px"><span class="serif num" style="font-size: 52px; font-weight: 500; line-height: 1; letter-spacing: -0.02em">−7.1</span><span style="font-size: 15px; color: #5A3A12">per year</span></div>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: #3F2A12">Faster than the KDIGO threshold of 5 per year. No single step between reports crossed the 20% change threshold; the trend did.</p>
+        <dl style="margin: 0; display: grid; grid-template-columns: 110px 1fr; row-gap: 6px; font-size: 13px">
+          <dt style="color: #6B4A20">Results</dt><dd style="margin: 0">4 · R7, R8, R9, R10</dd>
+          <dt style="color: #6B4A20">Span</dt><dd style="margin: 0">503 days · Oct 2024 – Mar 2026</dd>
+          <dt style="color: #6B4A20">Rule</dt><dd class="mono" style="margin: 0; font-size: 12px">KDIGO_RAPID_EGFR</dd>
+          <dt style="color: #6B4A20">Source</dt><dd style="margin: 0">KDIGO 2012 definition of rapid progression (&gt; 5 mL/min/1.73 m²/yr)</dd>
+        </dl>
+      </section>
+
+      <section style="padding: 18px 22px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 18px; display: flex; flex-direction: column; gap: 10px">
+        <h2 class="serif" style="margin: 0; font-size: 20px; font-weight: 500">Why the early drop is not in the trend</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #3F4855">R5 and R6 fall inside the expected-effect windows of ramipril (7–60 days) and empagliflozin (7–90 days). A small eGFR dip is expected after starting either drug. The slope starts after the last window closed, so the expected dip isn't counted as decline.</p>
+      </section>
+
+      <section style="padding: 18px 22px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 18px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: baseline; gap: 10px">
+          <h2 class="serif" style="margin: 0; font-size: 20px; font-weight: 500">Change from baseline</h2>
+          <div style="flex-grow: 1"></div>
+          <span class="serif num" style="font-size: 26px; color: #1F5282">−31.1%</span>
+        </div>
+        <dl style="margin: 0; display: grid; grid-template-columns: 110px 1fr; row-gap: 6px; font-size: 13px">
+          <dt style="color: #4A5563">Baseline</dt><dd class="num" style="margin: 0">78.42 · median of R1–R3</dd>
+          <dt style="color: #4A5563">Latest</dt><dd class="num" style="margin: 0">54.06 · R10</dd>
+          <dt style="color: #4A5563">Threshold</dt><dd style="margin: 0">20% · KDIGO 2024 PP 2.1.3 · <span style="color: #2F5A3C; font-weight: 600">verified</span></dd>
+          <dt style="color: #4A5563">Since baseline</dt><dd style="margin: 0">Ramipril (Mar 2024), empagliflozin (May 2024)</dd>
+        </dl>
+      </section>
+
+      <section style="padding: 16px 22px; border: 1px dashed #CFC5B2; border-radius: 18px; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 600; color: #3F4855">Data notes</h2>
+        <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #4A5563">Results come from 3 labs, which adds uncertainty to the slope. Age is taken from the birth year (±1 year, about 0.6% of eGFR). The lab's printed eGFR is kept on each report for reference.</p>
+      </section>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = ['2023-06-12','2023-09-14','2023-11-16','2024-02-15','2024-04-01','2024-06-10','2024-10-15','2025-03-10','2025-09-01','2026-03-02'];
+    const V = [79.3, 76.76, 78.42, 77.94, 65.08, 61.62, 63.9, 61.2, 58.12, 54.06];
+    const CR = [1.10, 1.13, 1.11, 1.11, 1.29, 1.35, 1.31, 1.35, 1.41, 1.49];
+    const LAB = ['ASTERLANE DIAGNOSTICS','Kestrelline Labs','ASTERLANE DIAGNOSTICS','Varnika Clinical Labs','ASTERLANE DIAGNOSTICS','Kestrelline Labs','Varnika Clinical Labs','ASTERLANE DIAGNOSTICS','Kestrelline Labs','ASTERLANE DIAGNOSTICS'];
+    const W = 772, H = 320, LO = 45, HI = 85;
+    const D0 = Date.UTC(2023, 4, 1), D1 = Date.UTC(2026, 3, 15);
+    const t = (d) => { const a = d.split('-').map(Number); return Date.UTC(a[0], a[1] - 1, a[2]); };
+    const X = (d) => Math.round((t(d) - D0) / (D1 - D0) * W * 10) / 10;
+    const Y = (v) => Math.round((1 - (v - LO) / (HI - LO)) * H * 10) / 10;
+    const pts = V.map((v, i) => [X(R[i]), Y(v)]);
+    const dot = (p, r) => 'M' + (p[0] - r) + ' ' + p[1] + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+    const ys = R.slice(6).map((d) => (t(d) - t(R[6])) / (365.25 * 864e5));
+    const vs = V.slice(6);
+    const mx = ys.reduce((a, b) => a + b, 0) / 4, my = vs.reduce((a, b) => a + b, 0) / 4;
+    const sl = ys.reduce((a, x, i) => a + (x - mx) * (vs[i] - my), 0) / ys.reduce((a, x) => a + (x - mx) * (x - mx), 0);
+    const b0 = my - sl * mx;
+    const s0 = [X(R[6]), Y(b0)], s1 = [X(R[9]), Y(b0 + sl * ys[3])];
+    const fmt = (d) => { const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const a = d.split('-'); return a[2] + ' ' + m[Number(a[1]) - 1] + ' ' + a[0]; };
+    const use = ['Before drug windows','Before drug windows','Before drug windows','Before drug windows','Ramipril window','Empagliflozin window','Yes','Yes','Yes','Yes'];
+    return {
+      c: {
+        g50: Y(50), g60: Y(60), g70: Y(70), g80: Y(80),
+        base: Y(78.42), thr: Y(78.42 * 0.8),
+        w1x: X('2024-03-11'), w1w: Math.round((X('2024-05-03') - X('2024-03-11')) * 10) / 10,
+        w2x: X('2024-05-13'), w2w: Math.round((X('2024-08-04') - X('2024-05-13')) * 10) / 10,
+        ram: X('2024-03-04'), emp: X('2024-05-06'),
+        ramL: Math.round(44 + X('2024-03-04') - 64), empL: Math.round(44 + X('2024-05-06') + 6),
+        line: pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' '),
+        hollow: pts.slice(0, 6).map((p) => dot(p, 4.5)).join(''),
+        solid: pts.slice(6).map((p) => dot(p, 5.5)).join(''),
+        slope: 'M' + s0[0] + ' ' + s0[1] + ' L' + s1[0] + ' ' + s1[1],
+        selx: pts[9][0], sely: pts[9][1],
+        labels: R.map((d, i) => ({ x: X(d), label: 'R' + (i + 1), color: i >= 6 ? '#1F5282' : '#6A7280' })),
+        years: [{ label: '2024', x: X('2024-01-01') }, { label: '2025', x: X('2025-01-01') }, { label: '2026', x: X('2026-01-01') }]
+      },
+      rows: R.map((d, i) => ({
+        id: 'R' + (i + 1), date: fmt(d), lab: LAB[i], creat: CR[i].toFixed(2), egfr: V[i].toFixed(2),
+        delta: i === 0 ? '—' : ((V[i] - V[i - 1]) / V[i - 1] * 100 >= 0 ? '+' : '−') + Math.abs((V[i] - V[i - 1]) / V[i - 1] * 100).toFixed(1) + '%',
+        use: use[i], useColor: i >= 6 ? '#1F5282' : '#4A5563'
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ChronoTrace · K. Selvam · Summary</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap">
+<style>
+body{margin:0;background:#F4EEE2;color:#1D2733;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Newsreader',Georgia,'Times New Roman',serif}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums}
+a{color:#2F6DA3;text-decoration:none}a:hover{color:#1F5282;text-decoration:underline}
+.plain,.plain:hover{color:inherit;text-decoration:none}
+.btn-primary:hover{background:#255C8C !important;text-decoration:none}
+.btn-quiet:hover{background:#EFE7D6 !important}
+.tab:hover{color:#1D2733 !important;text-decoration:none}
+.src{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:11px;padding:1px 6px;border:1px solid #D9CFBB;border-radius:5px;color:#3F4855;white-space:nowrap;vertical-align:1px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1140px; box-sizing: border-box; background: #F4EEE2; display: flex; flex-direction: column">
+
+  <header style="height: 64px; flex-shrink: 0; box-sizing: border-box; padding: 0 40px; display: flex; align-items: center; gap: 24px; background: #FFFDF9; border-bottom: 1px solid #E3D9C6">
+    <a href="Patients.dc.html" class="plain" style="display: flex; align-items: center; gap: 10px">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#2F6DA3"></rect><path d="M5 17h5l2.5-7 3.5 10 2.5-6H23" stroke="#FFFDF9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <span class="serif" style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em">ChronoTrace</span>
+    </a>
+    <nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4A5563">
+      <a href="Patients.dc.html">My patients</a><span aria-hidden="true">/</span><span style="color: #1D2733; font-weight: 500">K. Selvam</span>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="font-size: 12px; color: #4A5563; padding: 4px 10px; border: 1px solid #E3D9C6; border-radius: 999px">Demo login · synthetic data</span>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="width: 32px; height: 32px; border-radius: 50%; background: #E4EEF8; color: #1F5282; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600">DD</span>
+      <span style="font-size: 14px; font-weight: 500">Demo doctor</span>
+    </div>
+    <a href="Main.dc.html" style="font-size: 14px">Sign out</a>
+  </header>
+
+  <section style="padding: 22px 56px 0; display: flex; align-items: center; gap: 16px">
+    <div title="No photo on file" style="width: 48px; height: 48px; border-radius: 50%; background: #DCE8F4; color: #1F5282; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600">KS</div>
+    <span class="serif" style="font-size: 30px; font-weight: 500; letter-spacing: -0.015em">K. Selvam</span>
+    <span class="mono" style="font-size: 13px; color: #4A5563">CT-0001</span>
+    <span style="font-size: 14px; color: #4A5563">Male · 58 · Type 2 diabetes, CKD</span>
+  </section>
+
+  <nav aria-label="Patient sections" style="margin: 16px 56px 0; display: flex; gap: 28px; border-bottom: 1px solid #E3D9C6">
+    <a href="Overview.dc.html" class="tab" style="padding: 12px 2px; font-size: 15px; font-weight: 500; color: #4A5563">Trends</a>
+    <a href="Medications.dc.html" class="tab" style="padding: 12px 2px; font-size: 15px; font-weight: 500; color: #4A5563">Medications</a>
+    <a href="Upload.dc.html" class="tab" style="padding: 12px 2px; font-size: 15px; font-weight: 500; color: #4A5563">Documents</a>
+    <a href="Summary.dc.html" class="tab" aria-current="page" style="padding: 12px 2px; font-size: 15px; font-weight: 600; color: #1D2733; border-bottom: 2px solid #2F6DA3; margin-bottom: -1px">Summary</a>
+  </nav>
+
+  <main style="padding: 24px 56px 40px; display: grid; grid-template-columns: 380px 916px; gap: 32px; align-items: start">
+    <aside style="display: flex; flex-direction: column; gap: 16px">
+      <fieldset style="margin: 0; padding: 18px 20px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 16px; display: flex; flex-direction: column; gap: 10px">
+        <legend class="serif" style="padding: 0 6px; font-size: 20px; font-weight: 500">Period</legend>
+        <label style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid #E3D9C6; border-radius: 10px; cursor: pointer">
+          <input type="radio" name="period" style="margin-top: 3px; accent-color: #2F6DA3">
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 500">Since last visit</span><span class="num" style="font-size: 13px; color: #4A5563">01 Sep 2025 – 02 Mar 2026 · 2 reports</span></span>
+        </label>
+        <label style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid #E3D9C6; border-radius: 10px; cursor: pointer">
+          <input type="radio" name="period" style="margin-top: 3px; accent-color: #2F6DA3">
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 500">Choose dates</span><span style="font-size: 13px; color: #4A5563">Any range with at least one report</span></span>
+        </label>
+        <label style="display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1.5px solid #2F6DA3; background: #EAF3FB; border-radius: 10px; cursor: pointer">
+          <input type="radio" name="period" checked style="margin-top: 3px; accent-color: #2F6DA3">
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Whole history</span><span class="num" style="font-size: 13px; color: #3F4855">12 Jun 2023 – 02 Mar 2026 · 10 reports</span></span>
+        </label>
+      </fieldset>
+
+      <div style="padding: 16px 18px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2F6DA3"></span><span style="font-size: 14px; font-weight: 600">Saved summary</span></div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #3F4855">Written by an LLM on <span class="num">28 Sep 2026, 09:40</span> from the 6 computed flags and 3 medication responses. It never sees the raw reports, so it can't introduce a value that isn't in them.</p>
+        <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #4A5563">If regenerating fails, this saved version stays on screen with its date.</p>
+      </div>
+
+      <div style="display: flex; gap: 10px">
+        <button type="button" class="btn-quiet" style="flex-grow: 1; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #FFFDF9; border: 1px solid #D9CFBB; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 500; color: #1D2733; cursor: pointer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"></path></svg>
+          Regenerate
+        </button>
+        <button type="button" class="btn-primary" style="flex-grow: 1; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #2F6DA3; border: 0; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 600; color: #FFFFFF; cursor: pointer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"></path></svg>
+          Download PDF
+        </button>
+      </div>
+    </aside>
+
+    <article aria-label="Summary document preview" style="box-sizing: border-box; padding: 48px 60px 40px; background: #FFFFFF; border: 1px solid #E3D9C6; border-radius: 4px; box-shadow: 0 30px 60px -40px rgba(29,39,51,0.55); display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; align-items: center; gap: 10px; padding-bottom: 16px; border-bottom: 1.5px solid #1D2733">
+        <svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#2F6DA3"></rect><path d="M5 17h5l2.5-7 3.5 10 2.5-6H23" stroke="#FFFDF9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span class="serif" style="font-size: 17px; font-weight: 600">ChronoTrace</span>
+        <div style="flex-grow: 1"></div>
+        <span style="font-size: 12px; color: #4A5563">For clinician review · not a diagnosis</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h1 class="serif" style="margin: 0; font-size: 34px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.1">Lab trend summary · K. Selvam</h1>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: #3F4855">
+          <span>CT-0001 · Male · 58</span><span>Type 2 diabetes, CKD</span><span class="num">Whole history · 12 Jun 2023 – 02 Mar 2026</span><span>10 reports · 3 labs</span>
+        </div>
+      </div>
+
+      <section style="padding: 16px 18px; background: #FBEBD3; border-radius: 8px; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #8A4507">Key finding</span>
+        <p class="serif" style="margin: 0; font-size: 18px; line-height: 1.5; color: #2A1B08">eGFR has fallen by 7.1 mL/min/1.73 m² per year since October 2024 (63.9 → 54.1 over 4 reports, 503 days), faster than the KDIGO 2012 rapid-progression threshold of 5 per year. No single step crossed the 20% change threshold. <span class="src">R7–R10</span></p>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #1F5282">Kidney</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.65">eGFR is 31% below the pre-treatment baseline (78.4 → 54.1) and creatinine is 34% above it (1.11 → 1.49 mg/dL). <span class="src">R1–R3</span> <span class="src">R10</span> Part of the early fall followed the ramipril (Mar 2024) and empagliflozin (May 2024) starts, as expected with these drugs. The trend above counts only results after those windows closed. <span class="src">R5</span> <span class="src">R6</span></p>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #1F5282">Glucose control</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.65">HbA1c fell from a baseline of 8.8% to 7.4% about four months after metformin was started (Oct 2023), and has stayed between 6.9% and 7.2% since; the latest is 7.1%. <span class="src">R1–R2</span> <span class="src">R4–R10</span></p>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #1F5282">Medication changes</h2>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+          <tbody>
+            <tr style="border-top: 1px solid #EDE5D5"><td class="num" style="padding: 8px 0; width: 110px; color: #3F4855">Oct 2023</td><td style="padding: 8px 0; width: 210px; font-weight: 600">Metformin 500 mg BD</td><td style="padding: 8px 0; color: #3F4855">HbA1c −15.9% (mean 8.8 → 7.4); expected fall</td></tr>
+            <tr style="border-top: 1px solid #EDE5D5"><td class="num" style="padding: 8px 0; color: #3F4855">Mar 2024</td><td style="padding: 8px 0; font-weight: 600">Ramipril 2.5 mg OD</td><td style="padding: 8px 0; color: #3F4855">Creatinine +15.5%, within the ≤30% rise expected (KDIGO 2024 PP 3.6.4)</td></tr>
+            <tr style="border-top: 1px solid #EDE5D5; border-bottom: 1px solid #EDE5D5"><td class="num" style="padding: 8px 0; color: #3F4855">May 2024</td><td style="padding: 8px 0; font-weight: 600">Empagliflozin 10 mg OD</td><td style="padding: 8px 0; color: #3F4855">eGFR −5.3%, small expected dip; ramipril had started 63 days earlier</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #4A5563">Data notes</h2>
+        <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #3F4855">Reports come from 3 labs; between-lab variation is larger than the thresholds assume. Adherence is not recorded. The creatinine change threshold is not yet verified against a published source.</p>
+      </section>
+
+      <div style="margin-top: 4px; padding-top: 12px; border-top: 1px solid #EDE5D5; display: flex; justify-content: space-between; font-size: 11px; color: #4A5563">
+        <span>Written by an LLM from ChronoTrace's computed flags and values only. Every statement cites its reports.</span>
+        <span class="num">Generated 28 Sep 2026 09:40 · page 1 of 1</span>
+      </div>
+    </article>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1140}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ChronoTrace · K. Selvam · Add documents</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap">
+<style>
+body{margin:0;background:#F4EEE2;color:#1D2733;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Newsreader',Georgia,'Times New Roman',serif}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums}
+a{color:#2F6DA3;text-decoration:none}a:hover{color:#1F5282;text-decoration:underline}
+.plain,.plain:hover{color:inherit;text-decoration:none}
+.btn-primary:hover{background:#255C8C !important;text-decoration:none}
+.icon-btn:hover{background:#EFE7D6 !important}
+.row:hover{background:#F8F3EA}
+.field:focus{outline:none;border-color:#2F6DA3 !important;box-shadow:0 0 0 3px #D4E4F4}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1060px; box-sizing: border-box; background: #F4EEE2; display: flex; flex-direction: column">
+
+  <header style="height: 64px; flex-shrink: 0; box-sizing: border-box; padding: 0 40px; display: flex; align-items: center; gap: 24px; background: #FFFDF9; border-bottom: 1px solid #E3D9C6">
+    <a href="Patients.dc.html" class="plain" style="display: flex; align-items: center; gap: 10px">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#2F6DA3"></rect><path d="M5 17h5l2.5-7 3.5 10 2.5-6H23" stroke="#FFFDF9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <span class="serif" style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em">ChronoTrace</span>
+    </a>
+    <nav aria-label="Breadcrumb" style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4A5563">
+      <a href="Patients.dc.html">My patients</a><span aria-hidden="true">/</span>
+      <a href="Overview.dc.html">K. Selvam</a><span aria-hidden="true">/</span>
+      <span style="color: #1D2733; font-weight: 500">Add documents</span>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="font-size: 12px; color: #4A5563; padding: 4px 10px; border: 1px solid #E3D9C6; border-radius: 999px">Demo login · synthetic data</span>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="width: 32px; height: 32px; border-radius: 50%; background: #E4EEF8; color: #1F5282; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600">DD</span>
+      <span style="font-size: 14px; font-weight: 500">Demo doctor</span>
+    </div>
+    <a href="Main.dc.html" style="font-size: 14px">Sign out</a>
+  </header>
+
+  <section style="padding: 24px 56px 18px; display: flex; align-items: flex-end; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 class="serif" style="margin: 0; font-size: 38px; font-weight: 500; letter-spacing: -0.02em; line-height: 1">Add documents</h1>
+      <span style="font-size: 15px; color: #4A5563">K. Selvam · CT-0001 · nothing reaches the trends until you confirm</span>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <ol aria-label="Steps" style="margin: 0; padding: 0; list-style: none; display: flex; align-items: center; gap: 10px; font-size: 14px">
+      <li style="display: flex; align-items: center; gap: 8px; color: #3F4855"><span style="width: 24px; height: 24px; border-radius: 50%; background: #2F6DA3; color: #FFFFFF; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"></path></svg></span>Add files</li>
+      <li aria-hidden="true" style="width: 28px; height: 1px; background: #CFC5B2"></li>
+      <li aria-current="step" style="display: flex; align-items: center; gap: 8px; font-weight: 600"><span style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid #2F6DA3; color: #1F5282; display: flex; align-items: center; justify-content: center; font-size: 12px; box-sizing: border-box">2</span>Review values</li>
+      <li aria-hidden="true" style="width: 28px; height: 1px; background: #CFC5B2"></li>
+      <li style="display: flex; align-items: center; gap: 8px; color: #4A5563"><span style="width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #CFC5B2; display: flex; align-items: center; justify-content: center; font-size: 12px; box-sizing: border-box">3</span>Confirm</li>
+    </ol>
+  </section>
+
+  <section aria-label="Documents" style="padding: 0 56px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+    <div style="padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; background: #FFFDF9; border: 1px solid #9DBFE0; border-radius: 16px; box-shadow: 0 0 0 3px #EAF3FB">
+      <span style="width: 40px; height: 48px; flex-shrink: 0; border-radius: 6px; background: #EAF3FB; border: 1px solid #BFD5EC; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #1F5282">PDF</span>
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #1F5282">Lab report · required</span>
+        <span class="mono" style="font-size: 13px">selvam_R10_2026-03-02.pdf</span>
+        <span style="font-size: 13px; color: #3F4855">1 page · read by the model · 7 results found</span>
+      </div>
+    </div>
+    <div style="padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 16px">
+      <span style="width: 40px; height: 48px; flex-shrink: 0; border-radius: 6px; background: #F4EEE2; border: 1px solid #E3D9C6; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #3F4855">PDF</span>
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #4A5563">Prescription · optional</span>
+        <span class="mono" style="font-size: 13px">prescription_02mar2026.pdf</span>
+        <span style="font-size: 13px; color: #3F4855">Stored with the report. <a href="#drugs">Add the drugs it lists ↓</a></span>
+      </div>
+    </div>
+    <button type="button" style="padding: 16px 18px; display: flex; gap: 14px; align-items: center; background: transparent; border: 1.5px dashed #CFC5B2; border-radius: 16px; font: inherit; color: inherit; text-align: left; cursor: pointer">
+      <span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; background: #EFE7D6; display: flex; align-items: center; justify-content: center; color: #3F4855"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg></span>
+      <span style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #4A5563">Doctor's note · optional</span>
+        <span style="font-size: 14px; color: #1D2733">Drop this visit's note, or choose a file</span>
+        <span style="font-size: 12px; color: #4A5563">PDF or photo · stored, not read</span>
+      </span>
+    </button>
+  </section>
+
+  <main style="padding: 18px 56px 0; display: grid; grid-template-columns: 400px 896px; gap: 32px; align-items: start; flex-grow: 1">
+    <section aria-label="Report preview" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between"><span style="font-size: 13px; font-weight: 600; color: #3F4855">Page 1 of 1</span><span style="font-size: 12px; color: #4A5563">Selected row is highlighted</span></div>
+      <div class="mono" style="height: 520px; box-sizing: border-box; padding: 22px 20px; display: flex; flex-direction: column; gap: 5px; background: #FFFFFF; border: 1px solid #E3D9C6; border-radius: 6px; box-shadow: 0 14px 30px -24px rgba(29,39,51,0.5); font-size: 9.5px; line-height: 1.35; color: #2A2F36; overflow: hidden">
+        <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em">ASTERLANE DIAGNOSTICS</span>
+        <span>Lab No. :90001310   Patient ID : 7000000001</span>
+        <span>Mr K SELVAM         Collected Date and Time :02/03/2026 08:10</span>
+        <span>Age / Sex :58 Y / Male   Reported Date and Time :02/03/2026 15:40</span>
+        <span style="height: 1px; background: #D9D2C3; margin: 6px 0"></span>
+        <span style="font-weight: 600">Investigation         Observed Value  Flag  Units   Biological Ref.</span>
+        <span>BLOOD - BIOCHEMISTRY</span>
+        <span>GLUCOSE (FASTING)     132             H     mg/dl   74 - 99</span>
+        <span style="color: #6A7280">Method :HEXOKINASE</span>
+        <span>HB A1C                7.1             H     %       Less than 5.6</span>
+        <span style="margin: 0 -8px; padding: 3px 8px; background: #DCE8F4; border-radius: 4px; outline: 1.5px solid #2F6DA3">CREATININE - SERUM    1.49            H     mg/dl   0.7 - 1.3</span>
+        <span>eGFR (CKD-EPI 2021)   54              L     mL/min  &gt; 90</span>
+        <span>POTASSIUM - SERUM     4.8                   mmol/l  3.5 - 5.1</span>
+        <span>CALCIUM -SERUM        9.4                   mg/dl   8.6 - 10</span>
+        <span>URINE ALB/CREAT RATIO 48              H     mg/g    Less than 30</span>
+        <span style="flex-grow: 1"></span>
+        <span style="color: #6A7280">Synthetic demo report · generated for ChronoTrace</span>
+      </div>
+    </section>
+
+    <section aria-labelledby="rev-h" style="display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+        <h2 id="rev-h" class="serif" style="margin: 0; font-size: 24px; font-weight: 500">Check the extracted values</h2>
+        <div style="flex-grow: 1"></div>
+        <span style="font-size: 13px; padding: 4px 10px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 999px">Collected <strong class="num" style="font-weight: 600">02 Mar 2026</strong> · from the “Collected” label</span>
+        <span style="font-size: 13px; padding: 4px 10px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 999px">Lab <strong style="font-weight: 600">ASTERLANE DIAGNOSTICS</strong></span>
+      </div>
+
+      <div style="background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 16px; overflow: hidden">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+          <thead>
+            <tr style="text-align: left; color: #4A5563; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; background: #FBF8F2">
+              <th scope="col" style="padding: 10px 16px; font-weight: 600">Status</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600">As printed</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600; text-align: right">Value</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600">Unit</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600">Tracked as</th>
+              <th scope="col" style="padding: 10px 8px; font-weight: 600">Where</th>
+              <th scope="col" style="padding: 10px 16px 10px 8px; font-weight: 600"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+              <tr class="row" style="border-top: 1px solid #F0E9DB; background: {{r.bg}}">
+                <td style="padding: 9px 16px"><span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: {{r.sBg}}; color: {{r.sFg}}">{{r.status}}</span></td>
+                <td class="mono" style="padding: 9px 8px; font-size: 12.5px">{{r.printed}}</td>
+                <td class="num" style="padding: 9px 8px; text-align: right; font-weight: 600">{{r.value}}</td>
+                <td style="padding: 9px 8px; color: #3F4855">{{r.unit}}</td>
+                <td style="padding: 9px 8px">{{r.analyte}}<span style="display: block; font-size: 12px; color: #4A5563">{{r.note}}</span></td>
+                <td class="mono" style="padding: 9px 8px; font-size: 12px; color: #4A5563">{{r.where}}</td>
+                <td style="padding: 6px 16px 6px 8px">
+                  <div style="display: flex; gap: 2px">
+                    <button type="button" class="icon-btn" aria-label="Edit {{r.printed}}" style="width: 32px; height: 32px; border: 0; background: transparent; border-radius: 8px; color: #3F4855; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg></button>
+                    <button type="button" class="icon-btn" aria-label="Reject {{r.printed}}" style="width: 32px; height: 32px; border: 0; background: transparent; border-radius: 8px; color: #3F4855; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+                  </div>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <div style="padding: 12px 16px; border-top: 1px solid #EDE5D5; display: flex; flex-direction: column; gap: 4px; background: #FBF8F2">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #4A5563">Other lines on the page</span>
+          <span style="font-size: 13px; color: #3F4855"><span class="mono" style="font-size: 12px">Method :HEXOKINASE</span> attached to fasting glucose as a note · page header lines ignored · every line is accounted for</span>
+        </div>
+      </div>
+
+      <div id="drugs" style="padding: 14px 16px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: baseline; gap: 10px"><span style="font-size: 15px; font-weight: 600">Drugs from the prescription</span><span style="font-size: 13px; color: #4A5563">Prescriptions are stored, not read. Enter only what changed.</span></div>
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr auto; gap: 10px; align-items: end">
+          <div style="display: flex; flex-direction: column; gap: 4px"><label for="drug" style="font-size: 12px; color: #3F4855">Drug</label><input id="drug" class="field" type="text" placeholder="e.g. Empagliflozin" style="height: 40px; box-sizing: border-box; padding: 0 10px; font: inherit; font-size: 14px; border: 1px solid #D9CFBB; border-radius: 8px; background: #FFFFFF"></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><label for="chg" style="font-size: 12px; color: #3F4855">Change</label><select id="chg" class="field" style="height: 40px; padding: 0 8px; font: inherit; font-size: 14px; border: 1px solid #D9CFBB; border-radius: 8px; background: #FFFFFF"><option>Start</option><option>Stop</option><option>Dose change</option></select></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><label for="dose" style="font-size: 12px; color: #3F4855">Dose</label><input id="dose" class="field" type="text" placeholder="e.g. 10 mg OD" style="height: 40px; box-sizing: border-box; padding: 0 10px; font: inherit; font-size: 14px; border: 1px solid #D9CFBB; border-radius: 8px; background: #FFFFFF"></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><label for="date" style="font-size: 12px; color: #3F4855">Date</label><input id="date" class="field" type="date" value="2026-03-02" style="height: 40px; box-sizing: border-box; padding: 0 10px; font: inherit; font-size: 14px; border: 1px solid #D9CFBB; border-radius: 8px; background: #FFFFFF"></div>
+          <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #9DBFE0; background: #EAF3FB; color: #1F5282; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Add</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer style="margin-top: 18px; height: 76px; flex-shrink: 0; box-sizing: border-box; padding: 0 56px; display: flex; align-items: center; gap: 16px; background: #FFFDF9; border-top: 1px solid #E3D9C6">
+    <span style="font-size: 14px; color: #3F4855"><strong style="font-weight: 600; color: #1D2733">6 values ready</strong> · 1 not tracked · 0 need review</span>
+    <div style="flex-grow: 1"></div>
+    <a href="Overview.dc.html" style="font-size: 15px; font-weight: 500; padding: 0 12px">Cancel</a>
+    <a href="Overview.dc.html" class="plain btn-primary" style="height: 46px; padding: 0 22px; display: flex; align-items: center; gap: 8px; background: #2F6DA3; color: #FFFFFF; border-radius: 10px; font-size: 15px; font-weight: 600">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"></path></svg>
+      Confirm report and update trends
+    </a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const ready = { status: 'Ready', sBg: '#E4EEF8', sFg: '#1F5282' };
+    const recalc = { status: 'Recalculated', sBg: '#EAF3FB', sFg: '#1F5282' };
+    const untracked = { status: 'Not tracked', sBg: '#EFE9DC', sFg: '#3F4855' };
+    const row = (s, printed, value, unit, analyte, note, where, bg) => Object.assign({}, s, { printed, value, unit, analyte, note, where, bg: bg || 'transparent' });
+    return {
+      rows: [
+        row(ready, 'GLUCOSE (FASTING)', '132', 'mg/dl', 'Fasting glucose', '1 note attached', 'p1 · l8'),
+        row(ready, 'HB A1C', '7.1', '%', 'HbA1c', 'report name match', 'p1 · l10'),
+        row(ready, 'CREATININE - SERUM', '1.49', 'mg/dl', 'Serum creatinine', 'report name match', 'p1 · l11', '#EAF3FB'),
+        row(recalc, 'eGFR (CKD-EPI 2021)', '54.06', 'mL/min/1.73 m²', 'eGFR', 'from creatinine, age and sex · printed 54 kept', 'p1 · l12'),
+        row(ready, 'POTASSIUM - SERUM', '4.8', 'mmol/l', 'Potassium', 'exact name match', 'p1 · l13'),
+        row(ready, 'URINE ALB/CREAT RATIO', '48', 'mg/g', 'UACR', 'loose name match', 'p1 · l15'),
+        row(untracked, 'CALCIUM -SERUM', '9.4', 'mg/dl', 'Not in the tracked list', 'kept on the report only', 'p1 · l14')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

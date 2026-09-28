@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ChronoTrace · Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap">
+<style>
+body{margin:0;background:#F4EEE2;color:#1D2733;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Newsreader',Georgia,'Times New Roman',serif}
+a{color:#2F6DA3;text-decoration:none}a:hover{color:#1F5282;text-decoration:underline}
+.plain,.plain:hover{color:inherit;text-decoration:none}
+.btn-primary:hover{background:#255C8C !important;text-decoration:none}
+.field:focus{outline:none;border-color:#2F6DA3 !important;box-shadow:0 0 0 3px #D4E4F4}
+.ledger{background-image:radial-gradient(rgba(29,39,51,0.07) 1px,transparent 1px);background-size:18px 18px}
+</style>
+</helmet>
+<div class="ledger" style="width: 1440px; height: 900px; box-sizing: border-box; background-color: #F4EEE2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px">
+
+  <div style="display: flex; align-items: center; gap: 12px">
+    <svg width="36" height="36" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#2F6DA3"></rect><path d="M5 17h5l2.5-7 3.5 10 2.5-6H23" stroke="#FFFDF9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    <span class="serif" style="font-size: 30px; font-weight: 600; letter-spacing: -0.01em">ChronoTrace</span>
+  </div>
+
+  <div style="width: 420px; box-sizing: border-box; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 20px; padding: 40px; display: flex; flex-direction: column; gap: 24px; box-shadow: 0 30px 60px -40px rgba(29,39,51,0.45)">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 class="serif" style="margin: 0; font-size: 34px; font-weight: 500; letter-spacing: -0.015em">Sign in</h1>
+      <p style="margin: 0; font-size: 15px; color: #4A5563">Doctor access to your assigned patients.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="username" style="font-size: 14px; font-weight: 500">Username</label>
+        <input id="username" class="field" type="text" value="demo.doctor" autocomplete="username" style="height: 46px; box-sizing: border-box; padding: 0 14px; font: inherit; font-size: 15px; color: #1D2733; background: #FFFFFF; border: 1px solid #D9CFBB; border-radius: 10px">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="password" style="font-size: 14px; font-weight: 500">Password</label>
+        <div style="display: flex; align-items: center; height: 46px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #D9CFBB; border-radius: 10px; padding-right: 4px">
+          <input id="password" class="field" type="password" value="chronotrace" autocomplete="current-password" style="flex-grow: 1; height: 44px; box-sizing: border-box; padding: 0 14px; font: inherit; font-size: 15px; color: #1D2733; background: transparent; border: 0; border-radius: 10px">
+          <button type="button" aria-label="Show password" style="width: 44px; height: 38px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 8px; color: #4A5563; cursor: pointer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <a href="Patients.dc.html" class="plain btn-primary" style="height: 48px; display: flex; align-items: center; justify-content: center; background: #2F6DA3; color: #FFFFFF; border-radius: 10px; font-size: 16px; font-weight: 600">Sign in</a>
+
+    <p style="margin: 0; font-size: 13px; text-align: center; color: #4A5563">Demo login · synthetic patients only</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

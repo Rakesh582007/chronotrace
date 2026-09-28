@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ChronoTrace · My patients</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap">
+<style>
+body{margin:0;background:#F4EEE2;color:#1D2733;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Newsreader',Georgia,'Times New Roman',serif}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+.num{font-variant-numeric:tabular-nums}
+a{color:#2F6DA3;text-decoration:none}a:hover{color:#1F5282;text-decoration:underline}
+.plain,.plain:hover{color:inherit;text-decoration:none}
+.pcard{transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.pcard:hover{transform:translateY(-2px);border-color:#9DBFE0 !important;box-shadow:0 18px 36px -24px rgba(31,82,130,0.45) !important}
+.btn-primary:hover{background:#255C8C !important;text-decoration:none}
+.field:focus{outline:none;border-color:#2F6DA3 !important;box-shadow:0 0 0 3px #D4E4F4}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; box-sizing: border-box; background: #F4EEE2; display: flex; flex-direction: column">
+
+  <header style="height: 64px; flex-shrink: 0; box-sizing: border-box; padding: 0 40px; display: flex; align-items: center; gap: 24px; background: #FFFDF9; border-bottom: 1px solid #E3D9C6">
+    <a href="Patients.dc.html" class="plain" style="display: flex; align-items: center; gap: 10px">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#2F6DA3"></rect><path d="M5 17h5l2.5-7 3.5 10 2.5-6H23" stroke="#FFFDF9" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <span class="serif" style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em">ChronoTrace</span>
+    </a>
+    <div style="flex-grow: 1"></div>
+    <span style="font-size: 12px; color: #4A5563; padding: 4px 10px; border: 1px solid #E3D9C6; border-radius: 999px">Demo login · synthetic data</span>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="width: 32px; height: 32px; border-radius: 50%; background: #E4EEF8; color: #1F5282; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600">DD</span>
+      <span style="font-size: 14px; font-weight: 500">Demo doctor</span>
+    </div>
+    <a href="Main.dc.html" style="font-size: 14px">Sign out</a>
+  </header>
+
+  <main style="padding: 44px 56px; display: flex; flex-direction: column; gap: 28px">
+    <div style="display: flex; align-items: flex-end; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 class="serif" style="margin: 0; font-size: 44px; font-weight: 500; letter-spacing: -0.02em">My patients</h1>
+        <p style="margin: 0; font-size: 15px; color: #4A5563">4 patients assigned to you · sorted by who needs review first</p>
+      </div>
+      <div style="flex-grow: 1"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="search" style="font-size: 13px; font-weight: 500; color: #4A5563">Search</label>
+        <div style="display: flex; align-items: center; gap: 8px; width: 300px; height: 44px; box-sizing: border-box; padding: 0 12px; background: #FFFFFF; border: 1px solid #D9CFBB; border-radius: 10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6A7280" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+          <input id="search" type="search" placeholder="Name or patient ID" style="flex-grow: 1; border: 0; outline: none; font: inherit; font-size: 15px; background: transparent; color: #1D2733">
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="sort" style="font-size: 13px; font-weight: 500; color: #4A5563">Sort by</label>
+        <select id="sort" class="field" style="height: 44px; width: 200px; padding: 0 12px; font: inherit; font-size: 15px; color: #1D2733; background: #FFFFFF; border: 1px solid #D9CFBB; border-radius: 10px">
+          <option>Needs review first</option>
+          <option>Name</option>
+          <option>Latest report</option>
+        </select>
+      </div>
+      <button type="button" class="btn-primary" style="height: 44px; padding: 0 18px; display: flex; align-items: center; gap: 8px; background: #2F6DA3; color: #FFFFFF; border: 0; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        Add patient
+      </button>
+    </div>
+
+    <div role="group" aria-label="Filter patients" style="display: flex; gap: 8px">
+      <button type="button" style="height: 36px; padding: 0 14px; background: #1D2733; color: #FFFDF9; border: 1px solid #1D2733; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer">All · 4</button>
+      <button type="button" style="height: 36px; padding: 0 14px; background: #FFFDF9; color: #1D2733; border: 1px solid #D9CFBB; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer">Needs review · 2</button>
+      <button type="button" style="height: 36px; padding: 0 14px; background: #FFFDF9; color: #1D2733; border: 1px solid #D9CFBB; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer">Not enough reports · 1</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px">
+      <sc-for list="{{patients}}" as="p" hint-placeholder-count="4">
+        <a href="{{p.href}}" class="plain pcard" style="box-sizing: border-box; min-height: 300px; padding: 22px; display: flex; flex-direction: column; gap: 16px; background: #FFFDF9; border: 1px solid #E3D9C6; border-radius: 18px; box-shadow: 0 1px 0 rgba(29,39,51,0.03)">
+          <div style="display: flex; align-items: center; gap: 14px">
+            <div title="No photo on file" style="width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 600; background: {{p.avBg}}; color: {{p.avFg}}">{{p.initials}}</div>
+            <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+              <span class="serif" style="font-size: 23px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.1">{{p.name}}</span>
+              <span class="mono" style="font-size: 13px; color: #4A5563">{{p.id}}</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <span style="font-size: 14px; color: #4A5563">{{p.sexAge}}</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px">
+              <sc-for list="{{p.conditions}}" as="c" hint-placeholder-count="2">
+                <span style="font-size: 13px; padding: 3px 10px; background: #EFE7D6; color: #3F4855; border-radius: 999px">{{c}}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="height: 1px; background: #EDE5D5"></div>
+          <div style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1">
+            <sc-if value="{{p.hasGuideline}}" hint-placeholder-val="{{true}}">
+              <span style="align-self: flex-start; display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; padding: 5px 11px; background: #FBEBD3; color: #8A4507; border: 1px solid #EBC48E; border-radius: 999px">
+                <svg width="12" height="11" viewBox="0 0 12 11" aria-hidden="true"><path d="M6 0.5L11.5 10.5H0.5Z" fill="#C8741F"></path></svg>
+                1 guideline alert
+              </span>
+            </sc-if>
+            <sc-if value="{{p.hasChanges}}" hint-placeholder-val="{{true}}">
+              <span style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #1F5282"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2F6DA3"></span>{{p.changes}}</span>
+            </sc-if>
+            <sc-if value="{{p.quiet}}" hint-placeholder-val="{{false}}">
+              <span style="font-size: 14px; color: #4A5563">{{p.quietText}}</span>
+            </sc-if>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #4A5563">
+            <span>Latest report <span class="num" style="color: #1D2733; font-weight: 500">{{p.last}}</span></span>
+            <span class="num">{{p.counts}}</span>
+          </div>
+        </a>
+      </sc-for>
+
+      <button type="button" style="box-sizing: border-box; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: transparent; border: 1.5px dashed #CFC5B2; border-radius: 18px; color: #4A5563; font: inherit; cursor: pointer">
+        <span style="width: 48px; height: 48px; border-radius: 50%; background: #E4EEF8; color: #1F5282; display: flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        </span>
+        <span style="font-size: 16px; font-weight: 600; color: #1D2733">Add patient</span>
+        <span style="font-size: 13px; max-width: 200px; text-align: center; line-height: 1.5">Name, sex, birth year and conditions. The patient ID is created for you.</span>
+      </button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      patients: [
+        { href: 'Overview.dc.html', initials: 'KS', avBg: '#DCE8F4', avFg: '#1F5282', name: 'K. Selvam', id: 'CT-0001', sexAge: 'Male · 58', conditions: ['Type 2 diabetes', 'CKD'], hasGuideline: true, hasChanges: true, changes: '5 changes from baseline or previous', quiet: false, quietText: '', last: '02 Mar 2026', counts: '10 reports · 3 labs' },
+        { href: 'Patients.dc.html', initials: 'MR', avBg: '#EFE3CC', avFg: '#6B4A12', name: 'M. Rani', id: 'CT-0002', sexAge: 'Female · 64', conditions: ['Hypothyroidism'], hasGuideline: false, hasChanges: true, changes: '2 changes from baseline or previous', quiet: false, quietText: '', last: '14 Jan 2026', counts: '4 reports · 2 labs' },
+        { href: 'Patients.dc.html', initials: 'SP', avBg: '#E2EBE4', avFg: '#2F5A3C', name: 'S. Priya', id: 'CT-0004', sexAge: 'Female · 52', conditions: ['Hypertension', 'CKD'], hasGuideline: false, hasChanges: false, changes: '', quiet: true, quietText: 'No flags · every value within its change threshold', last: '20 Nov 2025', counts: '3 reports · 1 lab' },
+        { href: 'Patients.dc.html', initials: 'JA', avBg: '#E9E4F1', avFg: '#4A3D6B', name: 'J. Arul', id: 'CT-0003', sexAge: 'Male · 47', conditions: ['Type 2 diabetes'], hasGuideline: false, hasChanges: false, changes: '', quiet: true, quietText: 'One report so far. Trends start from the second report.', last: '05 Aug 2025', counts: '1 report · 1 lab' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
