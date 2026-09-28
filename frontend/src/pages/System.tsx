@@ -37,7 +37,7 @@ export default function SystemPage() {
         <div className="flex flex-col gap-1.5">
           <Link to={base} className="text-sm">← Trends</Link>
           <div className="flex items-center gap-3.5">
-            <h2 className="m-0 font-serif text-[44px] font-medium leading-none tracking-[-0.02em]">{s.name}</h2>
+            <h2 className="m-0 font-serif text-[40px] font-medium leading-none tracking-[-0.02em]">{s.name}</h2>
             {s.status !== "no_data" && <StatusPill status={s.status} />}
           </div>
         </div>
@@ -58,7 +58,7 @@ export default function SystemPage() {
             <section key={aid} className={`grid grid-cols-1 gap-6 rounded-[18px] border border-line bg-card px-6 py-5 ${i === 0 ? "min-[1100px]:grid-cols-[minmax(0,1fr)_300px]" : "min-[1100px]:grid-cols-[minmax(0,1fr)_300px]"}`}>
               <div className="flex min-w-0 flex-col gap-3">
                 <div className="flex flex-wrap items-baseline gap-3">
-                  <h3 className="m-0 font-serif text-2xl font-medium">{shortName(t.name)}</h3>
+                  <h3 className="m-0 font-serif text-[22px] font-medium">{shortName(t.name)}</h3>
                   <span className="text-[13px] text-ink-3">{fmtUnit(t.canonical_unit)}</span>
                   <div className="grow" />
                   <Link to={`${base}/parameters/${aid}`} className="text-sm font-medium">Open {shortName(t.name)} →</Link>

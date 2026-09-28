@@ -136,7 +136,7 @@ export default function Documents() {
             <PagePreview detail={detail} selected={visible.find((o) => o.id === selected) ?? null} />
             <section aria-labelledby="rev-h" className="flex min-w-0 flex-col gap-3.5">
               <div className="flex flex-wrap items-center gap-3">
-                <h3 id="rev-h" className="m-0 font-serif text-2xl font-medium">Check the extracted values</h3>
+                <h3 id="rev-h" className="m-0 font-serif text-[22px] font-medium">Check the extracted values</h3>
                 <div className="grow" />
                 {detail.report.collected_at ? (
                   <span className="rounded-full border border-line bg-card px-2.5 py-1 text-[13px]">
@@ -169,7 +169,7 @@ export default function Documents() {
             <div className="grow" />
             <button type="button" onClick={() => { setDetail(null); navigate(base); }} className="px-3 text-[15px] font-medium text-blue hover:underline">Cancel</button>
             <button type="button" disabled={!canConfirm} onClick={() => confirm.mutate()} data-testid="confirm-report"
-              className="flex h-[46px] items-center gap-2 rounded-[10px] bg-blue px-[22px] text-[15px] font-semibold text-white hover:bg-blue-hover disabled:bg-muted-mark">
+              className="flex h-[46px] items-center gap-2 rounded-[10px] bg-blue px-6 text-[15px] font-semibold text-white hover:bg-blue-hover disabled:bg-muted-mark">
               {confirm.isPending ? <Spinner /> : Icon.check}Confirm report and update trends
             </button>
           </footer>
@@ -214,7 +214,7 @@ function FileSlot({ title, accept, file, info, hint, sub, onFile, busy, primary,
   const hidden = <input ref={input} type="file" accept={accept} className="sr-only" onChange={pick} data-testid={testId} aria-label={title} />;
   if (file)
     return (
-      <div className={`flex items-start gap-3.5 rounded-2xl border bg-card px-[18px] py-4 ${primary ? "border-blue-line-2 shadow-[0_0_0_3px_#EAF3FB]" : "border-line"}`}>
+      <div className={`flex items-start gap-3.5 rounded-2xl border bg-card px-5 py-4 ${primary ? "border-blue-line-2 shadow-[0_0_0_3px_#EAF3FB]" : "border-line"}`}>
         {hidden}
         <span className={`flex h-12 w-10 shrink-0 items-center justify-center rounded-md border text-[10px] font-semibold ${primary ? "border-blue-line bg-blue-tint-2 text-blue-ink" : "border-line bg-paper text-ink-2"}`}>
           {file.toLowerCase().endsWith(".pdf") ? "PDF" : "IMG"}
@@ -230,7 +230,7 @@ function FileSlot({ title, accept, file, info, hint, sub, onFile, busy, primary,
     <button type="button" onClick={() => input.current?.click()} disabled={busy}
       onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
-      className={`flex items-center gap-3.5 rounded-2xl border-[1.5px] border-dashed px-[18px] py-4 text-left ${over ? "border-blue bg-blue-tint-2" : primary ? "border-blue-line-2 bg-card" : "border-dash bg-transparent"}`}>
+      className={`flex items-center gap-3.5 rounded-2xl border-[1.5px] border-dashed px-5 py-4 text-left ${over ? "border-blue bg-blue-tint-2" : primary ? "border-blue-line-2 bg-card" : "border-dash bg-transparent"}`}>
       {hidden}
       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${primary ? "bg-blue-tint text-blue-ink" : "bg-chip text-ink-2"}`}>
         {busy ? <Spinner /> : Icon.upload}
@@ -495,7 +495,7 @@ function StoredDocuments({ docs, loading, error, retry, patientId }: {
   }
   return (
     <section aria-labelledby="docs-h" className="flex flex-col gap-3 px-4 pb-12 pt-8 sm:px-8 lg:px-14">
-      <h3 id="docs-h" className="m-0 font-serif text-2xl font-medium">Stored documents</h3>
+      <h3 id="docs-h" className="m-0 font-serif text-[22px] font-medium">Stored documents</h3>
       {error ? <ErrorBanner error={error} onRetry={retry} /> : null}
       {loading && <Skeleton className="h-40 rounded-2xl" />}
       {docs && docs.length === 0 && <p className="m-0 text-sm text-ink-3">No documents yet.</p>}

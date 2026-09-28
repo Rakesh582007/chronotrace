@@ -79,7 +79,7 @@ export default function SummaryPage() {
           )}
         </fieldset>
 
-        <div className="flex flex-col gap-2.5 rounded-2xl border border-line bg-card px-[18px] py-4">
+        <div className="flex flex-col gap-2.5 rounded-2xl border border-line bg-card px-5 py-4">
           <div className="flex items-center gap-2"><BlueDot /><span className="text-sm font-semibold">{s ? "Saved summary" : "No saved summary"}</span></div>
           <p className="m-0 text-[13px] leading-[1.55] text-ink-2">
             {s ? <>Written by an LLM (<span className="font-mono text-xs">{s.model}</span>) on <span className="num">{stamp(s.created_at)}</span> from the computed flags, trends and medication responses. It never sees the raw reports, and every number it writes is checked against the computed facts before it is saved.</>
@@ -108,7 +108,7 @@ export default function SummaryPage() {
         {saved.isLoading && <Skeleton className="h-[700px] rounded-[4px]" />}
         {saved.data === null && !write.isPending && (
           <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-[4px] border border-dashed border-dash text-center">
-            <p className="m-0 font-serif text-2xl">No saved summary for this period yet.</p>
+            <p className="m-0 font-serif text-[22px]">No saved summary for this period yet.</p>
             <p className="m-0 max-w-md text-sm text-ink-3">Generate one: an LLM writes it from ChronoTrace's computed flags and values only, and every sentence cites its reports.</p>
           </div>
         )}
@@ -140,8 +140,8 @@ export default function SummaryPage() {
             <span>{plural(s.content.reports.length, "report")} · {plural(labsN, "lab")}</span>
           </div>
         </div>
-        <section className="flex flex-col gap-1.5 rounded-lg bg-amber-fill px-[18px] py-4">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-amber-ink">Key finding</span>
+        <section className="flex flex-col gap-1.5 rounded-lg bg-amber-fill px-5 py-4">
+          <span className="text-xs font-semibold uppercase tracking-[0.1em] text-amber-ink">Key finding</span>
           <p className="m-0 font-serif text-lg leading-normal text-[#2A1B08]">{s.content.key_finding.text}{chips(s.content.key_finding)}</p>
         </section>
         {s.content.sections.map((sec) => (
@@ -172,7 +172,7 @@ export default function SummaryPage() {
             <p className="m-0 text-[13px] leading-[1.6] text-ink-2">{s.content.data_notes.join(" ")}</p>
           </section>
         )}
-        <div className="mt-1 flex flex-wrap justify-between gap-2 border-t border-paper-2 pt-3 text-[11px] text-ink-3">
+        <div className="mt-1 flex flex-wrap justify-between gap-2 border-t border-paper-2 pt-3 text-xs text-ink-3">
           <span>Written by an LLM from ChronoTrace's computed flags and values only. Every statement cites its reports.</span>
           <span className="num">Generated {stamp(s.created_at)} · {s.model}</span>
         </div>

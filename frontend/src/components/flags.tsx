@@ -33,11 +33,11 @@ export function GuidelineCard({ f, trends, allFlags, reports, base, link = true,
   const { title, body } = guidelineText(f, trends, allFlags);
   const proj = trends?.find((t) => t.analyte_id === f.analyte_id)?.projection;
   return (
-    <article className={`flex flex-col gap-2.5 rounded-2xl border border-amber-line bg-amber-fill px-5 py-[18px] ${arrive ? "arrive" : ""}`} data-testid="guideline-card">
+    <article className={`flex flex-col gap-2.5 rounded-2xl border border-amber-line bg-amber-fill px-5 py-5 ${arrive ? "arrive" : ""}`} data-testid="guideline-card">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-amber-ink">
         <Triangle />Guideline · {f.rule_id.startsWith("KDIGO") ? "KDIGO" : f.rule_id}
       </div>
-      <h3 className="m-0 font-serif text-[23px] font-medium leading-[1.2]">{title}</h3>
+      <h3 className="m-0 font-serif text-[22px] font-medium leading-[1.2]">{title}</h3>
       <div><DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} /></div>
       <p className="m-0 text-sm leading-[1.55] text-amber-deep">{body}</p>
       {proj && (
@@ -69,29 +69,39 @@ export function ChangeCard({ f, reports }: { f: Flag; reports: Reports }) {
   const drugs = [...new Set(f.drug_events_since_baseline.map((d) => d.drug.toLowerCase()))];
   const verified = f.threshold.rcv_status === "verified" ? "verified" : "not yet verified";
   return (
-    <article className="flex flex-col gap-2 rounded-[14px] border border-line bg-card px-[18px] py-4" data-testid="change-card">
+    <article className="flex flex-col gap-2 rounded-[14px] border border-line bg-card px-5 py-4" data-testid="change-card">
       <div className="flex items-baseline gap-2.5">
         <span className="-translate-y-px"><BlueDot /></span>
         <h3 className="m-0 text-base font-semibold">{changeTitle(f)}</h3>
         <div className="grow" />
         {from && to && <span className="num whitespace-nowrap text-sm">{fmtNum(from.value)} → {fmtNum(to.value)}</span>}
       </div>
-      <p className="m-0 ml-[18px] text-[13px] leading-normal text-ink-3">
-        Threshold {fmtPct(f.threshold.value)}% ({verified}).
-        {drugs.length > 0 && <> Since {f.rule_id === "RCV_PREV" ? "the previous result" : "baseline"}: {drugs.join(", ")}.</>}
-      </p>
       <div className="ml-[18px] flex flex-wrap items-center gap-1.5">
         {from && labelRuns(from.report_ids, reports).map((l) => <ReportChip key={"f" + l} label={l} />)}
+        {from && to && <span aria-hidden="true" className="text-xs text-ink-3">→</span>}
         {to && labelRuns(to.report_ids, reports).map((l) => <ReportChip key={"t" + l} label={l} />)}
         <div className="grow" />
         <DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} />
       </div>
-      {from && to && (
-        <p className="m-0 ml-[18px] text-xs text-ink-3" data-testid="flag-dates">
-          {from.label === "baseline" ? "Baseline" : "Previous"} {dateSpan(from.dates ?? [])} → {fmtDate(to.date ?? f.date)}
-        </p>
-      )}
-      {f.lab_change && <LabChangeNote className="ml-[18px]" note={labNote(f, reports)} agrees={f.lab_change.same_lab_agrees} />}
+      {f.lab_change?.same_lab_agrees && <LabChangeNote className="ml-[18px]" note={labNote(f, reports)} agrees />}
+      <details className="group ml-[18px]">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-ink-3 hover:text-ink-2 [&::-webkit-details-marker]:hidden">
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="transition-transform duration-200 group-open:rotate-90"><path d="M4 2.5 7.5 6 4 9.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          Details
+        </summary>
+        <div className="mt-2 flex flex-col gap-1.5 text-xs leading-normal text-ink-3">
+          <span>
+            Threshold {fmtPct(f.threshold.value)}% ({verified}).
+            {drugs.length > 0 && <> Since {f.rule_id === "RCV_PREV" ? "the previous result" : "baseline"}: {drugs.join(", ")}.</>}
+          </span>
+          {from && to && (
+            <span data-testid="flag-dates">
+              {from.label === "baseline" ? "Baseline" : "Previous"} {dateSpan(from.dates ?? [])} → {fmtDate(to.date ?? f.date)}
+            </span>
+          )}
+          {f.lab_change && !f.lab_change.same_lab_agrees && <LabChangeNote note={labNote(f, reports)} agrees={f.lab_change.same_lab_agrees} />}
+        </div>
+      </details>
     </article>
   );
 }
@@ -99,7 +109,7 @@ export function ChangeCard({ f, reports }: { f: Flag; reports: Reports }) {
 export function ExpectedGroup({ flags, reports, open = false }: { flags: Flag[]; reports: Reports; open?: boolean }) {
   if (!flags.length) return null;
   return (
-    <details open={open} className="rounded-[14px] border border-dashed border-dash px-[18px] py-3.5">
+    <details open={open} className="rounded-[14px] border border-dashed border-dash px-5 py-3.5">
       <summary className="cursor-pointer text-sm font-semibold text-ink-2">Expected after a drug start · {flags.length}</summary>
       <div className="mt-3 flex flex-col gap-3">
         {flags.map((f) => {
