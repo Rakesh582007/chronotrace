@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from .models import (Doctor, Document, MedicationEvent, Observation, Patient,  # noqa: F401  (register tables)
-                     Report)
+                     Report, Summary)
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "chronotrace.db"    # git-ignored (*.db)
 

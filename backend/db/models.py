@@ -98,6 +98,19 @@ class Observation(SQLModel, table=True):
     edited: bool = False                       # changed by the doctor at confirmation
 
 
+class Summary(SQLModel, table=True):
+    """An LLM summary that passed every check (backend/summaries/guard.py). Failed attempts are never saved."""
+    id: int | None = Field(default=None, primary_key=True)
+    patient_id: int = Field(foreign_key="patient.id", index=True)
+    period: str                                # "since_last_visit" | "range" | "all"
+    from_date: dt.date
+    to_date: dt.date
+    created_at: dt.datetime = Field(default_factory=_now)
+    model: str                                 # the LLM that wrote it
+    facts_sha256: str                          # hash of the facts it was written from
+    content: dict = Field(sa_column=Column(JSON, nullable=False))
+
+
 class MedicationEvent(SQLModel, table=True):
     """Drug start / stop / dose change (used from step 6)."""
     id: int | None = Field(default=None, primary_key=True)

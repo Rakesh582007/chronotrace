@@ -375,6 +375,68 @@ class Systems(BaseModel):
     systems: list[BodySystemOut]      # every system in data/analytes.yaml, in order
 
 
+class SummaryIn(BaseModel):
+    period: Literal["since_last_visit", "range", "all"]
+    from_: dt.date | None = Field(default=None, alias="from")     # range only
+    to: dt.date | None = None                                      # range only
+
+    model_config = {"populate_by_name": True}
+
+
+class SummaryCited(BaseModel):
+    text: str
+    report_ids: list[int]             # the source reports (labels in SummaryContent.reports)
+
+
+class SummarySection(BaseModel):
+    title: str
+    sentences: list[SummaryCited]
+
+
+class SummaryMedicationRow(BaseModel):
+    date: str
+    drug: str
+    dose: str
+    observed: str
+
+
+class SummaryReport(BaseModel):
+    report_id: int
+    label: str                        # "R7": numbered over the patient's whole history
+    date: dt.date                     # confirmed reports always have one
+    lab: str
+
+
+class SummaryBasis(BaseModel):
+    flags: int                        # computed flags the summary was written from
+    medication_responses: int
+    reports: int                      # confirmed reports in the period
+    labs: int
+
+
+class SummaryContent(BaseModel):
+    key_finding: SummaryCited
+    sections: list[SummarySection]
+    medication_rows: list[SummaryMedicationRow]
+    data_notes: list[str]
+    reports: list[SummaryReport]
+    basis: SummaryBasis
+
+
+class SummaryOut(BaseModel):
+    id: int
+    patient_id: int
+    period: str
+    from_: dt.date = Field(alias="from", serialization_alias="from")
+    to: dt.date
+    created_at: dt.datetime
+    model: str
+    facts_sha256: str
+    content: SummaryContent
+
+    model_config = {"populate_by_name": True}
+
+
 class Expected(BaseModel):
     direction: str
     note: str

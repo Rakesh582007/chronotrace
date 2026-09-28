@@ -12,6 +12,8 @@ import pytest
 TEST_ENV = {"DEMO_DOCTOR_NAME": "Test Doctor", "DEMO_DOCTOR_USER": "test-doctor",
             "DEMO_DOCTOR_PASSWORD": "test-password-123", "AUTH_SECRET": "t" * 48}
 os.environ.update(TEST_ENV)
+# Tests never reach the real LLM: an empty environment variable wins over .env (backend/config.py).
+os.environ.update({"LLM_PROVIDER": "", "LLM_API_KEY": "", "LLM_MODEL": ""})
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 REAL_REPORTS = Path(__file__).resolve().parents[1] / "data" / "real_reports"

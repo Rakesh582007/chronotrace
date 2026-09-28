@@ -6,20 +6,15 @@ random patients, the drug catalogue) for such words.
 """
 
 import json
-import re
 
 import yaml
 
 from backend.trends import engine as E
 from backend.trends.dictionary import analyte_infos, infos_by_id
+from backend.trends.wording import BANNED
 from tests.test_trends_engine import demo_patient
 from tests.test_trends_property import random_patient
 
-BANNED = re.compile(
-    r"\b(effective(ness)?|efficacy|score|better|worse|improv\w*|good|poor|success\w*|"
-    r"should|must|recommend\w*|advis\w*|consider|continue|stop(ped|ping)?|discontinu\w*|titrat\w*|"
-    r"switch|increase the dose|reduce the dose|reason to|re-?assess\w*|re-?check\w*|repeat\w*|monitor\w*|"
-    r"diagnos\w*|disease|progress\w*|uncontrolled|controlled|kidney (failure|injury|damage)|abnormal)\b", re.I)
 SHOWN = {"message", "note", "source", "status", "reason", "label", "baseline_note", "drug_class_name"}
 
 

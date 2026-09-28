@@ -22,18 +22,22 @@ from typing import Literal
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
-from fastapi.responses import FileResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse, JSONResponse
 from pdfplumber.utils.exceptions import PdfminerException
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from . import normalise as nm
 from . import storage
+from . import summaries
+from .summaries import facts as summary_facts
+from .summaries.llm import LLMConfigError, get_llm
 from .auth import current_doctor, ensure_demo_doctor
 from .auth import router as auth_router
 from .config import check_auth_settings
 from .db import check_schema, get_engine, get_session
-from .db.models import Doctor, Document, MedicationEvent, Observation, Patient, Report
+from .db.models import Doctor, Document, MedicationEvent, Observation, Patient, Report, Summary
 from .extraction import ScannedReportError, extract_report
 from .extraction.tagger import Tagger, get_tagger
 from .normalise.names import name_index
@@ -41,7 +45,8 @@ from .trends import catalogue, engine
 from .trends import systems as body
 from .trends.dictionary import analyte_infos, infos_by_id
 from .schemas import (ConfirmIn, Counts, DocumentOut, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
-                      PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, Systems, Trends,
+                      PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, SummaryIn, SummaryOut,
+                      Systems, Trends,
                       SkippedOut, Timeline, TimelinePoint, TimelineSeries)
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -69,6 +74,11 @@ app = FastAPI(title="ChronoTrace API", version="0.7.0", lifespan=lifespan,
               description="Lab-report extraction, normalisation, trends and summaries (see docs/api.md).")
 app.add_middleware(CORSMiddleware, allow_origins=[FRONTEND_ORIGIN], allow_methods=["*"], allow_headers=["*"])
 app.include_router(auth_router)
+
+
+def llm_dep():
+    """The summary writer's factory (tests override it with a fake LLM)."""
+    return get_llm
 
 
 def tagger_dep() -> Tagger:
@@ -614,6 +624,70 @@ def medication_response(medication_id: int, session: Session = Depends(get_sessi
     events = _events(session, m.patient_id)
     event = next(e for e in events if e.id == m.id)
     return MedicationResponse(**engine.response(event, infos_by_id(), _confirmed_points(session, m.patient_id), events))
+
+
+# ---------------------------------------------------------------- summaries
+
+def _summary_out(s: Summary) -> SummaryOut:
+    return SummaryOut(id=s.id, patient_id=s.patient_id, period=s.period, from_=s.from_date, to=s.to_date,
+                      created_at=s.created_at, model=s.model, facts_sha256=s.facts_sha256, content=s.content)
+
+
+def _latest_summary(session: Session, patient_id: int, period: str) -> Summary | None:
+    return session.exec(select(Summary).where(Summary.patient_id == patient_id, Summary.period == period)
+                        .order_by(Summary.created_at.desc(), Summary.id.desc())).first()
+
+
+def _summary_failure(status: int, detail: str, last: Summary | None) -> JSONResponse:
+    last_saved = jsonable_encoder(_summary_out(last), by_alias=True) if last else None
+    return JSONResponse(status_code=status, content={"detail": detail, "last_saved": last_saved})
+
+
+@app.post("/patients/{patient_id}/summaries", response_model=SummaryOut, status_code=201,
+          response_model_by_alias=True, responses={502: {"description": "the LLM failed twice; last_saved"},
+                                                   503: {"description": "the LLM is not configured; last_saved"}})
+def create_summary(patient_id: int, request: SummaryIn, session: Session = Depends(get_session),
+                   doctor: Doctor = Depends(current_doctor), llm_factory=Depends(llm_dep)):
+    """Write, check and save a summary of the period. The LLM sees only facts computed by the trend engine
+    (backend/summaries/facts.py); an answer that fails a check is retried once, then 502 with the last
+    saved summary of the same period (or null). Nothing that fails a check is saved."""
+    patient = _patient_or_404(session, patient_id, doctor)
+    reports = [summary_facts.ReportRef(r.id, r.collected_at, r.lab) for r in session.exec(
+        select(Report).where(Report.patient_id == patient.id, Report.status == "confirmed")).all()]
+    try:
+        period = summary_facts.resolve_period(request.period, reports, request.from_, request.to)
+    except summary_facts.PeriodError as e:
+        raise HTTPException(422, str(e)) from None
+    facts = summary_facts.build_facts(
+        {"code": patient.patient_code, "sex": patient.sex, "birth_year": patient.birth_year,
+         "conditions": list(patient.conditions)},
+        dt.date.today(), reports, period, _confirmed_points(session, patient.id), _events(session, patient.id),
+        infos_by_id(), body.body_systems())
+    last = _latest_summary(session, patient.id, period.kind)
+    try:
+        llm = llm_factory()
+    except LLMConfigError as e:
+        return _summary_failure(503, str(e), last)
+    try:
+        written = summaries.write_summary(llm, facts)
+    except summaries.SummaryFailed as e:
+        return _summary_failure(502, f"the summary could not be written after 2 attempts: {e}", last)
+    s = Summary(patient_id=patient.id, period=period.kind, from_date=period.start, to_date=period.end,
+                model=llm.model, facts_sha256=facts.sha256, content=summaries.to_content(written, facts))
+    session.add(s)
+    session.commit()
+    session.refresh(s)
+    return _summary_out(s)
+
+
+@app.get("/patients/{patient_id}/summaries/latest", response_model=SummaryOut, response_model_by_alias=True)
+def latest_summary(patient_id: int, period: Literal["since_last_visit", "range", "all"] = Query(...),
+                   session: Session = Depends(get_session), doctor: Doctor = Depends(current_doctor)) -> SummaryOut:
+    patient = _patient_or_404(session, patient_id, doctor)
+    s = _latest_summary(session, patient.id, period)
+    if s is None:
+        raise HTTPException(404, "no saved summary for this period")
+    return _summary_out(s)
 
 
 # ---------------------------------------------------------------- medications
