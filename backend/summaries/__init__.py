@@ -17,8 +17,9 @@ given. The facts were computed by ChronoTrace's trend engine. You see no report 
 
 Rules
 1. Use only the facts. Say nothing that is not in them.
-2. Numbers: copy them from the facts, rounded to one decimal where the facts have more (78.42 -> 78.4,
-   -7.08 -> 7.1). You may leave out a minus sign when the words give the direction ("fell by 7.1"). Never
+2. Numbers: copy them from the facts. A value of 10 or more that has more decimals is rounded to one decimal
+   (78.42 -> 78.4); a value below 10 keeps the decimals it has in the facts (creatinine 1.11 -> 1.49, a slope
+   of -7.08). You may leave out a minus sign when the words give the direction ("fell by 7.08"). Never
    calculate a new number: no new percentages, differences, averages, ages or counts. Write dates as in the
    facts, or as month and year.
 3. Put the report labels (such as "R7") behind each statement in its report_ids. Use only labels listed in
