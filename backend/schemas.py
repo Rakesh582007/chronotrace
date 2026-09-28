@@ -329,6 +329,33 @@ class Slope(BaseModel):
     status: str                       # "ok" | "not enough span" | "not enough points"
 
 
+class Projection(BaseModel):
+    threshold: float                  # next KDIGO GFR category boundary below the line's current value
+    category: str                     # "G3b"
+    category_range: str               # "30–44"
+    from_date: dt.date                # the line's last result
+    from_value: float                 # the line's value there
+    per_year: float
+    per_year_low: float               # 95% range of the slope (t, n-2 degrees of freedom)
+    per_year_high: float
+    date: dt.date                     # when the straight line reaches the threshold
+    date_earliest: dt.date
+    date_latest: dt.date | None       # None when the slope's range includes no fall
+    n_points: int
+    note: str
+    source: str
+
+
+class LastTest(BaseModel):
+    date: dt.date
+    days_since: int
+    interval_months: int
+    label: str                        # "at least twice a year ..."
+    source: str
+    status: str
+    longer_than_interval: bool
+
+
 class AnalyteTrend(BaseModel):
     analyte_id: str
     name: str
@@ -343,6 +370,8 @@ class AnalyteTrend(BaseModel):
     points: list[TrendPoint]
     slope: Slope | None
     target: Target | None
+    projection: Projection | None     # eGFR only
+    last_test: LastTest | None        # /trends only (needs today's date)
 
 
 class Trends(BaseModel):

@@ -191,6 +191,16 @@ def validate(data: dict) -> list[str]:
             if target.get("status") not in {"verified", "unverified"}:
                 errors.append(f"{where} target.status must be verified or unverified")
 
+        interval = a.get("test_interval")
+        if interval is not None:
+            if not (isinstance(interval.get("months"), int) and interval["months"] > 0):
+                errors.append(f"{where} test_interval.months must be a positive whole number")
+            for key in ("label", "source"):
+                if not interval.get(key):
+                    errors.append(f"{where} test_interval.{key} is required")
+            if interval.get("status") not in {"verified", "unverified"}:
+                errors.append(f"{where} test_interval.status must be verified or unverified")
+
         # Derived analytes need a formula whose inputs exist.
         if a.get("derived"):
             formula = a.get("formula") or {}

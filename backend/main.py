@@ -595,6 +595,9 @@ def trends(patient_id: int, session: Session = Depends(get_session),
     patient = _patient_or_404(session, patient_id, doctor)
     series, _ = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
                                        _events(session, patient.id))
+    infos, today = infos_by_id(), dt.date.today()
+    for t in series:
+        t["last_test"] = engine.last_test(infos[t["analyte_id"]], t, today)
     return Trends(patient=_patient_out(patient), analytes=series)
 
 

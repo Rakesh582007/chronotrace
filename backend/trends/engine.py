@@ -31,6 +31,10 @@ Rules
 - Target direction: when the analyte has a guideline target (data/analytes.yaml), a change is "toward" the
   target if the later value is closer to the target range than the earlier one, "away" if farther,
   "within" if both are inside it, "unchanged" if equally far. It describes position, not benefit.
+- Projection (eGFR only): when the slope is "ok" and falling, the straight line is extended from its value at
+  the last result to the next KDIGO GFR category boundary (90, 60, 45, 30, 15), with a 95% range from the
+  slope's t-interval (n-2 degrees of freedom). A projection of past results, not a forecast.
+- Last test: days since the latest result against the guideline's usual interval (data/analytes.yaml).
 - Lab change (RCV_PREV only): the two results come from different single labs. If the result from the
   same lab on the other side agrees with the earlier one within the RCV, `same_lab_agrees` is true: the
   change may reflect the lab rather than the patient.
@@ -39,6 +43,7 @@ Rules
 from __future__ import annotations
 
 import datetime as dt
+import math
 import statistics
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -139,6 +144,14 @@ class Target:
 
 
 @dataclass(frozen=True)
+class Interval:
+    months: int
+    label: str
+    source: str
+    status: str
+
+
+@dataclass(frozen=True)
 class AnalyteInfo:
     id: str
     name: str
@@ -147,6 +160,7 @@ class AnalyteInfo:
     rcv_status: str                # verified | unverified | not established
     rcv_source: str = ""
     target: Target | None = None
+    interval: Interval | None = None
 
     def target_json(self) -> dict | None:
         return self.target.json() if self.target else None
@@ -376,12 +390,72 @@ def lab_change(a: AnalyteInfo, days: list[DayValue], i: int) -> dict | None:
 # ---------------------------------------------------------------- slope
 
 def fit(days: list[DayValue]) -> float:
+    return fit_line(days)[0]
+
+
+def fit_line(days: list[DayValue]) -> tuple[float, float, float]:
+    """(slope per year, value of the line at the last date, standard error of the slope)."""
     t0 = days[0].date
     xs = [(d.date - t0).days / DAYS_PER_YEAR for d in days]
     ys = [d.value for d in days]
     mx, my = statistics.mean(xs), statistics.mean(ys)
     sxx = sum((x - mx) ** 2 for x in xs)
-    return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
+    b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx
+    a = my - b * mx
+    se = math.sqrt(sum((y - a - b * x) ** 2 for x, y in zip(xs, ys)) / (len(xs) - 2) / sxx) if len(xs) > 2 else math.inf
+    return b, a + b * xs[-1], se
+
+
+# Two-sided 95% t critical values by degrees of freedom (df > 30: 2.0).
+T95 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+       12: 2.179, 15: 2.131, 20: 2.086, 30: 2.042}
+KDIGO_GFR = [(90, "G2", "60–89"), (60, "G3a", "45–59"), (45, "G3b", "30–44"), (30, "G4", "15–29"), (15, "G5", "< 15")]
+PROJECTION_MAX_YEARS = 10
+
+
+def t95(df: int) -> float:
+    return next((T95[k] for k in sorted(T95) if k >= df), 2.0)
+
+
+def projection(a: AnalyteInfo, days: list[DayValue], s: dict) -> dict | None:
+    if a.id != "egfr" or s["status"] != SLOPE_OK or s["per_year"] is None or s["per_year"] >= 0:
+        return None
+    used = [d for d in days if d.date >= s["first_date"]]
+    b, start, se = fit_line(used)
+    nxt = next(((thr, cat, rng) for thr, cat, rng in KDIGO_GFR if thr < start), None)
+    if nxt is None:
+        return None
+    thr, cat, rng = nxt
+    last = used[-1].date
+    when = lambda slope: last + dt.timedelta(days=round((start - thr) / -slope * DAYS_PER_YEAR)) if slope < 0 else None
+    years = (start - thr) / -b
+    if years > PROJECTION_MAX_YEARS:
+        return None
+    t = t95(len(used) - 2)
+    fast, slow = b - t * se, b + t * se
+    date, early, late = when(b), when(fast), when(slow)
+    rng_text = (f"95% range {early.strftime('%b %Y')} to {late.strftime('%b %Y')}" if late
+                else f"95% range from {early.strftime('%b %Y')}; the slope's range includes no fall, so no latest date")
+    return {
+        "threshold": thr, "category": cat, "category_range": rng, "from_date": last, "from_value": round(start, 2),
+        "per_year": round(b, 3), "per_year_low": round(fast, 3), "per_year_high": round(slow, 3),
+        "date": date, "date_earliest": early, "date_latest": late, "n_points": len(used),
+        "note": (f"At the current slope ({b:.2f} per year over {len(used)} results), eGFR would reach {thr}, the start "
+                 f"of KDIGO category {cat} ({rng}), around {date.strftime('%b %Y')} ({rng_text}). A straight-line "
+                 f"projection of past results, not a forecast."),
+        "source": "KDIGO 2024 CKD guideline, GFR categories G1–G5",
+    }
+
+
+def last_test(a: AnalyteInfo, trend: dict, today: dt.date) -> dict | None:
+    """Days since the latest result, against the guideline's usual interval (None without an interval)."""
+    if a.interval is None or not trend["points"]:
+        return None
+    latest = max(p["date"] for p in trend["points"])
+    days = (today - latest).days
+    return {"date": latest, "days_since": days, "interval_months": a.interval.months, "label": a.interval.label,
+            "source": a.interval.source, "status": a.interval.status,
+            "longer_than_interval": days > round(a.interval.months * DAYS_PER_YEAR / 12)}
 
 
 def slope(a: AnalyteInfo, days: list[DayValue], events: list[Event]) -> dict:
@@ -442,7 +516,7 @@ def analyse(a: AnalyteInfo, points: list[Point], events: list[Event]) -> tuple[d
         "baseline_observation_ids": [],
         "points": [{**_point_json(p), "censored": p.censored,
                     "in_window": [w.event.id for w in windows if w.contains(p.date)]} for p in points],
-        "slope": None, "status": STATUS_OK, "target": a.target_json(),
+        "slope": None, "status": STATUS_OK, "target": a.target_json(), "projection": None, "last_test": None,
     }
     if points and not days:
         trend["status"] = STATUS_CENSORED_ONLY
@@ -455,6 +529,7 @@ def analyse(a: AnalyteInfo, points: list[Point], events: list[Event]) -> tuple[d
                  baseline_observation_ids=[i for d in base.days for i in d.observation_ids])
     s = slope(a, days, events)
     trend["slope"] = s
+    trend["projection"] = projection(a, days, s)
     return trend, rcv_flags(a, days, base, events) + slope_flags(a, s, days)
 
 

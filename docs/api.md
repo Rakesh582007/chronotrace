@@ -2135,6 +2135,16 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "< 7%",
         "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised",
         "status": "verified"
+      },
+      "projection": null,
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 6,
+        "label": "at least twice a year (4 times a year after a therapy change or when not at goal)",
+        "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c at least twice a year in people meeting goals, quarterly after a change in therapy or when not meeting goals",
+        "status": "verified",
+        "longer_than_interval": true
       }
     },
     {
@@ -2326,7 +2336,9 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "80–130 mg/dL",
         "source": "ADA Standards of Care in Diabetes 2025, section 6: preprandial capillary glucose 80–130 mg/dL for many non-pregnant adults; goals are individualised",
         "status": "verified"
-      }
+      },
+      "projection": null,
+      "last_test": null
     },
     {
       "analyte_id": "creatinine",
@@ -2552,7 +2564,17 @@ ramipril and empagliflozin starts), after the latest report:
         ],
         "status": "ok"
       },
-      "target": null
+      "target": null,
+      "projection": null,
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 12,
+        "label": "at least once a year in diabetes or CKD (with eGFR)",
+        "source": "ADA Standards of Care in Diabetes 2025, section 11 (CKD): eGFR (from serum creatinine) at least once a year",
+        "status": "verified",
+        "longer_than_interval": false
+      }
     },
     {
       "analyte_id": "egfr",
@@ -2784,6 +2806,31 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "≥ 60",
         "source": "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60",
         "status": "verified"
+      },
+      "projection": {
+        "threshold": 45.0,
+        "category": "G3b",
+        "category_range": "30–44",
+        "from_date": "2026-03-02",
+        "from_value": 54.28,
+        "per_year": -7.081,
+        "per_year_low": -8.296,
+        "per_year_high": -5.866,
+        "date": "2027-06-23",
+        "date_earliest": "2027-04-14",
+        "date_latest": "2027-10-01",
+        "n_points": 4,
+        "note": "At the current slope (-7.08 per year over 4 results), eGFR would reach 45, the start of KDIGO category G3b (30–44), around Jun 2027 (95% range Apr 2027 to Oct 2027). A straight-line projection of past results, not a forecast.",
+        "source": "KDIGO 2024 CKD guideline, GFR categories G1–G5"
+      },
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 12,
+        "label": "at least once a year in diabetes or CKD (more often at higher KDIGO risk)",
+        "source": "ADA Standards of Care in Diabetes 2025, section 11 (CKD): eGFR and UACR at least once a year; KDIGO 2024 CKD guideline: frequency rises with the KDIGO risk category",
+        "status": "verified",
+        "longer_than_interval": false
       }
     },
     {
@@ -2975,6 +3022,16 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "< 30 mg/g",
         "source": "KDIGO 2024 CKD guideline, albuminuria categories: A1 is ACR < 30 mg/g",
         "status": "verified"
+      },
+      "projection": null,
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 12,
+        "label": "at least once a year in diabetes or CKD",
+        "source": "ADA Standards of Care in Diabetes 2025, section 11 (CKD): UACR and eGFR at least once a year",
+        "status": "verified",
+        "longer_than_interval": false
       }
     },
     {
@@ -3199,7 +3256,9 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "3.5–5.0 mmol/L",
         "source": "Usual adult reference interval; lab-specific",
         "status": "unverified"
-      }
+      },
+      "projection": null,
+      "last_test": null
     }
   ]
 }
@@ -5057,6 +5116,16 @@ Fields added to existing responses (no new endpoints):
   catalogue marks `size: small`), `not seen` (within the reference change value), `opposite` (the other way,
   beyond it), `above expected` (beyond the class's `max_expected_percent`). `null` when the entry was not
   assessed or the event is not a start.
+
+- `projection` on the eGFR trend (null otherwise): when the slope is `ok` and falling, the straight line is
+  extended from its value at the last result to the next KDIGO GFR category boundary (90, 60, 45, 30, 15):
+  `threshold`, `category`, `date`, and a 95% range (`date_earliest`, `date_latest`, from the slope's
+  t-interval; `date_latest` is null when that range includes no fall). Show `note` as is: a projection of
+  past results, not a forecast.
+- `last_test` on each trend (`GET /patients/{id}/trends` only; null in other responses and when the analyte
+  has no `test_interval`): the latest result's `date`, `days_since` (from today), the guideline's usual
+  `interval_months`, `label`, `source`, `status`, and `longer_than_interval`. A fact with its source, never a
+  reminder of what to do.
 
 ## Errors
 
