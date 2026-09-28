@@ -14,6 +14,9 @@
 # Reference ranges are adult, non-pregnant ranges. They are context only
 # (docs/decisions.md #2); flags come from the patient's own baseline and the RCV.
 #
+# target (optional): the guideline goal a change is compared with, to say whether a result moved toward
+# or away from it (never whether it is good). low and/or high; `source` names the guideline.
+#
 # RCV (reference change value, two-sided, 95%):
 #   percent = 1.96 * sqrt(2) * sqrt(cv_i^2 + cv_a^2)
 #   cv_i = within-subject biological variation, cv_a = analytical CV (both in %).
@@ -51,6 +54,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 4.0, high: 5.6}
     reference_range_source: ADA Standards of Care 2025, section 2 (normal < 5.7%; 5.7-6.4% prediabetes; >= 6.5% diabetes)
+    target: {high: 7.0, label: "< 7%", status: verified, source: "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised"}
     rcv:
       percent: 6.3
       cv_i: 1.7
@@ -75,6 +79,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 70, high: 99}
     reference_range_source: ADA Standards of Care 2025, section 2 (normal < 100 mg/dL; 100-125 prediabetes; >= 126 diabetes)
+    target: {low: 80, high: 130, label: "80–130 mg/dL", status: verified, source: "ADA Standards of Care in Diabetes 2025, section 6: preprandial capillary glucose 80–130 mg/dL for many non-pregnant adults; goals are individualised"}
     rcv: {percent: 14.9, cv_i: 5.0, cv_a: 2.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: pp_glucose
@@ -174,6 +179,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 90, high: null}
     reference_range_source: "KDIGO 2024 CKD guideline, GFR categories (G1 >= 90; G3a starts < 60)"
+    target: {low: 60, label: "≥ 60", status: verified, source: "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60"}
     rcv:
       # Before: 15.4%, propagated from the creatinine RCV (1 - (1 + RCV_creatinine)^-1.200, Scr above
       # kappa; status unverified, method derived_from_creatinine). Replaced by the KDIGO 2024 threshold.
@@ -201,6 +207,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: null, high: 30}
     reference_range_source: "KDIGO 2024 CKD guideline, albuminuria categories (A1 < 30 mg/g; A2 30-300; A3 > 300)"
+    target: {high: 30, label: "< 30 mg/g", status: verified, source: "KDIGO 2024 CKD guideline, albuminuria categories: A1 is ACR < 30 mg/g"}
     rcv:
       percent: 87.0
       cv_i: 31.0
@@ -240,6 +247,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 3.5, high: 5.1}
     reference_range_source: Typical Indian lab range (ISE); lab-specific
+    target: {low: 3.5, high: 5.0, label: "3.5–5.0 mmol/L", status: unverified, source: "Usual adult reference interval; lab-specific"}
     rcv: {percent: 11.8, cv_i: 4.0, cv_a: 1.5, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   # ---------------------------------------------------------------- Thyroid
@@ -258,6 +266,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 0.4, high: 4.0}
     reference_range_source: Typical adult range; assay- and lab-specific (NHANES III reference population about 0.45-4.12 mIU/L)
+    target: {low: 0.4, high: 4.0, label: "0.4–4.0 mIU/L", status: unverified, source: "ATA 2014 hypothyroidism guideline (Jonklaas et al., Thyroid 2014;24:1670-1751): treatment aims for TSH within the reference range; range is lab-specific"}
     rcv: {percent: 51.0, cv_i: 17.7, cv_a: 5.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: free_t4
@@ -274,6 +283,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 0.8, high: 1.8}
     reference_range_source: Typical adult range; assay- and lab-specific
+    target: {low: 0.8, high: 1.8, label: "0.8–1.8 ng/dL", status: unverified, source: "Usual adult reference interval; assay-specific"}
     rcv: {percent: 21.0, cv_i: 5.7, cv_a: 5.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   # ---------------------------------------------------------------- Lipids
@@ -313,6 +323,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: null, high: 100}
     reference_range_source: NCEP ATP III (optimal < 100 mg/dL); treatment targets are patient-specific
+    target: {high: 100, label: "< 100 mg/dL", status: unverified, source: "ADA Standards of Care 2025, section 10 (general LDL goal < 100 mg/dL; lower goals for higher risk)"}
     rcv: {percent: 24.5, cv_i: 8.3, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: hdl

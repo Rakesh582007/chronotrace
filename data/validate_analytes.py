@@ -175,6 +175,22 @@ def validate(data: dict) -> list[str]:
                     f"(expected {rcv_percent(cv_i, cv_a):.1f})"
                 )
 
+        # Optional guideline target: low and/or high, a label, a source and a status.
+        target = a.get("target")
+        if target is not None:
+            lo, hi = target.get("low"), target.get("high")
+            if lo is None and hi is None:
+                errors.append(f"{where} target needs low and/or high")
+            if any(v is not None and not isinstance(v, (int, float)) for v in (lo, hi)):
+                errors.append(f"{where} target bounds must be numbers")
+            elif lo is not None and hi is not None and not lo < hi:
+                errors.append(f"{where} target has low >= high")
+            for key in ("label", "source"):
+                if not target.get(key):
+                    errors.append(f"{where} target.{key} is required")
+            if target.get("status") not in {"verified", "unverified"}:
+                errors.append(f"{where} target.status must be verified or unverified")
+
         # Derived analytes need a formula whose inputs exist.
         if a.get("derived"):
             formula = a.get("formula") or {}
