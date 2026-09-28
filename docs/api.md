@@ -5515,6 +5515,71 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
 }
 ```
 
+### `POST /patients/{patient_id}/ask`: ask about this patient
+
+`question` (1–500 characters). The model is given the whole-history summary facts plus the clinical-support
+results (KDIGO category, guideline criteria, eGFR projection); no name, no PDF, no report text. The answer
+passes the summary checks (numbers in the facts, cited reports exist, no advice, diagnosis or causal wording),
+with one retry; then `502 {"detail"}` (`503` when the LLM is not configured). `in_facts` is false when the
+facts do not hold the answer or the question asked for a decision. Nothing is stored. The example was
+written by a fixed test answer.
+
+<!-- example: ask request -->
+```json
+{
+  "question": "Why is the kidney card amber?"
+}
+```
+
+<!-- example: ask response 200 -->
+```json
+{
+  "question": "Why is the kidney card amber?",
+  "answer": [
+    {
+      "text": "eGFR fell by 7.1 mL/min/1.73 m² per year from October 2024 to March 2026, faster than the KDIGO threshold of 5 per year.",
+      "report_ids": [
+        11,
+        12,
+        13,
+        14
+      ]
+    },
+    {
+      "text": "Each single step stayed within the 20% change threshold; the slope over 4 results crossed it.",
+      "report_ids": [
+        11,
+        14
+      ]
+    }
+  ],
+  "in_facts": true,
+  "reports": [
+    {
+      "report_id": 11,
+      "label": "R7",
+      "date": "2024-10-15"
+    },
+    {
+      "report_id": 12,
+      "label": "R8",
+      "date": "2025-03-10"
+    },
+    {
+      "report_id": 13,
+      "label": "R9",
+      "date": "2025-09-01"
+    },
+    {
+      "report_id": 14,
+      "label": "R10",
+      "date": "2026-03-02"
+    }
+  ],
+  "model": "fake-llm"
+}
+```
+
 ## Errors
 
 `409` duplicate upload (the same file, for any patient):

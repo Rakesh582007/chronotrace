@@ -626,3 +626,20 @@ class Clinical(BaseModel):
     codes: Codes
     nutrition: list[NutritionFigure]
     weight_kg: float | None
+
+
+class AskIn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+
+
+class AskCited(BaseModel):
+    text: str
+    report_ids: list[int]
+
+
+class AskOut(BaseModel):
+    question: str
+    answer: list[AskCited]
+    in_facts: bool                    # false: the facts do not hold the answer, or it asked for a decision
+    reports: list[dict]               # {"report_id", "label", "date"} for the chips
+    model: str

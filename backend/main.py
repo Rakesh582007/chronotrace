@@ -45,7 +45,8 @@ from .trends import catalogue, engine
 from .trends import systems as body
 from .trends.dictionary import analyte_infos, infos_by_id
 from . import clinical as clinical_rules
-from .schemas import (Clinical, PatientUpdate)
+from .schemas import (AskIn, AskOut, Clinical, PatientUpdate)
+from .summaries import chat as summary_chat
 from .schemas import (ConfirmIn, Counts, DocumentOut, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
                       PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, SummaryIn, SummaryOut,
                       Systems, Trends,
@@ -714,6 +715,48 @@ def create_summary(patient_id: int, request: SummaryIn, session: Session = Depen
     session.commit()
     session.refresh(s)
     return _summary_out(s)
+
+
+@app.post("/patients/{patient_id}/ask", response_model=AskOut,
+          responses={502: {"description": "the LLM failed twice"}, 503: {"description": "the LLM is not configured"}})
+def ask(patient_id: int, request: AskIn, session: Session = Depends(get_session),
+        doctor: Doctor = Depends(current_doctor), llm_factory=Depends(llm_dep)):
+    """Answer a question about the patient from the whole-history facts and the clinical-support results
+    (backend/summaries/chat.py). The answer passes the summary checks; nothing is stored."""
+    from data import validate_analytes as va
+
+    patient = _patient_or_404(session, patient_id, doctor)
+    reports = [summary_facts.ReportRef(r.id, r.collected_at, r.lab) for r in session.exec(
+        select(Report).where(Report.patient_id == patient.id, Report.status == "confirmed")).all()]
+    try:
+        period = summary_facts.resolve_period("all", reports)
+    except summary_facts.PeriodError as e:
+        raise HTTPException(422, str(e)) from None
+    points, events = _confirmed_points(session, patient.id), _events(session, patient.id)
+    facts = summary_facts.build_facts(
+        {"code": patient.patient_code, "sex": patient.sex, "birth_year": patient.birth_year,
+         "conditions": list(patient.conditions)}, dt.date.today(), reports, period, points, events,
+        infos_by_id(), body.body_systems())
+    series, _ = engine.analyse_patient(list(analyte_infos()), points, events)
+    raw = {a["id"]: a for a in va.load()["analytes"]}
+    clin = clinical_rules.clinical(series, list(patient.conditions), patient.weight_kg, infos_by_id(), raw)
+    projection = next((t["projection"] for t in series if t["analyte_id"] == "egfr"), None)
+    facts = summary_chat.with_clinical(facts, clin, projection)
+    try:
+        llm = llm_factory()
+    except LLMConfigError as e:
+        return JSONResponse(status_code=503, content={"detail": str(e)})
+    try:
+        ans = summary_chat.ask(llm, facts, request.question)
+    except summary_chat.AskFailed as e:
+        return JSONResponse(status_code=502, content={"detail": f"the answer could not be written: {e}"})
+    ids = facts.label_to_id
+    by_id = {r.id: r for r in reports}
+    used = sorted({ids[l] for c in ans.answer for l in c.report_ids})
+    return AskOut(question=request.question.strip(), in_facts=ans.in_facts, model=llm.model,
+                  answer=[{"text": c.text, "report_ids": [ids[l] for l in c.report_ids]} for c in ans.answer],
+                  reports=[{"report_id": i, "label": next(k for k, v in ids.items() if v == i),
+                            "date": by_id[i].date.isoformat() if by_id[i].date else None} for i in used])
 
 
 @app.get("/patients/{patient_id}/summaries/latest", response_model=SummaryOut, response_model_by_alias=True)

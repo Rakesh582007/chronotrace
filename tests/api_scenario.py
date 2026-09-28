@@ -46,7 +46,7 @@ def run_scenario(client, credentials: tuple[str, str], patient: dict = PATIENT) 
 
     from backend.demo.reports import Header, write_prescription
     from backend.main import llm_dep
-    from tests.fake_llm import INVALID, VALID, FakeLLM, use_llm
+    from tests.fake_llm import CHAT_VALID, INVALID, VALID, FakeLLM, use_llm
 
     out = {}
 
@@ -145,6 +145,9 @@ def run_scenario(client, credentials: tuple[str, str], patient: dict = PATIENT) 
     keep("summary-failed", client.post(f"/patients/{sid}/summaries", json=whole), whole)
     empty = {"period": "range", "from": "2022-01-01", "to": "2022-12-31"}
     keep("summary-bad-period", client.post(f"/patients/{sid}/summaries", json=empty), empty)
+    use_llm(client.app, llm_dep, FakeLLM(CHAT_VALID))
+    question = {"question": "Why is the kidney card amber?"}
+    keep("ask", client.post(f"/patients/{sid}/ask", json=question), question)
     client.app.dependency_overrides.pop(llm_dep, None)
     return out
 
