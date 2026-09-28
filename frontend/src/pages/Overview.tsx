@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { BodySystem, Flag, Trend } from "../api/types";
+import { BodyMap } from "../components/BodyMap";
 import { ChangeCard, CrossLabNote, ExpectedGroup, GuidelineCard } from "../components/flags";
 import { Sparkline, TimeStrip } from "../components/timeline";
 import { BlueDot, DirectionTag, ErrorBanner, HollowDot, Skeleton, StatusPill, Triangle } from "../components/ui";
@@ -39,6 +40,9 @@ export default function Overview() {
   const all = flags.data?.flags ?? [];
   const { guideline, change, expected } = sortReview(all);
   const axis = makeAxis([...reports.list.map((r) => r.date), ...(meds.data ?? []).map((m) => m.date)]);
+  const [hot, setHot] = useState<string | null>(null);
+  const pulseAnalyte = newGuideline ? all.find((f) => f.id === newGuideline)?.analyte_id : undefined;
+  const pulse = pulseAnalyte ? systems.data?.systems.find((s) => s.analytes_with_data.some((a) => a.analyte_id === pulseAnalyte))?.id : null;
   const withData = (systems.data?.systems ?? []).filter((s) => s.status !== "no_data");
   const noData = (systems.data?.systems ?? []).filter((s) => s.status === "no_data");
 
@@ -57,7 +61,7 @@ export default function Overview() {
         {(() => {
           const lab = change.filter((f) => f.lab_change?.same_lab_agrees);
           return lab.length > 0 && (
-            <p className="m-0 rounded-[14px] border border-amber-line bg-amber-soft px-[18px] py-3 text-sm leading-normal text-amber-deep" data-testid="lab-change-summary">
+            <p className="m-0 rounded-[14px] border border-amber-line bg-amber-soft px-5 py-3 text-sm leading-normal text-amber-deep" data-testid="lab-change-summary">
               <strong className="font-semibold">{lab.length} of {change.length} changes</strong> coincide with a change of lab, and results from the
               same lab agree within noise. They may reflect the labs rather than the patient.
             </p>
@@ -66,7 +70,7 @@ export default function Overview() {
         {change.map((f) => <ChangeCard key={f.id} f={f} reports={reports.byId} />)}
         <ExpectedGroup flags={expected} reports={reports.byId} />
         {flags.data && all.length === 0 && (
-          <p className="m-0 rounded-[14px] border border-line bg-card px-[18px] py-4 text-sm text-ink-3">
+          <p className="m-0 rounded-[14px] border border-line bg-card px-5 py-4 text-sm text-ink-3">
             {reports.list.length < 2 ? "Trends start from the second confirmed report." : "No flags. Every value is within its change threshold."}
           </p>
         )}
@@ -85,13 +89,16 @@ export default function Overview() {
           </div>
         </div>
         {systems.error && <ErrorBanner error={systems.error} onRetry={() => systems.refetch()} />}
+        {systems.isLoading && <Skeleton className="h-[420px] rounded-[18px]" />}
+        {systems.data && <BodyMap systems={systems.data.systems} base={base} hot={hot} onHot={setHot} pulse={pulse} />}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {systems.isLoading && [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[210px] rounded-[18px]" />)}
           {withData.map((s) => (
-            <SystemCard key={s.id} s={s} base={base} axis={axis} trends={trends?.analytes ?? []} meds={meds.data ?? []} />
+            <SystemCard key={s.id} s={s} base={base} axis={axis} trends={trends?.analytes ?? []} meds={meds.data ?? []}
+              hot={hot === s.id} onHot={setHot} />
           ))}
           {noData.length > 0 && (
-            <div className="flex flex-col gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-[22px] py-5">
+            <div className="flex flex-col gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-6 py-5">
               <h3 className="m-0 font-serif text-[22px] font-medium text-ink-2">Not in these reports</h3>
               <div className="flex flex-wrap gap-2">
                 {noData.map((s) => <span key={s.id} className="rounded-full bg-chip px-3 py-1.5 text-sm text-ink-2">{s.name}</span>)}
@@ -100,7 +107,7 @@ export default function Overview() {
             </div>
           )}
         </div>
-        <Link to={`${base}/medications`} className="plain lift mt-1.5 flex flex-col gap-3 rounded-[18px] border border-line bg-card px-[22px] pb-5 pt-[18px]">
+        <Link to={`${base}/medications`} className="plain lift mt-1.5 flex flex-col gap-3 rounded-[18px] border border-line bg-card px-6 pb-5 pt-[18px]">
           <div className="flex flex-wrap items-baseline gap-3">
             <h3 className="m-0 font-serif text-[22px] font-medium">Reports and medications</h3>
             <span className="text-[13px] text-ink-3">same time axis as the charts</span>
@@ -114,7 +121,9 @@ export default function Overview() {
   );
 }
 
-function SystemCard({ s, base, axis, trends, meds }: { s: BodySystem; base: string; axis: TimeAxis; trends: Trend[]; meds: { id: number; date: string }[] }) {
+function SystemCard({ s, base, axis, trends, meds, hot, onHot }: {
+  s: BodySystem; base: string; axis: TimeAxis; trends: Trend[]; meds: { id: number; date: string }[]; hot: boolean; onHot: (id: string | null) => void;
+}) {
   const h = s.headline;
   const status = s.status as "guideline" | "changed" | "stable";
   const trend = trends.find((t) => t.analyte_id === h?.analyte_id);
@@ -124,9 +133,10 @@ function SystemCard({ s, base, axis, trends, meds }: { s: BodySystem; base: stri
   else if (status === "changed" && h?.change_vs_baseline_percent != null) side = { text: `${fmtPercent(h.change_vs_baseline_percent)} vs baseline`, cls: "text-blue-ink font-semibold" };
   else if (status === "guideline" && h?.change_vs_baseline_percent != null) side = { text: `${fmtPercent(h.change_vs_baseline_percent)} vs baseline`, cls: "text-amber-ink font-semibold" };
   return (
-    <Link to={`${base}/systems/${s.id}`} className="plain lift flex min-w-0 flex-col gap-3 rounded-[18px] border border-line bg-card px-[22px] py-5" data-testid={`system-${s.id}`}>
+    <Link to={`${base}/systems/${s.id}`} className="plain lift flex min-w-0 flex-col gap-3 rounded-[18px] border border-line bg-card px-6 py-5" data-testid={`system-${s.id}`}
+      data-hot={hot} onMouseEnter={() => onHot(s.id)} onMouseLeave={() => onHot(null)} onFocus={() => onHot(s.id)} onBlur={() => onHot(null)}>
       <div className="flex items-center gap-2.5">
-        <h3 className="m-0 font-serif text-2xl font-medium">{s.name}</h3>
+        <h3 className="m-0 font-serif text-[22px] font-medium">{s.name}</h3>
         <StatusPill status={status} />
         <div className="grow" />
         <span className="whitespace-nowrap text-[13px] text-ink-3">{plural(n, "parameter")} →</span>
@@ -160,7 +170,7 @@ function LastTests({ trends }: { trends: Trend[] }) {
   const longer = rows.filter((t) => t.last_test!.longer_than_interval).length;
   const ago = (d: number) => (d < 60 ? `${d} days ago` : `${Math.round(d / 30.4)} months ago`);
   return (
-    <section aria-labelledby="last-h" className="mt-2 flex flex-col gap-2.5 rounded-[14px] border border-line bg-card px-[18px] py-4" data-testid="last-tests">
+    <section aria-labelledby="last-h" className="mt-2 flex flex-col gap-2.5 rounded-[14px] border border-line bg-card px-5 py-4" data-testid="last-tests">
       <div className="flex items-baseline gap-2">
         <h3 id="last-h" className="m-0 text-base font-semibold">Time since the last test</h3>
         <div className="grow" />
