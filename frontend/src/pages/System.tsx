@@ -1,8 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 import TrendChart from "../components/TrendChart";
-import { changeTitle, guidelineText } from "../components/flags";
+import { changeTitle, guidelineText, labNote } from "../components/flags";
 import { useToast } from "../components/shell";
-import { BlueDot, ErrorBanner, ReportChip, Skeleton, StatusPill, Triangle } from "../components/ui";
+import { BlueDot, DirectionTag, ErrorBanner, LabChangeNote, ReportChip, Skeleton, StatusPill, Triangle } from "../components/ui";
 import { makeAxis } from "../lib/axis";
 import { chartProps, openReportPdf, useWindows } from "../lib/charts";
 import { fmtNum, fmtPercent, fmtUnit, plural, shortName } from "../lib/format";
@@ -76,7 +76,9 @@ export default function SystemPage() {
                       {f.level === "guideline" ? <Triangle /> : <BlueDot />}
                       {f.level === "guideline" ? guidelineText(f, trends.analytes, all).title : changeTitle(f)}
                     </span>
-                    <span className="flex flex-wrap gap-1">{labelRuns(f.report_ids, reports.byId).map((l) => <ReportChip key={l} label={l} tone={f.level === "guideline" ? "amber" : "plain"} />)}</span>
+                    <span className="flex flex-wrap items-center gap-1">{labelRuns(f.report_ids, reports.byId).map((l) => <ReportChip key={l} label={l} tone={f.level === "guideline" ? "amber" : "plain"} />)}
+                      <DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} compact /></span>
+                    {f.lab_change && <LabChangeNote note={labNote(f, reports.byId)} agrees={f.lab_change.same_lab_agrees} />}
                   </div>
                 ))}
                 {expected.map((f) => (

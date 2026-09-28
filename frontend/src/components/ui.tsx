@@ -133,3 +133,35 @@ export const Icon = {
   close: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>,
   check: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>,
 };
+
+/** Position against a guideline target: an arrow for the value's direction, words for toward/away. Never good/bad. */
+export function DirectionTag({ direction, rise, target, compact = false }: {
+  direction: "toward" | "away" | "within" | "unchanged" | null | undefined;
+  rise: boolean;
+  target: { label: string; source: string; status: string } | null | undefined;
+  compact?: boolean;
+}) {
+  if (!direction || !target) return null;
+  const arrow = rise ? "▲" : "▼";
+  const words = direction === "toward" ? "toward target" : direction === "away" ? "away from target"
+    : direction === "within" ? "within target" : "no nearer the target";
+  const tone = direction === "toward" ? "border-blue-line bg-blue-tint-2 text-blue-ink"
+    : direction === "away" ? "border-amber-line bg-amber-soft text-amber-ink" : "border-stable-line bg-stable text-ink-2";
+  const org = target.source.match(/\b(ADA|KDIGO|ATA|AACE)\b/)?.[0];
+  return (
+    <span title={`Target ${target.label} · ${target.source}${target.status !== "verified" ? " (not yet verified)" : ""}`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-[2px] text-xs font-semibold ${tone}`}>
+      <span aria-hidden="true">{direction === "within" || direction === "unchanged" ? "•" : arrow}</span>
+      {words}{!compact && <span className="font-normal"> {target.label}{org ? ` · ${org}` : ""}</span>}
+    </span>
+  );
+}
+
+export function LabChangeNote({ note, agrees, className = "" }: { note: string; agrees: boolean | null; className?: string }) {
+  return (
+    <p className={`m-0 flex gap-2 rounded-[10px] border border-dashed px-3 py-2 text-[13px] leading-normal ${agrees ? "border-amber-line bg-amber-soft text-amber-deep" : "border-dash text-ink-2"} ${className}`}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-0.5 shrink-0"><path d="M7 7h11l-3-3M17 17H6l3 3" /></svg>
+      <span><strong className="font-semibold">Change of lab:</strong> {note}</span>
+    </p>
+  );
+}

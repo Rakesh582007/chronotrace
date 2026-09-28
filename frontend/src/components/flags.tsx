@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import type { Flag, Trend } from "../api/types";
 import { capitalise, fmtMonthLong, fmtNum, fmtPct, fmtUnit, shortName } from "../lib/format";
 import { labelRuns, type ReportRef } from "../lib/patient";
-import { BlueDot, ReportChip, Triangle } from "./ui";
+import { BlueDot, DirectionTag, LabChangeNote, ReportChip, Triangle } from "./ui";
 
 type Reports = Map<number, ReportRef>;
 
@@ -37,6 +37,7 @@ export function GuidelineCard({ f, trends, allFlags, reports, base, link = true,
         <Triangle />Guideline · {f.rule_id.startsWith("KDIGO") ? "KDIGO" : f.rule_id}
       </div>
       <h3 className="m-0 font-serif text-[23px] font-medium leading-[1.2]">{title}</h3>
+      <div><DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} /></div>
       <p className="m-0 text-sm leading-[1.55] text-amber-deep">{body}</p>
       <div className="flex flex-wrap items-center gap-1.5">
         {f.report_ids.map((id) => reports.get(id)).filter(Boolean).map((r) => (
@@ -72,10 +73,13 @@ export function ChangeCard({ f, reports }: { f: Flag; reports: Reports }) {
         Threshold {fmtPct(f.threshold.value)}% ({verified}).
         {drugs.length > 0 && <> Since {f.rule_id === "RCV_PREV" ? "the previous result" : "baseline"}: {drugs.join(", ")}.</>}
       </p>
-      <div className="ml-[18px] flex flex-wrap gap-1.5">
+      <div className="ml-[18px] flex flex-wrap items-center gap-1.5">
         {from && labelRuns(from.report_ids, reports).map((l) => <ReportChip key={"f" + l} label={l} />)}
         {to && labelRuns(to.report_ids, reports).map((l) => <ReportChip key={"t" + l} label={l} />)}
+        <div className="grow" />
+        <DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} />
       </div>
+      {f.lab_change && <LabChangeNote className="ml-[18px]" note={labNote(f, reports)} agrees={f.lab_change.same_lab_agrees} />}
     </article>
   );
 }
@@ -109,4 +113,15 @@ export function ExpectedGroup({ flags, reports, open = false }: { flags: Flag[];
 export function CrossLabNote({ flags }: { flags: Flag[] }) {
   if (!flags.some((f) => f.cross_lab)) return null;
   return <p className="m-0 mt-0.5 text-xs leading-normal text-ink-3">These comparisons span different labs. Between-lab variation is larger than the thresholds assume.</p>;
+}
+
+/** The engine's note with report labels instead of dates, where we know them. */
+export function labNote(f: Flag, reports: Reports) {
+  const lc = f.lab_change!;
+  const same = lc.same_lab_report_ids.map((id) => reports.get(id)?.label).filter(Boolean).join(", ");
+  if (lc.same_lab_agrees)
+    return `${lc.from_lab} → ${lc.to_lab}. The ${same ? `${same} result` : "result"} from the same lab agrees with the earlier value within noise, so this change may reflect the difference between the labs rather than the patient.`;
+  if (lc.same_lab_agrees === false)
+    return `${lc.from_lab} → ${lc.to_lab}. Results from the same lab${same ? ` (${same})` : ""} show a change as well.`;
+  return `${lc.from_lab} → ${lc.to_lab}. No result from the same lab to compare with yet.`;
 }
