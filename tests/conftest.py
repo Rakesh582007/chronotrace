@@ -20,7 +20,7 @@ REAL_REPORTS = Path(__file__).resolve().parents[1] / "data" / "real_reports"
 
 _VALUE = re.compile(r"^\d[\d,]*(\.\d+)?$")
 _UNITS = {"mg/dl", "mg/dl:", "%", "mmol/l", "mmol/xx", "uiu/ml", "mg/g", "mg/l", "iu/ml", "pg/ml", "gm/dl",
-          "ml/min/1.73m2", "fl", "pg", "g/dl"}
+          "ml/min/1.73m2", "fl", "pg", "g/dl", "miu/l", "ng/dl"}
 _FLAGS = {"h", "l", "high", "low"}
 
 
