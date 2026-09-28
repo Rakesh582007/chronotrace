@@ -1,5 +1,5 @@
 """Clinical support computed from the trend engine's output (step 9c): KDIGO category grid, guideline criteria,
-condition codes (ICD-10, SNOMED CT, LOINC) and guideline nutrition figures.
+condition codes (ICD-10, SNOMED CT, LOINC) and guideline nutrition figures (nutrition.py, step 9d).
 
 Everything here is a rule with a cited source applied to confirmed results. Nothing is a diagnosis: a
 criterion says which published definition the results meet, for the doctor to confirm; codes are shown for
@@ -229,40 +229,14 @@ def codes(conditions: list[str], trends: list[dict], infos_raw: dict[str, dict])
                     "Edition (free in India through NRCeS), LOINC for each test."}
 
 
-# ---------------------------------------------------------------- nutrition
+# ---------------------------------------------------------------- nutrition and entry point
 
-def nutrition(kd: dict, crit: list[dict], weight_kg: float | None, trends: list[dict]) -> list[dict]:
-    """Guideline nutrition figures for the patient's computed categories (quoted, with the source)."""
-    out = []
-    cur = kd["current"]
-    ckd_met = any(c["id"] == "ckd_kdigo" and c["status"] == MET for c in crit)
-    if cur and cur["g"] in {"G3a", "G3b", "G4", "G5"}:
-        grams = round(0.8 * weight_kg) if weight_kg else None
-        out.append({"id": "protein_ckd", "title": "Protein", "figure": "0.8 g per kg body weight per day",
-                    "per_day": grams, "unit": "g/day",
-                    "applies_because": f"KDIGO category {cur['g']} from the latest eGFR (G3–G5, not on dialysis)",
-                    "source": "KDIGO 2024 CKD guideline, Recommendation 3.3.1.1", "status": "unverified"})
-    if ckd_met:
-        out.append({"id": "sodium_ckd", "title": "Sodium", "figure": "less than 2 g of sodium per day "
-                    "(less than 5 g of salt)", "per_day": 2.0, "unit": "g sodium/day (upper limit)",
-                    "applies_because": "the KDIGO CKD criterion is met",
-                    "source": "KDIGO 2024 CKD guideline, Recommendation 3.3.2.1", "status": "unverified"})
-    k = _values(trends, "potassium")
-    if ckd_met and k and k[-1]["value"] > 5.0:
-        out.append({"id": "potassium_ckd", "title": "Potassium",
-                    "figure": "an individualised dietary potassium plan (no fixed figure)", "per_day": None, "unit": "",
-                    "applies_because": f"latest potassium {_fmt(k[-1], 'mmol/L')} with the CKD criterion met",
-                    "source": "KDIGO 2024 CKD guideline, Practice Point 3.3.3.1", "status": "unverified"})
-    if any(c["id"] == "diabetes_ada" and c["status"] == MET and c["title"].startswith("Diabetes") for c in crit):
-        out.append({"id": "mnt_diabetes", "title": "Carbohydrate, fat and protein",
-                    "figure": "no single ideal split; individualised medical nutrition therapy", "per_day": None,
-                    "unit": "", "applies_because": "the ADA diabetes criteria are met",
-                    "source": "ADA Standards of Care in Diabetes 2025, section 5", "status": "unverified"})
-    return out
+def clinical(trends: list[dict], conditions: list[str], weight_kg: float | None, infos, infos_raw, events=(),
+             sex: str | None = None, today: dt.date | None = None) -> dict:
+    from .nutrition import nutrition
 
-
-def clinical(trends: list[dict], conditions: list[str], weight_kg: float | None, infos, infos_raw) -> dict:
     kd = kdigo(trends)
     crit = criteria(trends, conditions, infos)
     return {"kdigo": kd, "criteria": crit, "codes": codes(conditions, trends, infos_raw),
-            "nutrition": nutrition(kd, crit, weight_kg, trends), "weight_kg": weight_kg}
+            "nutrition": nutrition(kd, crit, weight_kg, trends, conditions, infos, events, sex, today),
+            "weight_kg": weight_kg}

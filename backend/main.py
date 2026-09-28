@@ -643,14 +643,16 @@ def update_patient(patient_id: int, body: PatientUpdate, session: Session = Depe
 @app.get("/patients/{patient_id}/clinical", response_model=Clinical)
 def clinical(patient_id: int, session: Session = Depends(get_session),
              doctor: Doctor = Depends(current_doctor)) -> Clinical:
-    """KDIGO risk grid, guideline criteria met, condition and test codes, guideline nutrition figures."""
+    """KDIGO category grid, guideline criteria met, condition and test codes, nutrition figures grouped by the
+    patient's conditions and tied to their results, medicines, sex and weight."""
     from data import validate_analytes as va
 
     patient = _patient_or_404(session, patient_id, doctor)
     series, _ = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
                                        _events(session, patient.id))
     raw = {a["id"]: a for a in va.load()["analytes"]}
-    out = clinical_rules.clinical(series, list(patient.conditions), patient.weight_kg, infos_by_id(), raw)
+    out = clinical_rules.clinical(series, list(patient.conditions), patient.weight_kg, infos_by_id(), raw,
+                                  _events(session, patient.id), patient.sex)
     return Clinical(patient_id=patient.id, **out)
 
 
@@ -739,7 +741,8 @@ def ask(patient_id: int, request: AskIn, session: Session = Depends(get_session)
         infos_by_id(), body.body_systems())
     series, _ = engine.analyse_patient(list(analyte_infos()), points, events)
     raw = {a["id"]: a for a in va.load()["analytes"]}
-    clin = clinical_rules.clinical(series, list(patient.conditions), patient.weight_kg, infos_by_id(), raw)
+    clin = clinical_rules.clinical(series, list(patient.conditions), patient.weight_kg, infos_by_id(), raw, events,
+                                   patient.sex)
     projection = next((t["projection"] for t in series if t["analyte_id"] == "egfr"), None)
     facts = summary_chat.with_clinical(facts, clin, projection)
     try:

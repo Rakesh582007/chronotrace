@@ -607,15 +607,34 @@ class Codes(BaseModel):
     note: str
 
 
-class NutritionFigure(BaseModel):
+class NutritionItem(BaseModel):
     id: str
     title: str
-    figure: str
-    per_day: float | None             # per-kg figures times the recorded weight; None without a weight
+    figure: str                       # the guideline figure, quoted
+    amount: float | None              # the figure for this patient (per-kg figures times the recorded weight)
+    amount_high: float | None         # upper end when the figure is a range (energy, fibre)
     unit: str
-    applies_because: str
+    applies_because: str              # the patient's own values, medicines or recorded conditions
+    report_ids: list[int]
+    note: str | None                  # where another of the patient's conditions or medicines limits the figure
+    superseded_by: str | None         # group id whose figure applies instead (hypertension potassium with CKD)
     source: str
     status: str
+
+
+class NutritionGroup(BaseModel):
+    id: str                           # kidney | glucose | pressure | lipids | thyroid
+    label: str
+    recorded: bool                    # the condition is recorded (False: from a met criterion)
+    basis: str
+    report_ids: list[int]
+    items: list[NutritionItem]
+
+
+class Nutrition(BaseModel):
+    weight_kg: float | None
+    groups: list[NutritionGroup]
+    note: str
 
 
 class Clinical(BaseModel):
@@ -623,7 +642,7 @@ class Clinical(BaseModel):
     kdigo: Kdigo
     criteria: list[Criterion]
     codes: Codes
-    nutrition: list[NutritionFigure]
+    nutrition: Nutrition
     weight_kg: float | None
 
 
