@@ -15,6 +15,7 @@ export interface Patient {
   birth_year: number;
   conditions: string[];
   has_photo: boolean;
+  weight_kg: number | null;
 }
 
 export interface PatientCard extends Patient {
@@ -336,4 +337,22 @@ export interface Summary {
     reports: { report_id: number; label: string; date: string; lab: string | null }[];
     basis: Record<string, number>;
   };
+}
+
+export interface KdigoRef { date: string; value: number; report_id: number }
+export interface KdigoPosition { date: string; g: string; a: string | null; risk: string | null; egfr: KdigoRef; uacr: KdigoRef | null }
+export interface SuggestedCode { system: string; code: string; title: string; why: string }
+export interface Criterion {
+  id: string; title: string; status: "met" | "not met" | "not enough data"; evidence: string; report_ids: number[];
+  source: string; recorded: boolean; codes: SuggestedCode[];
+}
+export interface ConditionCode { text: string; icd10: string | null; icd10_title: string | null; snomed: string | null; snomed_term: string | null; status: string }
+export interface NutritionFigure { id: string; title: string; figure: string; per_day: number | null; unit: string; applies_because: string; source: string; status: string }
+export interface Clinical {
+  patient_id: number;
+  kdigo: { current: KdigoPosition | null; history: KdigoPosition[]; source: string };
+  criteria: Criterion[];
+  codes: { conditions: ConditionCode[]; tests: { analyte_id: string; name: string; loinc: string; loinc_name: string }[]; note: string };
+  nutrition: NutritionFigure[];
+  weight_kg: number | null;
 }

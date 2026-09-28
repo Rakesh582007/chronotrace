@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Flag, Trend } from "../api/types";
-import { capitalise, fmtMonth, fmtMonthLong, fmtNum, fmtPct, fmtUnit, shortName } from "../lib/format";
+import { capitalise, fmtDate, fmtMonth, fmtMonthLong, fmtNum, fmtPct, fmtUnit, shortName } from "../lib/format";
 import { labelRuns, type ReportRef } from "../lib/patient";
 import { BlueDot, DirectionTag, LabChangeNote, ReportChip, Triangle } from "./ui";
 
@@ -86,6 +86,11 @@ export function ChangeCard({ f, reports }: { f: Flag; reports: Reports }) {
         <div className="grow" />
         <DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} />
       </div>
+      {from && to && (
+        <p className="m-0 ml-[18px] text-xs text-ink-3" data-testid="flag-dates">
+          {from.label === "baseline" ? "Baseline" : "Previous"} {dateSpan(from.dates ?? [])} → {fmtDate(to.date ?? f.date)}
+        </p>
+      )}
       {f.lab_change && <LabChangeNote className="ml-[18px]" note={labNote(f, reports)} agrees={f.lab_change.same_lab_agrees} />}
     </article>
   );
@@ -131,4 +136,10 @@ export function labNote(f: Flag, reports: Reports) {
   if (lc.same_lab_agrees === false)
     return `${lc.from_lab} → ${lc.to_lab}. Results from the same lab${same ? ` (${same})` : ""} show a change as well.`;
   return `${lc.from_lab} → ${lc.to_lab}. No result from the same lab to compare with yet.`;
+}
+
+function dateSpan(dates: string[]) {
+  if (!dates.length) return "";
+  const s = [...dates].sort();
+  return s.length === 1 ? fmtDate(s[0]) : `${fmtDate(s[0])} – ${fmtDate(s[s.length - 1])}`;
 }

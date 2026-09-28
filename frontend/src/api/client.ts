@@ -1,6 +1,6 @@
 // One typed client for docs/api.md. The token lives in memory and sessionStorage.
 import type {
-  ConfirmBody, Doctor, FlagsResponse, Medication, NewPatient, Patient, PatientCard, PatientDocument,
+  Clinical, ConfirmBody, Doctor, FlagsResponse, Medication, NewPatient, Patient, PatientCard, PatientDocument,
   ReportDetail, Summary, SummaryPeriod, SystemsResponse, TrendsResponse,
 } from "./types";
 
@@ -84,6 +84,9 @@ export const api = {
   },
   photoUrl: (id: number) => `${API_URL}/patients/${id}/photo`,
 
+  clinical: (id: number) => request<Clinical>(`/patients/${id}/clinical`),
+  updatePatient: (id: number, body: { weight_kg?: number | null; conditions?: string[] }) =>
+    request<Patient>(`/patients/${id}`, { method: "PATCH", body: json(body) }),
   trends: (id: number) => request<TrendsResponse>(`/patients/${id}/trends`),
   flags: (id: number) => request<FlagsResponse>(`/patients/${id}/flags`),
   systems: (id: number) => request<SystemsResponse>(`/patients/${id}/systems`),

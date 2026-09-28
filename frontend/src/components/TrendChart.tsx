@@ -34,7 +34,13 @@ export interface ChartProps {
   onOpenReport?: (reportId: number) => void;
 }
 
-const PAD_L = 44, PAD_R = 16, PAD_T = 12, AXIS_H = 52;
+const PAD_L = 44, PAD_R = 16, PAD_T = 12, AXIS_H = 44;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "Mar ’26" */
+function shortDate(d: string) {
+  const [y, m] = d.split("-");
+  return `${MONTHS[Number(m) - 1]} ’${y.slice(2)}`;
+}
 const DAY = 86_400_000;
 
 /**
@@ -178,13 +184,21 @@ export default function TrendChart(props: ChartProps) {
         <div key={d.date + d.label} className="pointer-events-none absolute rounded bg-card px-1.5 py-px text-xs font-semibold text-blue-ink"
           style={{ top: 14 + (i % 3) * 20, left: PAD_L + X(d.date) + 4 }}>{d.label}</div>
       ))}
-      <div className="pointer-events-none absolute" style={{ left: PAD_L, top: PAD_T + H + 6, width: W, height: 40 }}>
-        {points.map((p) => (
-          <span key={"l" + p.reportId} className={`absolute -translate-x-1/2 font-mono text-[11px] ${p.inTrend ? "text-blue-ink" : "text-ink-3"}`} style={{ left: X(p.date) }}>{p.reportLabel}</span>
-        ))}
-        {axis.years.map((yr) => (
-          <span key={yr} className="num absolute top-5 -translate-x-1/2 text-xs text-ink-3" style={{ left: X(yr) }}>{yr.slice(0, 4)}</span>
-        ))}
+      <div className="pointer-events-none absolute" style={{ left: PAD_L, top: PAD_T + H + 6, width: W, height: 30 }}>
+        {(() => {
+          let lastX = -99;
+          return points.map((p) => {
+            const x = X(p.date);
+            const showDate = x - lastX >= 38;
+            if (showDate) lastX = x;
+            return (
+              <div key={"l" + p.reportId + p.date} className="absolute flex -translate-x-1/2 flex-col items-center leading-tight" style={{ left: x }}>
+                <span className={`font-mono text-[11px] ${p.inTrend ? "text-blue-ink" : "text-ink-3"}`}>{p.reportLabel}</span>
+                {showDate && <span className="num whitespace-nowrap text-[10px] text-ink-3">{shortDate(p.date)}</span>}
+              </div>
+            );
+          });
+        })()}
       </div>
       {s && (
         <div role="dialog" aria-label={`Selected result ${s.reportLabel}`} className="absolute z-10 flex w-[214px] flex-col gap-1.5 rounded-xl bg-ink px-3.5 py-3 text-paper shadow-[0_16px_30px_-18px_rgba(29,39,51,0.7)]"

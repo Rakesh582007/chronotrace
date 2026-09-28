@@ -218,7 +218,8 @@ def potassium_criterion(trends, conditions) -> dict | None:
 
 
 def criteria(trends, conditions, infos) -> list[dict]:
-    out = [ckd_criterion(trends, conditions), diabetes_criterion(trends, conditions),
+    has_kidney = bool(_values(trends, "egfr") or _values(trends, "uacr"))
+    out = [ckd_criterion(trends, conditions) if has_kidney else None, diabetes_criterion(trends, conditions),
            thyroid_pattern(trends, conditions, infos), potassium_criterion(trends, conditions)]
     return [c for c in out if c is not None]
 
