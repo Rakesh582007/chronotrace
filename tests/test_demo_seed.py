@@ -39,21 +39,41 @@ def test_four_patients_with_the_designed_counts(demo_ward):
                   p["lab_count"], p["latest_report_date"]) for code, p in by_code(c).items()}
     assert got == {
         "CT-0001": ("K. Selvam", 0, 3, 2, 9, 3, "2025-09-01"),        # R10 is left for the live upload
-        "CT-0002": ("M. Rani", 0, 2, 0, 4, 2, "2026-01-14"),
+        "CT-0002": ("M. Rani", 0, 4, 0, 5, 2, "2025-12-15"),
         "CT-0003": ("J. Arul", 0, 0, 0, 1, 1, "2025-08-05"),
         "CT-0004": ("S. Priya", 0, 0, 0, 3, 1, "2025-11-20"),
     }
-    assert [p["patient_code"] for p in c.get("/patients").json()] == ["CT-0001", "CT-0002", "CT-0004", "CT-0003"]
+    assert [p["patient_code"] for p in c.get("/patients").json()] == ["CT-0002", "CT-0001", "CT-0004", "CT-0003"]
 
 
-def test_rani_has_one_flag_per_thyroid_value(demo_ward):
+def test_rani_lab_change_explains_her_flags(demo_ward):
     c, out = demo_ward
-    flags = c.get(f"/patients/{out['rani']['patient_id']}/flags").json()["flags"]
-    assert sorted((f["rule_id"], f["analyte_id"], f["date"], f["change_percent"]) for f in flags) == [
-        ("RCV_BASELINE", "free_t4", "2026-01-14", -22.4), ("RCV_PREV", "tsh", "2025-07-15", 73.1)]
-    thyroid = next(s for s in c.get(f"/patients/{out['rani']['patient_id']}/systems").json()["systems"]
-                   if s["id"] == "thyroid")
-    assert thyroid["status"] == "changed" and thyroid["headline"]["latest"]["value"] == 3.4
+    pid = out["rani"]["patient_id"]
+    flags = c.get(f"/patients/{pid}/flags").json()["flags"]
+    assert sorted((f["rule_id"], f["analyte_id"], f["date"]) for f in flags) == [
+        ("RCV_PREV", "free_t4", "2025-06-16"), ("RCV_PREV", "free_t4", "2025-12-15"),
+        ("RCV_PREV", "tsh", "2025-06-16"), ("RCV_PREV", "tsh", "2025-12-15")]
+    for f in flags:
+        lc = f["lab_change"]
+        assert lc["same_lab_agrees"] is True and {lc["from_lab"], lc["to_lab"]} == {"ASTERLANE DIAGNOSTICS", "Kestrelline Labs"}
+    tsh_r4 = next(f for f in flags if f["analyte_id"] == "tsh" and f["date"] == "2025-06-16")
+    assert tsh_r4["target_direction"] == "toward" and tsh_r4["target"]["label"] == "0.4–4.0 mIU/L"
+    thyroid = next(s for s in c.get(f"/patients/{pid}/systems").json()["systems"] if s["id"] == "thyroid")
+    assert thyroid["status"] == "changed" and thyroid["headline"]["latest"]["value"] == 8.1
+
+
+def test_rani_levothyroxine_expected_fall_not_seen(demo_ward):
+    c, out = demo_ward
+    pid = out["rani"]["patient_id"]
+    [med] = c.get(f"/patients/{pid}/medications").json()
+    assert (med["drug"], med["drug_class"], med["date"]) == ("Levothyroxine", "thyroid_hormone", "2024-11-04")
+    r = c.get(f"/medications/{med['id']}/response").json()
+    tsh = next(a for a in r["analytes"] if a["analyte_id"] == "tsh")
+    assert (tsh["status"], tsh["verdict"], tsh["change_percent"]) == ("assessed", "not seen", -6.7)
+    assert tsh["before"]["value"] == 9.0 and tsh["after"]["value"] == 8.4
+    assert "within its reference change value of 51%" in tsh["verdict_note"]
+    docs = c.get(f"/patients/{pid}/documents").json()
+    assert [(d["kind"], d["document_date"]) for d in docs if d["kind"] == "prescription"] == [("prescription", "2024-11-04")]
 
 
 def test_priya_and_arul_have_no_flags(demo_ward):
@@ -103,7 +123,7 @@ def test_the_command_refuses_an_outdated_database_then_resets_it(old_database, c
     printed = capsys.readouterr().out
     assert "demo database and uploads reset" in printed
     lines = {ln.split()[0]: ln.split() for ln in printed.splitlines() if ln.startswith("CT-")}
-    assert lines["CT-0002"][1:] == ["M.", "Rani", "0", "2", "0", "4", "2", "4"]          # her 4 lab reports
+    assert lines["CT-0002"][1:] == ["M.", "Rani", "0", "4", "0", "5", "2", "6"]   # 5 lab reports + 1 prescription
     assert lines["CT-0001"][3:] == ["0", "3", "2", "9", "3", "12"]           # 9 lab reports + 3 prescriptions
     assert not (old_database / "uploads" / "pages" / "report-1-p1-110dpi.png").exists()
     assert seed_module.main(["--out", str(out_dir)]) == 1                     # already seeded

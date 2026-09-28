@@ -1,10 +1,12 @@
 """The other demo patients (synthetic), seeded after K. Selvam through the same upload + confirm API.
 
-M. Rani     F 1962, hypothyroidism: 4 reports from 2 labs, exactly 2 change flags.
-            TSH 2.4 -> 2.6 -> 4.5 -> 3.4 mIU/L: only R3 is beyond its RCV (51%) of the previous result
-            (+73%); R4 is -24% from R3 and +31% from the baseline (median of R1-R3 = 2.6).
-            Free T4 1.30 -> 1.25 -> 1.20 -> 0.97 ng/dL: each step is within its RCV (21%); R4 is -22.4%
-            from the baseline (1.25), so only the baseline rule fires.
+M. Rani     F 1962, hypothyroidism: 5 reports from 2 labs, levothyroxine 25 mcg OD started 2024-11-04
+            (prescription stored). Two stories:
+            1. Expected change not seen: TSH 8.8, 9.2 (lab A, baseline 9.0) -> 8.4 at R3, 63 days after the
+               start (inside the 42-90 day window): -6.7%, within its RCV (51%). Free T4 0.85 -> 0.88.
+            2. A change of lab: R4 comes from lab B (TSH 3.9, free T4 1.21, both beyond the RCV of R3);
+               back at lab A, R5 (TSH 8.1, free T4 0.90) is within the RCV of R3. Four RCV_PREV change
+               flags (R4 and R5, TSH and free T4), each with lab_change.same_lab_agrees = true.
 J. Arul     M 1979, type 2 diabetes: one report (trends start from the second).
 S. Priya    F 1974, hypertension + CKD: 3 reports from one lab, every change within its RCV (no flags).
 
@@ -37,6 +39,7 @@ class OtherPatient:
     record: dict                                   # POST /patients body
     header: Header
     visits: tuple[Visit, ...]
+    events: tuple[dict, ...] = ()                  # POST /medications bodies; each gets a prescription PDF
 
 
 def _d(s: str) -> dt.date:
@@ -45,10 +48,13 @@ def _d(s: str) -> dt.date:
 
 RANI = OtherPatient("rani", {"name": "M. Rani", "sex": "female", "birth_year": 1962, "conditions": ["hypothyroidism"]},
                     Header("Mrs M. RANI", "Mrs M. Rani", "Female", 1962, "7000005318"), (
-    Visit("R1", _d("2024-07-08"), "A", {"tsh": 2.4, "free_t4": 1.30}),
-    Visit("R2", _d("2025-01-20"), "B", {"tsh": 2.6, "free_t4": 1.25}),
-    Visit("R3", _d("2025-07-15"), "A", {"tsh": 4.5, "free_t4": 1.20}),
-    Visit("R4", _d("2026-01-14"), "B", {"tsh": 3.4, "free_t4": 0.97}),
+    Visit("R1", _d("2024-07-08"), "A", {"tsh": 8.8, "free_t4": 0.86}),
+    Visit("R2", _d("2024-10-14"), "A", {"tsh": 9.2, "free_t4": 0.84}),
+    Visit("R3", _d("2025-01-06"), "A", {"tsh": 8.4, "free_t4": 0.88}),
+    Visit("R4", _d("2025-06-16"), "B", {"tsh": 3.9, "free_t4": 1.21}),
+    Visit("R5", _d("2025-12-15"), "A", {"tsh": 8.1, "free_t4": 0.90}),
+), events=(
+    {"drug": "Levothyroxine", "change": "start", "dose_text": "25 mcg OD", "date": "2024-11-04"},
 ))
 
 ARUL = OtherPatient("arul", {"name": "J. Arul", "sex": "male", "birth_year": 1979, "conditions": ["type 2 diabetes"]},

@@ -6,7 +6,8 @@ extraction model and normalisation):
 
   CT-0001 K. Selvam  R1-R9 confirmed, three medication starts, a prescription PDF for each start;
                      R10 stays a PDF in backend/demo/generated/ (git-ignored) for the live upload.
-  CT-0002 M. Rani    4 reports from 2 labs, 2 change flags (TSH, free T4).
+  CT-0002 M. Rani    5 reports from 2 labs, levothyroxine start (with its prescription): the expected TSH
+                     fall is not seen, and a change of lab explains the 4 change flags.
   CT-0003 J. Arul    1 report.
   CT-0004 S. Priya   3 reports from 1 lab, no flags.
 
@@ -86,6 +87,15 @@ def seed_other(client, p: OtherPatient, out_dir: Path = OUT_DIR) -> dict:
         else:
             draw_b(path, p.header, v.date, rows_b(p, v))
         report_ids[v.id] = _upload_confirm(client, pid, path, f"{p.record['name']} {v.id}")
+    for e in p.events:
+        _check(client.post(f"/patients/{pid}/medications", json=e), 201, f"adding {e['drug']}")
+        dose, freq = e["dose_text"].rsplit(" ", 1)
+        rx = write_prescription(out_dir / f"{p.slug}_rx_{e['drug'].lower()}_{e['date']}.pdf", p.header,
+                                demo._d(e["date"]), f"Tab. {e['drug']}", dose, f"{HOW[freq]} ({freq})",
+                                clinic="EXAMPLE THYROID & DIABETES CLINIC")
+        with open(rx, "rb") as f:
+            _check(client.post(f"/patients/{pid}/documents", data={"kind": "prescription", "document_date": e["date"]},
+                               files={"file": (rx.name, f, "application/pdf")}), 201, f"prescription for {e['drug']}")
     return {"patient_id": pid, "report_ids": report_ids}
 
 
