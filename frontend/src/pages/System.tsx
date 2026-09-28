@@ -23,8 +23,10 @@ export default function SystemPage() {
   if (!s || !trends) return <main className="px-4 py-8 sm:px-8 lg:px-14"><Skeleton className="h-[480px] rounded-[18px]" /></main>;
 
   const all = flags.data?.flags ?? [];
-  const axis = makeAxis([...reports.list.map((r) => r.date), ...(meds.data ?? []).map((m) => m.date)]);
   const ids = s.analytes_with_data.map((a) => a.analyte_id);
+  const proj = trends.analytes.find((a) => a.analyte_id === "egfr")?.projection;
+  const axis = makeAxis([...reports.list.map((r) => r.date), ...(meds.data ?? []).map((m) => m.date),
+    ...(proj && (ids.includes("egfr")) ? [proj.date_latest ?? proj.date] : [])]);
   const head = s.headline?.analyte_id;
   const ordered = [head, ...ids.filter((a) => a !== head)].filter(Boolean) as string[];
   const open = async (rid: number) => { if (!(await openReportPdf(rid, docs.data))) toast("The report file was not found.", "amber"); };

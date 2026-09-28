@@ -92,6 +92,35 @@ export interface Trend {
   points: TrendPoint[];
   slope: Slope | null;
   target: Target | null;
+  projection: Projection | null;
+  last_test: LastTest | null;
+}
+
+export interface Projection {
+  threshold: number;
+  category: string;
+  category_range: string;
+  from_date: string;
+  from_value: number;
+  per_year: number;
+  per_year_low: number;
+  per_year_high: number;
+  date: string;
+  date_earliest: string;
+  date_latest: string | null;
+  n_points: number;
+  note: string;
+  source: string;
+}
+
+export interface LastTest {
+  date: string;
+  days_since: number;
+  interval_months: number;
+  label: string;
+  source: string;
+  status: string;
+  longer_than_interval: boolean;
 }
 
 export interface TrendsResponse {

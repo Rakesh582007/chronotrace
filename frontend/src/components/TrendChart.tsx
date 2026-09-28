@@ -21,6 +21,9 @@ export interface ChartProps {
   baselineLabel?: string;
   threshold?: { value: number; label: string } | null;
   target?: { low: number | null; high: number | null; label: string; source: string } | null;
+  /** ± percent around each result from lab and biological variation alone (the change threshold / √2). */
+  noisePercent?: number | null;
+  projection?: { fromDate: string; fromValue: number; date: string; earliest: string; latest: string | null; threshold: number; category: string } | null;
   windows: { from: string; to: string; label: string }[];
   drugStarts: { date: string; label: string }[];
   slope: { from: string; to: string; perYear: number } | null;
@@ -39,7 +42,7 @@ const DAY = 86_400_000;
  * the slope overlay and clickable source points have to match the design exactly).
  */
 export default function TrendChart(props: ChartProps) {
-  const { points, baseline, threshold, target, windows, drugStarts, slope, axis, unit, name, onOpenReport } = props;
+  const { points, baseline, threshold, target, windows, drugStarts, slope, axis, unit, name, onOpenReport, noisePercent, projection } = props;
   const height = props.height ?? 384;
   const [wrap, width] = useElementWidth<HTMLDivElement>(832);
   const W = width - PAD_L - PAD_R;
@@ -47,13 +50,18 @@ export default function TrendChart(props: ChartProps) {
   const [sel, setSel] = useState<number | null>(null);
   const refs = useRef<(SVGGElement | null)[]>([]);
 
-  const range = valueRange(points.map((p) => p.value), [baseline, threshold?.value]);
+  const u = noisePercent ? noisePercent / 100 : 0;
+  const range = valueRange(points.flatMap((p) => (u && !p.censored ? [p.value * (1 - u), p.value * (1 + u)] : [p.value])),
+    [baseline, threshold?.value, projection?.threshold]);
   const X = (d: string) => axis.x(d, W);
   const Y = (v: number) => yOf(v, range, H);
   const ticks = niceTicks(range[0], range[1]);
   const drawn = points.filter((p) => !p.censored);
   const line = drawn.map((p, i) => `${i ? "L" : "M"}${X(p.date)} ${Y(p.value)}`).join(" ");
 
+  const noisePath = u && drawn.length > 1
+    ? `M${drawn.map((p) => `${X(p.date)} ${Y(p.value * (1 + u))}`).join(" L")} L${[...drawn].reverse().map((p) => `${X(p.date)} ${Y(p.value * (1 - u))}`).join(" L")} Z`
+    : "";
   let slopePath = "";
   if (slope) {
     const used = points.filter((p) => p.inTrend && !p.censored);
@@ -101,7 +109,7 @@ export default function TrendChart(props: ChartProps) {
             }
             return (
               <g>
-                <rect x={0} y={top} width={W} height={bottom - top} fill="#EAF3FB" />
+                <rect x={0} y={top} width={W} height={bottom - top} fill="#EAF3FB" opacity="0.65" />
                 <text x={W - 4} y={bottom - 5} textAnchor="end" fontSize="11" fill="#1F5282">{text}</text>
               </g>
             );
@@ -130,6 +138,18 @@ export default function TrendChart(props: ChartProps) {
             </>
           )}
           {drugStarts.map((d) => <line key={d.date + d.label} x1={X(d.date)} x2={X(d.date)} y1={0} y2={H} stroke="#2F6DA3" strokeWidth="1.5" />)}
+          {noisePath && <path d={noisePath} fill="#1D2733" opacity="0.07" />}
+          {projection && (
+            <g>
+              <line x1={0} x2={W} y1={Y(projection.threshold)} y2={Y(projection.threshold)} stroke="#C8741F" strokeWidth="1" strokeDasharray="2 3" opacity="0.8" />
+              <text x={6} y={Y(projection.threshold)} dy={14} fontSize="11" fill="#8A4507">KDIGO {projection.category} starts at {projection.threshold}</text>
+              <rect x={X(projection.earliest)} y={Y(projection.threshold) - 4} height={8}
+                width={Math.max(3, (projection.latest ? X(projection.latest) : W) - X(projection.earliest))} rx={4} fill="#FBEBD3" stroke="#EBC48E" />
+              <path d={`M${X(projection.fromDate)} ${Y(projection.fromValue)} L${X(projection.date)} ${Y(projection.threshold)}`}
+                stroke="#C8741F" strokeWidth="1.6" strokeDasharray="2 4" fill="none" />
+              <circle cx={X(projection.date)} cy={Y(projection.threshold)} r={4} fill="#FFFDF9" stroke="#C8741F" strokeWidth="1.6" />
+            </g>
+          )}
           <path d={line} stroke="#1D2733" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
           {slopePath && <path d={slopePath} stroke="#C8741F" strokeWidth="2.5" strokeDasharray="7 5" fill="none" strokeLinecap="round" />}
           {points.map((p, i) => {
@@ -178,6 +198,9 @@ export default function TrendChart(props: ChartProps) {
             <span className="text-xs text-[#C9D6E4]">{fmtUnit(unit)}</span>
           </div>
           <span className="text-xs leading-[1.45] text-[#DCE3EA]">{s.lab ?? "Lab not printed"} · page {s.page}{s.inTrend ? " · used in the trend" : ""}</span>
+          {u > 0 && !s.censored && (
+            <span className="text-xs leading-[1.45] text-[#DCE3EA]">Noise alone: about {fmtNum(s.value * (1 - u))}–{fmtNum(s.value * (1 + u))}</span>
+          )}
           {onOpenReport && (
             <button type="button" onClick={() => onOpenReport(s.reportId)} className="self-start text-[13px] font-semibold text-[#9DC6EE] hover:underline">Open report →</button>
           )}

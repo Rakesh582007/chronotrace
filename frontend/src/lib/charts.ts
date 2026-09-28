@@ -49,6 +49,12 @@ export function chartProps(t: Trend, reports: Map<number, ReportRef>, meds: Medi
       ? { value: t.baseline * (fall ? 1 - t.rcv_percent / 100 : 1 + t.rcv_percent / 100), label: `${fall ? "−" : "+"}${fmtPct(t.rcv_percent)}% from baseline · ${fmtNum(t.baseline * (fall ? 1 - t.rcv_percent / 100 : 1 + t.rcv_percent / 100))}` }
       : null,
     target: t.target,
+    noisePercent: t.rcv_percent ? t.rcv_percent / Math.SQRT2 : null,
+    projection: t.projection ? {
+      fromDate: t.projection.from_date, fromValue: t.projection.from_value, date: t.projection.date,
+      earliest: t.projection.date_earliest, latest: t.projection.date_latest, threshold: t.projection.threshold,
+      category: t.projection.category,
+    } : null,
     windows: windows.get(t.analyte_id) ?? [],
     drugStarts: meds.filter((m) => m.change === "start" && touched.has(m.id)).map((m) => ({ date: m.date, label: m.drug })),
     slope: t.slope && guideline ? { from: t.slope.first_date, to: t.slope.last_date, perYear: t.slope.per_year } : null,

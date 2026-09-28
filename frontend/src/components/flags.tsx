@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Flag, Trend } from "../api/types";
-import { capitalise, fmtMonthLong, fmtNum, fmtPct, fmtUnit, shortName } from "../lib/format";
+import { capitalise, fmtMonth, fmtMonthLong, fmtNum, fmtPct, fmtUnit, shortName } from "../lib/format";
 import { labelRuns, type ReportRef } from "../lib/patient";
 import { BlueDot, DirectionTag, LabChangeNote, ReportChip, Triangle } from "./ui";
 
@@ -31,6 +31,7 @@ export function GuidelineCard({ f, trends, allFlags, reports, base, link = true,
   f: Flag; trends: Trend[] | undefined; allFlags: Flag[]; reports: Reports; base: string; link?: boolean; arrive?: boolean;
 }) {
   const { title, body } = guidelineText(f, trends, allFlags);
+  const proj = trends?.find((t) => t.analyte_id === f.analyte_id)?.projection;
   return (
     <article className={`flex flex-col gap-2.5 rounded-2xl border border-amber-line bg-amber-fill px-5 py-[18px] ${arrive ? "arrive" : ""}`} data-testid="guideline-card">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-amber-ink">
@@ -39,6 +40,12 @@ export function GuidelineCard({ f, trends, allFlags, reports, base, link = true,
       <h3 className="m-0 font-serif text-[23px] font-medium leading-[1.2]">{title}</h3>
       <div><DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} /></div>
       <p className="m-0 text-sm leading-[1.55] text-amber-deep">{body}</p>
+      {proj && (
+        <p className="m-0 rounded-[10px] border border-amber-line bg-amber-soft px-3 py-2 text-[13px] leading-normal text-amber-deep" data-testid="projection-line">
+          <strong className="font-semibold">Straight line reaches {proj.threshold} (KDIGO {proj.category}) around {fmtMonth(proj.date)}</strong>
+          {" "}· 95% range {fmtMonth(proj.date_earliest)} – {proj.date_latest ? fmtMonth(proj.date_latest) : "open"}. A projection of past results, not a forecast.
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-1.5">
         {f.report_ids.map((id) => reports.get(id)).filter(Boolean).map((r) => (
           <ReportChip key={r!.id} label={r!.label} tone="amber" title={`${r!.label} · ${r!.date} · ${r!.lab ?? ""}`} />

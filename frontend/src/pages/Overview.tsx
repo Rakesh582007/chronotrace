@@ -5,7 +5,7 @@ import { ChangeCard, CrossLabNote, ExpectedGroup, GuidelineCard } from "../compo
 import { Sparkline, TimeStrip } from "../components/timeline";
 import { BlueDot, DirectionTag, ErrorBanner, HollowDot, Skeleton, StatusPill, Triangle } from "../components/ui";
 import { makeAxis, type TimeAxis } from "../lib/axis";
-import { fmtNum, fmtPercent, fmtUnit, plural, shortName } from "../lib/format";
+import { fmtDate, fmtNum, fmtPercent, fmtUnit, plural, shortName } from "../lib/format";
 import { useFlags, useMedications, useSystems } from "../lib/patient";
 import { usePatientCtx } from "./PatientLayout";
 
@@ -71,6 +71,7 @@ export default function Overview() {
           </p>
         )}
         <CrossLabNote flags={[...guideline, ...change]} />
+        <LastTests trends={trends?.analytes ?? []} />
       </section>
 
       <section aria-labelledby="systems-h" className="flex min-w-0 flex-col gap-3.5">
@@ -149,5 +150,37 @@ function SystemCard({ s, base, axis, trends, meds }: { s: BodySystem; base: stri
       )}
       <div className="text-[13px] text-ink-3">{s.analytes_with_data.map((a) => shortName(a.name)).join(" · ")}</div>
     </Link>
+  );
+}
+
+function LastTests({ trends }: { trends: Trend[] }) {
+  const rows = trends.filter((t) => t.last_test).sort((a, b) =>
+    Number(b.last_test!.longer_than_interval) - Number(a.last_test!.longer_than_interval) || b.last_test!.days_since - a.last_test!.days_since);
+  if (!rows.length) return null;
+  const longer = rows.filter((t) => t.last_test!.longer_than_interval).length;
+  const ago = (d: number) => (d < 60 ? `${d} days ago` : `${Math.round(d / 30.4)} months ago`);
+  return (
+    <section aria-labelledby="last-h" className="mt-2 flex flex-col gap-2.5 rounded-[14px] border border-line bg-card px-[18px] py-4" data-testid="last-tests">
+      <div className="flex items-baseline gap-2">
+        <h3 id="last-h" className="m-0 text-base font-semibold">Time since the last test</h3>
+        <div className="grow" />
+        <span className="text-[13px] text-ink-3">{longer ? `${longer} longer than the guideline interval` : "all within their guideline interval"}</span>
+      </div>
+      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        {rows.map((t) => {
+          const l = t.last_test!;
+          const org = l.source.match(/\b(ADA|KDIGO|ATA)\b/)?.[0] ?? "Guideline";
+          return (
+            <li key={t.analyte_id} className="flex flex-wrap items-baseline gap-x-2 text-[13px]" title={l.source}>
+              <span className={`w-2 shrink-0 ${l.longer_than_interval ? "text-amber-mark" : "text-ink-3"}`} aria-hidden="true">{l.longer_than_interval ? "▲" : "·"}</span>
+              <span className="font-semibold">{shortName(t.name)}</span>
+              <span className={`num ${l.longer_than_interval ? "font-semibold text-amber-ink" : "text-ink-2"}`}>{ago(l.days_since)}</span>
+              <span className="text-ink-3">({fmtDate(l.date)}) · {org}: {l.label}{l.status !== "verified" ? " · not yet verified" : ""}</span>
+              {l.longer_than_interval && <span className="sr-only">Longer than the guideline interval.</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
