@@ -2,26 +2,16 @@
 upload + confirm endpoints (with the rule-based stand-in tagger; no model needed)."""
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session
-
-from backend import db
 from backend.demo import data as demo
 from backend.demo.reports import write_pdf
 from backend.demo.seed import seed
-from backend.main import app, tagger_dep
-from tests.conftest import RuleTagger
+from backend.main import app
+from tests.conftest import signed_in_client, use_fresh_database
 
 
 def make_client():
-    engine = db.make_engine("sqlite://")
-
-    def session():
-        with Session(engine) as s:
-            yield s
-    app.dependency_overrides[db.get_session] = session
-    app.dependency_overrides[tagger_dep] = RuleTagger
-    return TestClient(app)
+    use_fresh_database()
+    return signed_in_client()
 
 
 @pytest.fixture(scope="module")

@@ -106,10 +106,9 @@ def test_documented_requests_match_what_the_api_accepts(docs, actual):
 
 
 def test_every_route_is_documented():
+    """Every route in the OpenAPI schema (included routers too) has a `METHOD path` heading in the doc."""
     text = DOC.read_text(encoding="utf-8")
-    routes = [(m, r.path) for r in app.routes if hasattr(r, "methods") and not r.path.startswith(("/docs", "/openapi",
-                                                                                                   "/redoc"))
-              for m in r.methods if m != "HEAD"]
+    routes = [(m.upper(), path) for path, methods in app.openapi()["paths"].items() for m in methods]
     missing = [f"{m} {p}" for m, p in routes if f"`{m} {p}`" not in text]
     assert missing == []
 

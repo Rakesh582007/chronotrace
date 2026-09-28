@@ -1,11 +1,17 @@
-"""Shared test helpers: fixture paths, a rule-based stand-in tagger and an API client."""
+"""Shared test helpers: fixture paths, a rule-based stand-in tagger and signed-in API clients."""
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
 import pytest
+
+# Test login settings, set before the app is imported so the suite never depends on a local .env.
+TEST_ENV = {"DEMO_DOCTOR_NAME": "Test Doctor", "DEMO_DOCTOR_USER": "test-doctor",
+            "DEMO_DOCTOR_PASSWORD": "test-password-123", "AUTH_SECRET": "t" * 48}
+os.environ.update(TEST_ENV)
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 REAL_REPORTS = Path(__file__).resolve().parents[1] / "data" / "real_reports"
@@ -67,23 +73,51 @@ def rule_tagger() -> RuleTagger:
     return RuleTagger()
 
 
-@pytest.fixture
-def client(monkeypatch):
-    """API client on a fresh in-memory database, with the rule tagger instead of the model."""
-    from fastapi.testclient import TestClient
-    from sqlmodel import Session
-
+def use_fresh_database():
+    """A new in-memory database for every request of the app, with the rule tagger instead of the model."""
     from backend import db
     from backend.main import app, tagger_dep
 
     engine = db.make_engine("sqlite://")
-
-    def session():
-        with Session(engine) as s:
-            yield s
-
-    app.dependency_overrides[db.get_session] = session
+    db.set_engine(engine)
+    app.dependency_overrides.pop(db.get_session, None)
     app.dependency_overrides[tagger_dep] = RuleTagger
-    with TestClient(app) as c:
-        yield c
+    return engine
+
+
+def signed_in_client(username: str = "dr.a", name: str = "Dr A", password: str = "pw-a-12345"):
+    """A TestClient signed in as a doctor (created in the current database if needed)."""
+    from fastapi.testclient import TestClient
+    from sqlmodel import Session, select
+
+    from backend import db
+    from backend.auth import hash_password
+    from backend.db.models import Doctor
+    from backend.main import app
+
+    with Session(db.get_engine()) as s:
+        if s.exec(select(Doctor).where(Doctor.username == username)).first() is None:
+            s.add(Doctor(name=name, username=username, password_hash=hash_password(password)))
+            s.commit()
+    c = TestClient(app)
+    r = c.post("/auth/login", json={"username": username, "password": password})
+    assert r.status_code == 200, r.text
+    c.headers["Authorization"] = f"Bearer {r.json()['token']}"
+    return c
+
+
+@pytest.fixture
+def client():
+    """API client signed in as a doctor, on a fresh in-memory database, with the rule tagger."""
+    from backend.main import app
+
+    use_fresh_database()
+    c = signed_in_client()
+    yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def other_doctor(client):
+    """A second doctor's client on the same database as `client`."""
+    return signed_in_client("dr.b", "Dr B", "pw-b-12345")

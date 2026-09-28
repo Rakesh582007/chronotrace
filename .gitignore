@@ -40,3 +40,6 @@ Thumbs.db
 
 # Demo seed output (generated PDFs)
 backend/demo/generated/
+
+# Uploaded documents and rendered page previews
+backend/uploads/

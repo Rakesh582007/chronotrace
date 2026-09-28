@@ -1,16 +1,19 @@
-"""ChronoTrace API (steps 4-5). Run from the repo root:  uvicorn backend.main:app --reload
+"""ChronoTrace API. Run from the repo root:  uvicorn backend.main:app --reload
 
 Endpoints are documented with full examples in docs/api.md; tests/test_api_contract.py checks
 that every documented response has the same shape as the real one.
+
+Every route except POST /auth/login needs a signed-in doctor (backend/auth.py), and data is scoped
+to that doctor: another doctor's patient, report or medication answers 404.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import hashlib
-import os
 import tempfile
 from collections import Counter
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
@@ -20,8 +23,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from . import normalise as nm
-from .db import get_session
-from .db.models import MedicationEvent, Observation, Patient, Report
+from .auth import current_doctor, ensure_demo_doctor
+from .auth import router as auth_router
+from .config import check_auth_settings
+from .db import check_schema, get_engine, get_session
+from .db.models import Doctor, MedicationEvent, Observation, Patient, Report
 from .extraction import ScannedReportError, extract_report
 from .extraction.tagger import Tagger, get_tagger
 from .normalise.names import name_index
@@ -35,11 +41,24 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 ENTERED_BY_DOCTOR = "Entered by doctor"
 UNREADABLE_PDF = "could not read this PDF: it is damaged or password-protected"
 
-app = FastAPI(title="ChronoTrace API", version="0.4.0",
-              description="Lab-report extraction, normalisation and timelines (see docs/api.md).")
-app.add_middleware(CORSMiddleware,
-                   allow_origins=os.environ.get("CHRONOTRACE_CORS", "http://localhost:5173").split(","),
-                   allow_methods=["*"], allow_headers=["*"])
+FRONTEND_ORIGIN = "http://localhost:5173"
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Refuse to start without the login settings or on an outdated database; seed the demo doctor."""
+    check_auth_settings()
+    engine = get_engine()
+    check_schema(engine)
+    with Session(engine) as session:
+        ensure_demo_doctor(session)
+    yield
+
+
+app = FastAPI(title="ChronoTrace API", version="0.7.0", lifespan=lifespan,
+              description="Lab-report extraction, normalisation, trends and summaries (see docs/api.md).")
+app.add_middleware(CORSMiddleware, allow_origins=[FRONTEND_ORIGIN], allow_methods=["*"], allow_headers=["*"])
+app.include_router(auth_router)
 
 
 def tagger_dep() -> Tagger:
@@ -48,18 +67,28 @@ def tagger_dep() -> Tagger:
 
 # ---------------------------------------------------------------- helpers
 
-def _patient_or_404(session: Session, patient_id: int) -> Patient:
+def _patient_or_404(session: Session, patient_id: int, doctor: Doctor) -> Patient:
+    """The doctor's own patient; another doctor's patient is "not found", like a missing one."""
     p = session.get(Patient, patient_id)
-    if p is None:
+    if p is None or p.doctor_id != doctor.id:
         raise HTTPException(404, "patient not found")
     return p
 
 
-def _report_or_404(session: Session, report_id: int) -> Report:
+def _report_or_404(session: Session, report_id: int, doctor: Doctor) -> Report:
     r = session.get(Report, report_id)
-    if r is None:
+    p = session.get(Patient, r.patient_id) if r is not None else None
+    if r is None or p is None or p.doctor_id != doctor.id:
         raise HTTPException(404, "report not found")
     return r
+
+
+def _medication_or_404(session: Session, medication_id: int, doctor: Doctor) -> MedicationEvent:
+    m = session.get(MedicationEvent, medication_id)
+    p = session.get(Patient, m.patient_id) if m is not None else None
+    if m is None or p is None or p.doctor_id != doctor.id:
+        raise HTTPException(404, "medication event not found")
+    return m
 
 
 def _patient_out(p: Patient) -> PatientOut:
@@ -109,8 +138,9 @@ def _copy_back(src: nm.Observation, dst: Observation) -> None:
 # ---------------------------------------------------------------- patients
 
 @app.post("/patients", response_model=PatientOut, status_code=201)
-def create_patient(body: PatientIn, session: Session = Depends(get_session)) -> PatientOut:
-    p = Patient(name=body.name.strip(), sex=body.sex, birth_year=body.birth_year,
+def create_patient(body: PatientIn, session: Session = Depends(get_session),
+                   doctor: Doctor = Depends(current_doctor)) -> PatientOut:
+    p = Patient(doctor_id=doctor.id, name=body.name.strip(), sex=body.sex, birth_year=body.birth_year,
                 conditions=[c.strip() for c in body.conditions if c.strip()])
     session.add(p)
     session.commit()
@@ -119,30 +149,35 @@ def create_patient(body: PatientIn, session: Session = Depends(get_session)) -> 
 
 
 @app.get("/patients", response_model=list[PatientOut])
-def list_patients(session: Session = Depends(get_session)) -> list[PatientOut]:
-    return [_patient_out(p) for p in session.exec(select(Patient).order_by(Patient.id)).all()]
+def list_patients(session: Session = Depends(get_session), doctor: Doctor = Depends(current_doctor)) -> list[PatientOut]:
+    return [_patient_out(p) for p in session.exec(select(Patient).where(Patient.doctor_id == doctor.id)
+                                                  .order_by(Patient.id)).all()]
 
 
 # ---------------------------------------------------------------- reports
 
-def _raise_if_duplicate(session: Session, sha: str) -> None:
+def _raise_if_duplicate(session: Session, sha: str, doctor: Doctor) -> None:
+    """409 for a file uploaded before. Its ids are given only when it is this doctor's own report."""
     existing = session.exec(select(Report).where(Report.file_sha256 == sha)).first()
     if existing is not None:
-        raise HTTPException(409, {"message": "this report was already uploaded", "report_id": existing.id,
-                                  "patient_id": existing.patient_id})
+        owner = session.get(Patient, existing.patient_id)
+        mine = owner is not None and owner.doctor_id == doctor.id
+        raise HTTPException(409, {"message": "this report was already uploaded",
+                                  "report_id": existing.id if mine else None,
+                                  "patient_id": existing.patient_id if mine else None})
 
 
 @app.post("/patients/{patient_id}/reports", response_model=ReportDetail, status_code=201)
 def upload_report(patient_id: int, file: UploadFile = File(...), session: Session = Depends(get_session),
-                  tagger: Tagger = Depends(tagger_dep)) -> ReportDetail:
-    patient = _patient_or_404(session, patient_id)
+                  tagger: Tagger = Depends(tagger_dep), doctor: Doctor = Depends(current_doctor)) -> ReportDetail:
+    patient = _patient_or_404(session, patient_id, doctor)
     data = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "file is larger than 20 MB")
     if not data.startswith(b"%PDF"):
         raise HTTPException(415, "only PDF files are supported")
     sha = hashlib.sha256(data).hexdigest()
-    _raise_if_duplicate(session, sha)
+    _raise_if_duplicate(session, sha, doctor)
 
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "report.pdf"
@@ -170,20 +205,22 @@ def upload_report(patient_id: int, file: UploadFile = File(...), session: Sessio
         session.commit()
     except IntegrityError:     # the same file uploaded twice at once (double click): the first one won
         session.rollback()
-        _raise_if_duplicate(session, sha)
+        _raise_if_duplicate(session, sha, doctor)
         raise
     session.refresh(report)
     return _detail(session, report)
 
 
 @app.get("/reports/{report_id}", response_model=ReportDetail)
-def get_report(report_id: int, session: Session = Depends(get_session)) -> ReportDetail:
-    return _detail(session, _report_or_404(session, report_id))
+def get_report(report_id: int, session: Session = Depends(get_session),
+               doctor: Doctor = Depends(current_doctor)) -> ReportDetail:
+    return _detail(session, _report_or_404(session, report_id, doctor))
 
 
 @app.post("/reports/{report_id}/confirm", response_model=ReportDetail)
-def confirm_report(report_id: int, body: ConfirmIn, session: Session = Depends(get_session)) -> ReportDetail:
-    report = _report_or_404(session, report_id)
+def confirm_report(report_id: int, body: ConfirmIn, session: Session = Depends(get_session),
+                   doctor: Doctor = Depends(current_doctor)) -> ReportDetail:
+    report = _report_or_404(session, report_id, doctor)
     patient = session.get(Patient, report.patient_id)
     obs = {o.id: o for o in session.exec(select(Observation).where(Observation.report_id == report.id)).all()}
     index = name_index()
@@ -287,8 +324,9 @@ def confirm_report(report_id: int, body: ConfirmIn, session: Session = Depends(g
 # ---------------------------------------------------------------- timeline
 
 @app.get("/patients/{patient_id}/timeline", response_model=Timeline)
-def timeline(patient_id: int, session: Session = Depends(get_session)) -> Timeline:
-    patient = _patient_or_404(session, patient_id)
+def timeline(patient_id: int, session: Session = Depends(get_session),
+             doctor: Doctor = Depends(current_doctor)) -> Timeline:
+    patient = _patient_or_404(session, patient_id, doctor)
     by_analyte = _confirmed_points(session, patient.id)
     index = name_index()
     series = []
@@ -329,26 +367,27 @@ def _events(session: Session, patient_id: int) -> list[engine.Event]:
 
 
 @app.get("/patients/{patient_id}/trends", response_model=Trends, response_model_by_alias=True)
-def trends(patient_id: int, session: Session = Depends(get_session)) -> Trends:
-    patient = _patient_or_404(session, patient_id)
+def trends(patient_id: int, session: Session = Depends(get_session),
+           doctor: Doctor = Depends(current_doctor)) -> Trends:
+    patient = _patient_or_404(session, patient_id, doctor)
     series, _ = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
                                        _events(session, patient.id))
     return Trends(patient=_patient_out(patient), analytes=series)
 
 
 @app.get("/patients/{patient_id}/flags", response_model=Flags, response_model_by_alias=True)
-def flags(patient_id: int, session: Session = Depends(get_session)) -> Flags:
-    patient = _patient_or_404(session, patient_id)
+def flags(patient_id: int, session: Session = Depends(get_session),
+          doctor: Doctor = Depends(current_doctor)) -> Flags:
+    patient = _patient_or_404(session, patient_id, doctor)
     _, out = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
                                     _events(session, patient.id))
     return Flags(patient_id=patient.id, flags=out)
 
 
 @app.get("/medications/{medication_id}/response", response_model=MedicationResponse, response_model_by_alias=True)
-def medication_response(medication_id: int, session: Session = Depends(get_session)) -> MedicationResponse:
-    m = session.get(MedicationEvent, medication_id)
-    if m is None:
-        raise HTTPException(404, "medication event not found")
+def medication_response(medication_id: int, session: Session = Depends(get_session),
+                        doctor: Doctor = Depends(current_doctor)) -> MedicationResponse:
+    m = _medication_or_404(session, medication_id, doctor)
     events = _events(session, m.patient_id)
     event = next(e for e in events if e.id == m.id)
     return MedicationResponse(**engine.response(event, infos_by_id(), _confirmed_points(session, m.patient_id), events))
@@ -364,8 +403,9 @@ def _medication_out(m: MedicationEvent) -> MedicationOut:
 
 
 @app.post("/patients/{patient_id}/medications", response_model=MedicationOut, status_code=201)
-def add_medication(patient_id: int, body: MedicationIn, session: Session = Depends(get_session)) -> MedicationOut:
-    patient = _patient_or_404(session, patient_id)
+def add_medication(patient_id: int, body: MedicationIn, session: Session = Depends(get_session),
+                   doctor: Doctor = Depends(current_doctor)) -> MedicationOut:
+    patient = _patient_or_404(session, patient_id, doctor)
     if not (patient.birth_year <= body.date.year and body.date <= dt.date.today()):
         raise HTTPException(422, {"message": "date must be between the patient's birth year and today"})
     m = MedicationEvent(patient_id=patient.id, drug=body.drug.strip(), change=body.change,
@@ -382,16 +422,16 @@ def _medications(session: Session, patient_id: int) -> list[MedicationEvent]:
 
 
 @app.get("/patients/{patient_id}/medications", response_model=list[MedicationOut])
-def list_medications(patient_id: int, session: Session = Depends(get_session)) -> list[MedicationOut]:
-    _patient_or_404(session, patient_id)
+def list_medications(patient_id: int, session: Session = Depends(get_session),
+                     doctor: Doctor = Depends(current_doctor)) -> list[MedicationOut]:
+    _patient_or_404(session, patient_id, doctor)
     return [_medication_out(m) for m in _medications(session, patient_id)]
 
 
 @app.delete("/medications/{medication_id}", status_code=204)
-def delete_medication(medication_id: int, session: Session = Depends(get_session)) -> Response:
-    m = session.get(MedicationEvent, medication_id)
-    if m is None:
-        raise HTTPException(404, "medication event not found")
+def delete_medication(medication_id: int, session: Session = Depends(get_session),
+                      doctor: Doctor = Depends(current_doctor)) -> Response:
+    m = _medication_or_404(session, medication_id, doctor)
     session.delete(m)
     session.commit()
     return Response(status_code=204)

@@ -16,8 +16,17 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
 
 
+class Doctor(SQLModel, table=True):
+    """A doctor who signs in (step 7: one demo doctor seeded from .env)."""
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    username: str = Field(unique=True, index=True)
+    password_hash: str                         # pbkdf2_sha256$iterations$salt$hash (backend/auth.py)
+
+
 class Patient(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    doctor_id: int = Field(foreign_key="doctor.id", index=True)
     name: str
     sex: str                                   # "male" | "female"
     birth_year: int
