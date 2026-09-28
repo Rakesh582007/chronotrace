@@ -18,7 +18,7 @@ from pathlib import Path
 
 from typing import Literal
 
-from fastapi import Depends, FastAPI, File, HTTPException, Query, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pdfplumber.utils.exceptions import PdfminerException
@@ -31,19 +31,20 @@ from .auth import current_doctor, ensure_demo_doctor
 from .auth import router as auth_router
 from .config import check_auth_settings
 from .db import check_schema, get_engine, get_session
-from .db.models import Doctor, MedicationEvent, Observation, Patient, Report
+from .db.models import Doctor, Document, MedicationEvent, Observation, Patient, Report
 from .extraction import ScannedReportError, extract_report
 from .extraction.tagger import Tagger, get_tagger
 from .normalise.names import name_index
 from .trends import catalogue, engine
 from .trends import systems as body
 from .trends.dictionary import analyte_infos, infos_by_id
-from .schemas import (ConfirmIn, Counts, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
+from .schemas import (ConfirmIn, Counts, DocumentOut, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
                       PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, Systems, Trends,
                       SkippedOut, Timeline, TimelinePoint, TimelineSeries)
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
+MAX_DOCUMENT_BYTES = 15 * 1024 * 1024
 ENTERED_BY_DOCTOR = "Entered by doctor"
 UNREADABLE_PDF = "could not read this PDF: it is damaged or password-protected"
 
@@ -262,21 +263,134 @@ def upload_report(patient_id: int, file: UploadFile = File(...), session: Sessio
     skipped += [{"page": p, "line": ln, "text": t, "reason": r} for p, ln, t, r in not_results]
     skipped.sort(key=lambda s: (s["page"], s["line"]))
 
-    report = Report(patient_id=patient.id, file_sha256=sha, filename=Path(file.filename or "report.pdf").name,
+    filename = Path(file.filename or "report.pdf").name
+    report = Report(patient_id=patient.id, file_sha256=sha, filename=filename,
                     lab=ex.meta.lab, collected_at=ex.meta.date, date_label=ex.meta.date_label,
                     reported_at=ex.meta.reported_at, layout=ex.layout, pages=ex.pages, skipped=skipped)
+    stored = None
     try:
         session.add(report)
         session.flush()
         for o in observations:
             session.add(Observation(report_id=report.id, **{k: v for k, v in vars(o).items()}))
+        doc = Document(patient_id=patient.id, kind="lab_report", filename=filename, sha256=sha, size=len(data),
+                       report_id=report.id, document_date=ex.meta.date)
+        stored = _store_document(session, doc, data, "pdf")
         session.commit()
     except IntegrityError:     # the same file uploaded twice at once (double click): the first one won
         session.rollback()
+        storage.remove(stored)
         _raise_if_duplicate(session, sha, doctor)
+        raise
+    except Exception:
+        session.rollback()
+        storage.remove(stored)
         raise
     session.refresh(report)
     return _detail(session, report)
+
+
+# ---------------------------------------------------------------- documents
+
+def _store_document(session: Session, doc: Document, data: bytes, ext: str) -> str:
+    """Add the row, then write the file named after its id (two rows never share a file)."""
+    session.add(doc)
+    session.flush()
+    doc.stored_path = storage.save(f"documents/{doc.id}-{doc.sha256[:12]}.{ext}", data)
+    return doc.stored_path
+
+
+def _document_out(session: Session, d: Document) -> DocumentOut:
+    report = session.get(Report, d.report_id) if d.report_id else None
+    return DocumentOut(id=d.id, patient_id=d.patient_id, kind=d.kind, filename=d.filename, sha256=d.sha256,
+                       size=d.size, uploaded_at=d.uploaded_at, document_date=d.document_date, report_id=d.report_id,
+                       report_status=report.status if report else None)
+
+
+def _document_or_404(session: Session, document_id: int, doctor: Doctor) -> Document:
+    d = session.get(Document, document_id)
+    p = session.get(Patient, d.patient_id) if d is not None else None
+    if d is None or p is None or p.doctor_id != doctor.id:
+        raise HTTPException(404, "document not found")
+    return d
+
+
+@app.post("/patients/{patient_id}/documents", response_model=DocumentOut, status_code=201)
+def upload_document(patient_id: int, kind: Literal["lab_report", "prescription", "doctor_note"] = Form(...),
+                    file: UploadFile = File(...), document_date: dt.date | None = Form(None),
+                    session: Session = Depends(get_session), doctor: Doctor = Depends(current_doctor)) -> DocumentOut:
+    """Store a prescription or a doctor's note (PDF, JPG or PNG, up to 15 MB). It is kept, never parsed."""
+    patient = _patient_or_404(session, patient_id, doctor)
+    if kind == "lab_report":
+        raise HTTPException(422, "upload lab reports with POST /patients/{id}/reports, which reads their values")
+    data = file.file.read(MAX_DOCUMENT_BYTES + 1)
+    if len(data) > MAX_DOCUMENT_BYTES:
+        raise HTTPException(413, "file is larger than 15 MB")
+    ext = storage.file_type(data, ("pdf", "jpg", "png"))
+    if ext is None:
+        raise HTTPException(415, "only PDF, JPG and PNG files are accepted")
+    sha = hashlib.sha256(data).hexdigest()
+    mine = select(Document).join(Patient, Patient.id == Document.patient_id).where(
+        Patient.doctor_id == doctor.id, Document.sha256 == sha)
+    existing = session.exec(mine).first()
+    if existing is not None:
+        raise HTTPException(409, {"message": "this file was already uploaded", "document_id": existing.id,
+                                  "patient_id": existing.patient_id})
+    doc = Document(patient_id=patient.id, kind=kind, filename=Path(file.filename or f"document.{ext}").name,
+                   sha256=sha, size=len(data), document_date=document_date)
+    stored = None
+    try:
+        stored = _store_document(session, doc, data, ext)
+        session.commit()
+    except Exception:
+        session.rollback()
+        storage.remove(stored)
+        raise
+    session.refresh(doc)
+    return _document_out(session, doc)
+
+
+@app.get("/patients/{patient_id}/documents", response_model=list[DocumentOut])
+def list_documents(patient_id: int, session: Session = Depends(get_session),
+                   doctor: Doctor = Depends(current_doctor)) -> list[DocumentOut]:
+    """Every document of the patient, newest upload first."""
+    patient = _patient_or_404(session, patient_id, doctor)
+    docs = session.exec(select(Document).where(Document.patient_id == patient.id)
+                        .order_by(Document.uploaded_at.desc(), Document.id.desc())).all()
+    return [_document_out(session, d) for d in docs]
+
+
+@app.get("/documents/{document_id}/file", response_class=FileResponse)
+def document_file(document_id: int, session: Session = Depends(get_session),
+                  doctor: Doctor = Depends(current_doctor)) -> FileResponse:
+    d = _document_or_404(session, document_id, doctor)
+    path = storage.absolute(d.stored_path)
+    if not d.stored_path or not path.exists():
+        raise HTTPException(404, "the stored file is missing")
+    return FileResponse(path, media_type=storage.media_type(d.stored_path), filename=d.filename,
+                        content_disposition_type="inline")
+
+
+@app.delete("/documents/{document_id}", status_code=204)
+def delete_document(document_id: int, session: Session = Depends(get_session),
+                    doctor: Doctor = Depends(current_doctor)) -> Response:
+    """Delete a document and its file. A lab report goes with its extracted values, unless they were
+    confirmed: confirmed values are part of the patient's timeline, so that answers 409."""
+    d = _document_or_404(session, document_id, doctor)
+    report = session.get(Report, d.report_id) if d.report_id else None
+    if report is not None and report.status == "confirmed":
+        raise HTTPException(409, {"message": "this lab report has confirmed values in the timeline and cannot be "
+                                             "deleted", "report_id": report.id})
+    stored = d.stored_path
+    session.delete(d)
+    if report is not None:
+        session.flush()
+        for o in session.exec(select(Observation).where(Observation.report_id == report.id)).all():
+            session.delete(o)
+        session.delete(report)
+    session.commit()
+    storage.remove(stored)
+    return Response(status_code=204)
 
 
 @app.get("/reports/{report_id}", response_model=ReportDetail)

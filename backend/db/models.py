@@ -55,6 +55,21 @@ class Report(SQLModel, table=True):
     confirmed_at: dt.datetime | None = None
 
 
+class Document(SQLModel, table=True):
+    """A file kept for a patient. Lab reports are parsed (their Report row is report_id); prescriptions and
+    doctor's notes are stored only, never parsed. The file itself is under the uploads folder."""
+    id: int | None = Field(default=None, primary_key=True)
+    patient_id: int = Field(foreign_key="patient.id", index=True)
+    kind: str                                  # "lab_report" | "prescription" | "doctor_note"
+    filename: str
+    sha256: str = Field(index=True)
+    size: int                                  # bytes
+    stored_path: str = ""                      # relative to the uploads folder (backend/storage.py)
+    uploaded_at: dt.datetime = Field(default_factory=_now)
+    report_id: int | None = Field(default=None, foreign_key="report.id", index=True)
+    document_date: dt.date | None = None       # date written on the document, when given
+
+
 class Observation(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     report_id: int = Field(foreign_key="report.id", index=True)

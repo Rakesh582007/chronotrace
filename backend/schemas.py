@@ -58,6 +58,19 @@ class ReportOut(BaseModel):
     confirmed_at: dt.datetime | None
 
 
+class DocumentOut(BaseModel):
+    id: int
+    patient_id: int
+    kind: Literal["lab_report", "prescription", "doctor_note"]
+    filename: str
+    sha256: str
+    size: int                         # bytes
+    uploaded_at: dt.datetime
+    document_date: dt.date | None
+    report_id: int | None             # lab reports: the parsed report
+    report_status: str | None         # lab reports: "extracted" | "confirmed"
+
+
 class ObservationOut(BaseModel):
     id: int
     report_id: int
