@@ -23,7 +23,9 @@ types as the running API, so this file and the code cannot drift apart.
   `python -m backend.demo.seed --reset` (four synthetic patients, through this API).
 - Files (report PDFs, prescriptions, notes, photos, rendered pages): `backend/uploads/` (git-ignored), or
   `CHRONOTRACE_UPLOADS`.
-- Summaries: Gemini through `LLM_PROVIDER=gemini`, `LLM_API_KEY` and `LLM_MODEL` in `.env`.
+- Summaries: Gemini through `LLM_PROVIDER=gemini`, `LLM_API_KEY` and `LLM_MODEL` in `.env`. When the model
+  answers 429/503 it is retried after 2 s and 5 s, then `LLM_MODEL_FALLBACKS` are tried in order; one call
+  stops after about 60 s. The summary's `model` is the model that wrote it.
 - Model: `ml/models/chronotrace-ner` if present, else the Hugging Face Hub model
   `Rip-Shadw/chronotrace-report-ner`; `CHRONOTRACE_MODEL` overrides both. It loads on the first upload
   (a few seconds) and runs on CPU.

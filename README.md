@@ -71,7 +71,7 @@ allows `http://localhost:5173` only. `--reset` rebuilds the demo database and em
 
 Required in `.env` (see `.env.example`): `DEMO_DOCTOR_NAME`, `DEMO_DOCTOR_USER`, `DEMO_DOCTOR_PASSWORD`,
 `AUTH_SECRET` (at least 32 characters) for the demo login, and `LLM_PROVIDER=gemini`, `LLM_API_KEY`,
-`LLM_MODEL` for summaries. Optional environment variables:
+`LLM_MODEL` for summaries (`LLM_MODEL_FALLBACKS`: models tried in order when it is overloaded). Optional environment variables:
 
 | Variable | Default |
 | --- | --- |
