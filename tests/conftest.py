@@ -90,7 +90,10 @@ def use_fresh_database(uploads=None):
     return engine
 
 
-def signed_in_client(username: str = "dr.a", name: str = "Dr A", password: str = "pw-a-12345"):
+DOCTOR_A = ("dr.a", "pw-a-12345")                  # username, password of the default test doctor
+
+
+def signed_in_client(username: str = DOCTOR_A[0], name: str = "Dr A", password: str = DOCTOR_A[1]):
     """A TestClient signed in as a doctor (created in the current database if needed)."""
     from fastapi.testclient import TestClient
     from sqlmodel import Session, select

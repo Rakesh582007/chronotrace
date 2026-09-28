@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from backend.main import app
 from tests.api_scenario import DOC, documented, run_scenario
+from tests.conftest import DOCTOR_A
 
 
 def documented_examples() -> dict[str, dict]:
@@ -84,7 +85,7 @@ def docs():
 
 @pytest.fixture
 def actual(client):
-    return run_scenario(client)
+    return run_scenario(client, DOCTOR_A)
 
 
 def test_every_documented_example_is_exercised(docs, actual):
