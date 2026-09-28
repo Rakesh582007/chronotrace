@@ -135,6 +135,9 @@ def run_scenario(client, credentials: tuple[str, str], patient: dict = PATIENT) 
     # Step 7: the patient list with flag counts, body systems and summaries.
     keep("list-patients", client.get("/patients"))
     keep("systems", client.get(f"/patients/{sid}/systems"))
+    weight = {"weight_kg": 74}
+    keep("update-patient", client.patch(f"/patients/{sid}", json=weight), weight)
+    keep("clinical", client.get(f"/patients/{sid}/clinical"))
     use_llm(client.app, llm_dep, FakeLLM(VALID, INVALID, INVALID))
     whole = {"period": "all"}
     keep("create-summary", client.post(f"/patients/{sid}/summaries", json=whole), whole)

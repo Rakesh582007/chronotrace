@@ -1,0 +1,57 @@
+# ChronoTrace condition codes (step 9c): ICD-10 and SNOMED CT for the conditions a doctor records, plus the
+# KDIGO GFR-category codes suggested from the latest eGFR. Codes are shown for the doctor to confirm; the
+# app never assigns a diagnosis.
+#
+# icd10: WHO ICD-10 category; icd10_cm: the US ICD-10-CM code where it is more specific (stage codes).
+# SNOMED CT concept ids from the International Edition (India's national release centre, NRCeS, distributes
+# SNOMED CT free of charge in India). status: codes recalled from the code systems, not yet checked in the
+# official browsers this session (unverified).
+
+version: 1
+
+conditions:
+  - names: [type 2 diabetes, type 2 diabetes mellitus, t2dm, diabetes mellitus type 2]
+    icd10: E11
+    icd10_title: Type 2 diabetes mellitus
+    snomed: "44054006"
+    snomed_term: Diabetes mellitus type 2
+    status: unverified
+  - names: [type 1 diabetes, type 1 diabetes mellitus, t1dm]
+    icd10: E10
+    icd10_title: Type 1 diabetes mellitus
+    snomed: "46635009"
+    snomed_term: Diabetes mellitus type 1
+    status: unverified
+  - names: [chronic kidney disease, ckd]
+    icd10: N18
+    icd10_title: Chronic kidney disease
+    snomed: "709044004"
+    snomed_term: Chronic kidney disease
+    status: unverified
+  - names: [hypertension, essential hypertension, high blood pressure]
+    icd10: I10
+    icd10_title: Essential (primary) hypertension
+    snomed: "38341003"
+    snomed_term: Hypertensive disorder, systemic arterial
+    status: unverified
+  - names: [hypothyroidism]
+    icd10: E03.9
+    icd10_title: Hypothyroidism, unspecified
+    snomed: "40930008"
+    snomed_term: Hypothyroidism
+    status: unverified
+  - names: [dyslipidaemia, dyslipidemia, hyperlipidaemia, hyperlipidemia]
+    icd10: E78.5
+    icd10_title: Hyperlipidaemia, unspecified
+    snomed: "55822004"
+    snomed_term: Hyperlipidemia
+    status: unverified
+
+# KDIGO GFR category -> ICD-10-CM stage code (FY2021 onwards splits stage 3 into 3a/3b).
+ckd_stage_codes:
+  G1: {icd10_cm: N18.1, title: "Chronic kidney disease, stage 1"}
+  G2: {icd10_cm: N18.2, title: "Chronic kidney disease, stage 2 (mild)"}
+  G3a: {icd10_cm: N18.31, title: "Chronic kidney disease, stage 3a"}
+  G3b: {icd10_cm: N18.32, title: "Chronic kidney disease, stage 3b"}
+  G4: {icd10_cm: N18.4, title: "Chronic kidney disease, stage 4 (severe)"}
+  G5: {icd10_cm: N18.5, title: "Chronic kidney disease, stage 5"}

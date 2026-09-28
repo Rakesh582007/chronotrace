@@ -44,6 +44,8 @@ from .normalise.names import name_index
 from .trends import catalogue, engine
 from .trends import systems as body
 from .trends.dictionary import analyte_infos, infos_by_id
+from . import clinical as clinical_rules
+from .schemas import (Clinical, PatientUpdate)
 from .schemas import (ConfirmIn, Counts, DocumentOut, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
                       PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, SummaryIn, SummaryOut,
                       Systems, Trends,
@@ -113,7 +115,7 @@ def _medication_or_404(session: Session, medication_id: int, doctor: Doctor) -> 
 
 def _patient_out(p: Patient) -> PatientOut:
     return PatientOut(id=p.id, patient_code=p.patient_code, name=p.name, sex=p.sex, birth_year=p.birth_year,
-                      conditions=list(p.conditions), has_photo=bool(p.photo_path))
+                      conditions=list(p.conditions), has_photo=bool(p.photo_path), weight_kg=p.weight_kg)
 
 
 def _next_patient_code(session: Session) -> str:
@@ -168,7 +170,8 @@ def _copy_back(src: nm.Observation, dst: Observation) -> None:
 def create_patient(body: PatientIn, session: Session = Depends(get_session),
                    doctor: Doctor = Depends(current_doctor)) -> PatientOut:
     p = Patient(doctor_id=doctor.id, patient_code=_next_patient_code(session), name=body.name.strip(), sex=body.sex,
-                birth_year=body.birth_year, conditions=[c.strip() for c in body.conditions if c.strip()])
+                birth_year=body.birth_year, conditions=[c.strip() for c in body.conditions if c.strip()],
+                weight_kg=body.weight_kg)
     session.add(p)
     session.commit()
     session.refresh(p)
@@ -618,6 +621,36 @@ def systems(patient_id: int, session: Session = Depends(get_session),
     series, out = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
                                          _events(session, patient.id))
     return Systems(patient_id=patient.id, systems=body.summarise(body.body_systems(), infos_by_id(), series, out))
+
+
+@app.patch("/patients/{patient_id}", response_model=PatientOut)
+def update_patient(patient_id: int, body: PatientUpdate, session: Session = Depends(get_session),
+                   doctor: Doctor = Depends(current_doctor)) -> PatientOut:
+    """Set the weight (for per-kg nutrition figures) or replace the recorded conditions."""
+    p = _patient_or_404(session, patient_id, doctor)
+    fields = body.model_fields_set
+    if "weight_kg" in fields:
+        p.weight_kg = body.weight_kg
+    if "conditions" in fields and body.conditions is not None:
+        p.conditions = [c.strip() for c in body.conditions if c.strip()]
+    session.add(p)
+    session.commit()
+    session.refresh(p)
+    return _patient_out(p)
+
+
+@app.get("/patients/{patient_id}/clinical", response_model=Clinical)
+def clinical(patient_id: int, session: Session = Depends(get_session),
+             doctor: Doctor = Depends(current_doctor)) -> Clinical:
+    """KDIGO risk grid, guideline criteria met, condition and test codes, guideline nutrition figures."""
+    from data import validate_analytes as va
+
+    patient = _patient_or_404(session, patient_id, doctor)
+    series, _ = engine.analyse_patient(list(analyte_infos()), _confirmed_points(session, patient.id),
+                                       _events(session, patient.id))
+    raw = {a["id"]: a for a in va.load()["analytes"]}
+    out = clinical_rules.clinical(series, list(patient.conditions), patient.weight_kg, infos_by_id(), raw)
+    return Clinical(patient_id=patient.id, **out)
 
 
 @app.get("/medications/{medication_id}/response", response_model=MedicationResponse, response_model_by_alias=True)

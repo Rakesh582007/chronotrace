@@ -33,6 +33,7 @@ class Patient(SQLModel, table=True):
     sex: str                                   # "male" | "female"
     birth_year: int
     conditions: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    weight_kg: float | None = None             # optional; used only for per-kg guideline nutrition figures
     created_at: dt.datetime = Field(default_factory=_now)
 
 
