@@ -5177,8 +5177,13 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
   `recorded` (already in the patient's conditions) and suggested `codes` for the doctor to confirm.
 - `codes`: ICD-10 and SNOMED CT for each recorded condition (`data/conditions.yaml`, status unverified) and
   LOINC for each test with results.
-- `nutrition`: guideline figures for the patient's computed category (KDIGO protein 0.8 g/kg/day in G3–G5,
-  sodium < 2 g/day with CKD, ADA individualised nutrition), with `per_day` from the recorded weight.
+- `nutrition`: guideline figures grouped by the patient's conditions (`groups`: `kidney`, `glucose`,
+  `pressure`, `lipids`, `thyroid`). A group appears for a recorded condition or a met criterion (`recorded`
+  says which); its `basis` quotes the patient's own values and medicines. Each item quotes one figure with
+  `applies_because` (the patient's values, medicines, sex or weight), `report_ids`, `amount` / `amount_high`
+  from the recorded weight (null without a weight or for figures with no amount), a `note` where another of
+  the patient's conditions or medicines limits the figure, and `superseded_by` when another group's figure
+  applies instead (the hypertension potassium figure excludes CKD). All `unverified` until checked.
 
 <!-- example: clinical response 200 -->
 ```json
@@ -5468,38 +5473,156 @@ Computed on read from the confirmed results (`backend/clinical`). Nothing here i
     ],
     "note": "Codes for the doctor to confirm. ICD-10 (WHO), ICD-10-CM stage codes, SNOMED CT International Edition (free in India through NRCeS), LOINC for each test."
   },
-  "nutrition": [
-    {
-      "id": "protein_ckd",
-      "title": "Protein",
-      "figure": "0.8 g per kg body weight per day",
-      "per_day": 59.0,
-      "unit": "g/day",
-      "applies_because": "KDIGO category G3a from the latest eGFR (G3–G5, not on dialysis)",
-      "source": "KDIGO 2024 CKD guideline, Recommendation 3.3.1.1",
-      "status": "unverified"
-    },
-    {
-      "id": "sodium_ckd",
-      "title": "Sodium",
-      "figure": "less than 2 g of sodium per day (less than 5 g of salt)",
-      "per_day": 2.0,
-      "unit": "g sodium/day (upper limit)",
-      "applies_because": "the KDIGO CKD criterion is met",
-      "source": "KDIGO 2024 CKD guideline, Recommendation 3.3.2.1",
-      "status": "unverified"
-    },
-    {
-      "id": "mnt_diabetes",
-      "title": "Carbohydrate, fat and protein",
-      "figure": "no single ideal split; individualised medical nutrition therapy",
-      "per_day": null,
-      "unit": "",
-      "applies_because": "the ADA diabetes criteria are met",
-      "source": "ADA Standards of Care in Diabetes 2025, section 5",
-      "status": "unverified"
-    }
-  ],
+  "nutrition": {
+    "weight_kg": 74.0,
+    "groups": [
+      {
+        "id": "kidney",
+        "label": "Kidney (CKD)",
+        "recorded": true,
+        "basis": "KDIGO G3a A2: eGFR 54.06 on 02 Mar 2026, from 79.28 on 12 Jun 2023; urine ACR 172 mg/g on 02 Mar 2026; CKD recorded.",
+        "report_ids": [
+          5,
+          14
+        ],
+        "items": [
+          {
+            "id": "protein_ckd",
+            "title": "Protein",
+            "figure": "0.8 g per kg body weight per day",
+            "amount": 59.0,
+            "amount_high": null,
+            "unit": "g/day",
+            "applies_because": "category G3a from eGFR 54.06 on 02 Mar 2026, not on dialysis",
+            "report_ids": [
+              14
+            ],
+            "note": null,
+            "superseded_by": null,
+            "source": "KDIGO 2024 CKD guideline, section 3.3.1 (protein intake, Recommendation 3.3.1.1); KDIGO 2022 guideline for diabetes management in CKD, Recommendation 3.1.1",
+            "status": "unverified"
+          },
+          {
+            "id": "energy_ckd",
+            "title": "Energy",
+            "figure": "25–35 kcal per kg body weight per day",
+            "amount": 1850.0,
+            "amount_high": 2590.0,
+            "unit": "kcal/day",
+            "applies_because": "CKD, recorded weight 74 kg; the point in the range depends on age, activity and weight goals",
+            "report_ids": [],
+            "note": null,
+            "superseded_by": null,
+            "source": "KDOQI 2020 clinical practice guideline for nutrition in CKD (energy intake 25–35 kcal/kg/day)",
+            "status": "unverified"
+          },
+          {
+            "id": "sodium",
+            "title": "Sodium",
+            "figure": "less than 2 g of sodium per day (less than 5 g of salt)",
+            "amount": 2.0,
+            "amount_high": null,
+            "unit": "g sodium/day (upper limit)",
+            "applies_because": "CKD",
+            "report_ids": [],
+            "note": null,
+            "superseded_by": null,
+            "source": "KDIGO 2024 CKD guideline, Recommendation 3.3.2.1",
+            "status": "unverified"
+          },
+          {
+            "id": "potassium_ckd",
+            "title": "Potassium",
+            "figure": "no fixed limit at this value; dietary potassium limits are tied to potassium above 5.0 mmol/L",
+            "amount": null,
+            "amount_high": null,
+            "unit": "",
+            "applies_because": "latest potassium 5.0 mmol/L on 02 Mar 2026, from 4.5 mmol/L on 12 Jun 2023; ramipril since 04 Mar 2024",
+            "report_ids": [
+              14
+            ],
+            "note": "A potassium rise is expected after starting an ACE inhibitor or ARB (drug catalogue).",
+            "superseded_by": null,
+            "source": "KDIGO 2024 CKD guideline, section 3.3.3 (dietary potassium)",
+            "status": "unverified"
+          }
+        ]
+      },
+      {
+        "id": "glucose",
+        "label": "Diabetes",
+        "recorded": true,
+        "basis": "HbA1c 7.1% on 02 Mar 2026, from 8.9% on 12 Jun 2023; above the ADA goal of < 7% for many adults; on metformin since 02 Oct 2023, empagliflozin since 06 May 2024; diabetes recorded.",
+        "report_ids": [
+          5,
+          14
+        ],
+        "items": [
+          {
+            "id": "mnt_diabetes",
+            "title": "Carbohydrate, fat and protein",
+            "figure": "no single ideal split; an individualised meal plan (medical nutrition therapy)",
+            "amount": null,
+            "amount_high": null,
+            "unit": "",
+            "applies_because": "HbA1c 7.1% on 02 Mar 2026, goal < 7%",
+            "report_ids": [
+              14
+            ],
+            "note": "The protein figure for CKD is in the kidney group.",
+            "superseded_by": null,
+            "source": "ADA Standards of Care in Diabetes 2025, section 5 (medical nutrition therapy)",
+            "status": "unverified"
+          },
+          {
+            "id": "fibre",
+            "title": "Fibre",
+            "figure": "at least 14 g per 1,000 kcal, from minimally processed high-fibre foods",
+            "amount": 26.0,
+            "amount_high": 36.0,
+            "unit": "g/day",
+            "applies_because": "diabetes; amounts use the CKD energy range 1850–2590 kcal/day",
+            "report_ids": [],
+            "note": "With CKD, fibre-rich plant foods also carry potassium (latest 5.0 mmol/L on 02 Mar 2026); see the kidney group.",
+            "superseded_by": null,
+            "source": "ADA Standards of Care in Diabetes 2025, section 5 (medical nutrition therapy)",
+            "status": "unverified"
+          },
+          {
+            "id": "drinks",
+            "title": "Drinks",
+            "figure": "water or no-calorie drinks in place of sugar-sweetened drinks",
+            "amount": null,
+            "amount_high": null,
+            "unit": "",
+            "applies_because": "HbA1c 7.1% on 02 Mar 2026, goal < 7%",
+            "report_ids": [
+              14
+            ],
+            "note": null,
+            "superseded_by": null,
+            "source": "ADA Standards of Care in Diabetes 2025, section 5 (medical nutrition therapy)",
+            "status": "unverified"
+          },
+          {
+            "id": "b12_metformin",
+            "title": "Vitamin B12",
+            "figure": "long-term metformin is associated with vitamin B12 deficiency; periodic B12 measurement",
+            "amount": null,
+            "amount_high": null,
+            "unit": "",
+            "applies_because": "metformin since 02 Oct 2023 (about 3 years); no vitamin B12 result on file",
+            "report_ids": [],
+            "note": null,
+            "superseded_by": null,
+            "source": "ADA Standards of Care in Diabetes 2025, section 9 (vitamin B12 with long-term metformin)",
+            "status": "unverified"
+          }
+        ]
+      }
+    ],
+    "note": "Figures quoted from the cited guidelines for this patient's recorded conditions, results and medicines. Amounts use the recorded weight. For the doctor and a dietitian to confirm and adapt."
+  },
   "weight_kg": 74.0
 }
 ```
