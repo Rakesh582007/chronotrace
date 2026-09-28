@@ -84,6 +84,10 @@ export const api = {
   },
   photoUrl: (id: number) => `${API_URL}/patients/${id}/photo`,
 
+  ask: (id: number, question: string) =>
+    request<{ question: string; answer: { text: string; report_ids: number[] }[]; in_facts: boolean;
+      reports: { report_id: number; label: string; date: string | null }[]; model: string }>(
+      `/patients/${id}/ask`, { method: "POST", body: json({ question }) }),
   clinical: (id: number) => request<Clinical>(`/patients/${id}/clinical`),
   updatePatient: (id: number, body: { weight_kg?: number | null; conditions?: string[] }) =>
     request<Patient>(`/patients/${id}`, { method: "PATCH", body: json(body) }),

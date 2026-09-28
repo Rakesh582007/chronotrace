@@ -1,11 +1,13 @@
 import { NavLink, Navigate, Outlet, useOutletContext, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import AskPanel from "../components/AskPanel";
 import { api } from "../api/client";
 import type { PatientCard, TrendsResponse } from "../api/types";
 import { AppHeader } from "../components/shell";
 import { Avatar, ConditionChip, ErrorBanner, Icon, PrimaryLink, QuietLink, Skeleton } from "../components/ui";
 import { age, capitalise, fmtMonth, sexLabel } from "../lib/format";
-import { reportIndex, usePatient, useTrends, type ReportRef } from "../lib/patient";
+import { reportIndex, useFlags, usePatient, useTrends, type ReportRef } from "../lib/patient";
 
 export interface PatientCtx {
   patient: PatientCard;
@@ -19,6 +21,8 @@ export default function PatientLayout() {
   const { code } = useParams();
   const { patient, isLoading, error, refetch, notFound } = usePatient(code);
   const trends = useTrends(patient?.id);
+  const [asking, setAsking] = useState(false);
+  const flags = useFlags(patient?.id);
   const clinical = useQuery({ queryKey: ["clinical", patient?.id ?? 0], queryFn: () => api.clinical(patient!.id), enabled: !!patient });
   if (notFound) return <Navigate to="/patients" replace />;
   const reports = reportIndex(trends.data);
@@ -81,6 +85,14 @@ export default function PatientLayout() {
               ))}
           </nav>
           <Outlet context={{ patient, trends: trends.data, reports, base } satisfies PatientCtx} />
+          {!asking && (
+            <button type="button" onClick={() => setAsking(true)} data-testid="ask-open"
+              className="no-print fixed bottom-6 right-6 z-30 flex h-12 items-center gap-2 rounded-full bg-ink px-5 text-[15px] font-semibold text-card shadow-panel hover:bg-ink-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
+              Ask about {patient.name}
+            </button>
+          )}
+          {asking && <AskPanel patientId={patient.id} name={patient.name} flags={flags.data?.flags ?? []} onClose={() => setAsking(false)} />}
         </>
       )}
     </div>
