@@ -73,7 +73,7 @@ export default function SystemPage() {
                   {t.slope && t.slope.status === "ok" && <><dt className="text-ink-3">Slope</dt><dd className="num m-0">{fmtNum(t.slope.per_year)} / yr</dd></>}
                 </dl>
                 {review.map((f) => (
-                  <div key={f.id} className={`flex flex-col gap-1 rounded-xl px-3 py-2.5 ${f.level === "guideline" ? "border border-amber-line bg-amber-fill" : "border border-line"}`}>
+                  <div key={f.id} className={`flex flex-col gap-1 rounded-xl px-3 py-2.5 ${f.level === "guideline" ? "border border-line border-l-[3px] border-l-amber-mark bg-card" : "border border-line"}`}>
                     <span className={`flex items-center gap-2 font-semibold ${f.level === "guideline" ? "text-amber-ink" : ""}`}>
                       {f.level === "guideline" ? <Triangle /> : <BlueDot />}
                       {f.level === "guideline" ? guidelineText(f, trends.analytes, all).title : changeTitle(f)}

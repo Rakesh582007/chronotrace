@@ -33,22 +33,23 @@ export function GuidelineCard({ f, trends, allFlags, reports, base, link = true,
   const { title, body } = guidelineText(f, trends, allFlags);
   const proj = trends?.find((t) => t.analyte_id === f.analyte_id)?.projection;
   return (
-    <article className={`flex flex-col gap-2.5 rounded-2xl border border-amber-line bg-amber-fill px-5 py-5 ${arrive ? "arrive" : ""}`} data-testid="guideline-card">
+    <article className={`relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-line bg-card py-5 pl-6 pr-5 shadow-soft ${arrive ? "arrive" : ""}`} data-testid="guideline-card">
+      <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-amber-mark" />
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-amber-ink">
         <Triangle />Guideline · {f.rule_id.startsWith("KDIGO") ? "KDIGO" : f.rule_id}
       </div>
       <h3 className="m-0 font-serif text-[22px] font-medium leading-[1.2]">{title}</h3>
       <div><DirectionTag direction={f.target_direction} rise={f.direction === "rise"} target={f.target} /></div>
-      <p className="m-0 text-sm leading-[1.55] text-amber-deep">{body}</p>
+      <p className="m-0 text-sm leading-[1.55] text-ink-2">{body}</p>
       {proj && (
-        <p className="m-0 rounded-[10px] border border-amber-line bg-amber-soft px-3 py-2 text-[13px] leading-normal text-amber-deep" data-testid="projection-line">
+        <p className="m-0 border-l-2 border-line pl-3 text-[13px] leading-normal text-ink-2" data-testid="projection-line">
           <strong className="font-semibold">Straight line reaches {proj.threshold} (KDIGO {proj.category}) around {fmtMonth(proj.date)}</strong>
           {" "}· 95% range {fmtMonth(proj.date_earliest)} – {proj.date_latest ? fmtMonth(proj.date_latest) : "open"}. A projection of past results, not a forecast.
         </p>
       )}
       <div className="flex flex-wrap items-center gap-1.5">
         {f.report_ids.map((id) => reports.get(id)).filter(Boolean).map((r) => (
-          <ReportChip key={r!.id} label={r!.label} tone="amber" title={`${r!.label} · ${r!.date} · ${r!.lab ?? ""}`} />
+          <ReportChip key={r!.id} label={r!.label} title={`${r!.label} · ${r!.date} · ${r!.lab ?? ""}`} />
         ))}
         <div className="grow" />
         {link && <Link to={`${base}/parameters/${f.analyte_id}`} className="text-sm font-semibold text-amber-ink hover:text-amber-ink">Open {shortName(f.analyte_name)} →</Link>}
