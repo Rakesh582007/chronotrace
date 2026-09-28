@@ -46,7 +46,7 @@ def _d(s: str) -> dt.date:
     return dt.date.fromisoformat(s)
 
 
-RANI = OtherPatient("rani", {"name": "M. Rani", "sex": "female", "birth_year": 1962, "conditions": ["hypothyroidism"]},
+RANI = OtherPatient("rani", {"name": "M. Rani", "sex": "female", "birth_year": 1962, "conditions": ["hypothyroidism"], "weight_kg": 64},
                     Header("Mrs M. RANI", "Mrs M. Rani", "Female", 1962, "7000005318"), (
     Visit("R1", _d("2024-07-08"), "A", {"tsh": 8.8, "free_t4": 0.86}),
     Visit("R2", _d("2024-10-14"), "A", {"tsh": 9.2, "free_t4": 0.84}),
@@ -57,14 +57,14 @@ RANI = OtherPatient("rani", {"name": "M. Rani", "sex": "female", "birth_year": 1
     {"drug": "Levothyroxine", "change": "start", "dose_text": "25 mcg OD", "date": "2024-11-04"},
 ))
 
-ARUL = OtherPatient("arul", {"name": "J. Arul", "sex": "male", "birth_year": 1979, "conditions": ["type 2 diabetes"]},
+ARUL = OtherPatient("arul", {"name": "J. Arul", "sex": "male", "birth_year": 1979, "conditions": ["type 2 diabetes"], "weight_kg": 78},
                     Header("Mr J. ARUL", "Mr J. Arul", "Male", 1979, "7000006077"), (
     Visit("R1", _d("2025-08-05"), "A", {"fasting_glucose": 142, "hba1c": 7.8, "creatinine": 0.98,
                                         "total_cholesterol": 196, "ldl": 118, "hdl": 42, "triglycerides": 180}),
 ))
 
 PRIYA = OtherPatient("priya", {"name": "S. Priya", "sex": "female", "birth_year": 1974,
-                               "conditions": ["hypertension", "chronic kidney disease"]},
+                               "conditions": ["hypertension", "chronic kidney disease"], "weight_kg": 60},
                      Header("Ms S. PRIYA", "Ms S. Priya", "Female", 1974, "7000006452"), (
     Visit("R1", _d("2024-11-18"), "B", {"creatinine": 1.24, "sodium": 139, "potassium": 4.6, "uacr": 210}),
     Visit("R2", _d("2025-05-19"), "B", {"creatinine": 1.28, "sodium": 140, "potassium": 4.8, "uacr": 245}),

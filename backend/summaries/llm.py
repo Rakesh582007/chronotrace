@@ -41,8 +41,8 @@ class LLMConfigError(RuntimeError):
 class LLM(Protocol):
     model: str                     # the model that wrote the last answer
 
-    def generate(self, system: str, prompt: str) -> str:
-        """The model's answer (JSON text). Raises LLMError."""
+    def generate(self, system: str, prompt: str, schema=None) -> str:
+        """The model's answer (JSON text, constrained to `schema`, default LLMSummary). Raises LLMError."""
 
 
 class GeminiLLM:
@@ -62,17 +62,17 @@ class GeminiLLM:
     def _clean(self, e: Exception) -> str:
         return f"{type(e).__name__}: {str(e).replace(self._key, '***')[:300]}" if self._key else str(e)[:300]
 
-    def _request(self, model: str, system: str, prompt: str, seconds: float) -> str:
+    def _request(self, model: str, system: str, prompt: str, seconds: float, schema=None) -> str:
         t = self._types
         r = self._client.models.generate_content(
             model=model, contents=prompt,
             config=t.GenerateContentConfig(
                 system_instruction=system, temperature=TEMPERATURE, response_mime_type="application/json",
-                response_schema=LLMSummary, http_options=t.HttpOptions(timeout=int(seconds * 1000)),
+                response_schema=schema or LLMSummary, http_options=t.HttpOptions(timeout=int(seconds * 1000)),
                 automatic_function_calling=t.AutomaticFunctionCallingConfig(disable=True)))
         return r.text or ""
 
-    def generate(self, system: str, prompt: str) -> str:
+    def generate(self, system: str, prompt: str, schema=None) -> str:
         deadline = self._clock() + TOTAL_SECONDS
         unavailable: list[str] = []
         for model in self.models:
@@ -85,7 +85,7 @@ class GeminiLLM:
                 if left < MIN_REQUEST_SECONDS:
                     raise LLMUnavailable(f"no answer within {TOTAL_SECONDS} s: " + "; ".join(unavailable))
                 try:
-                    text = self._request(model, system, prompt, min(TIMEOUT_SECONDS, left))
+                    text = self._request(model, system, prompt, min(TIMEOUT_SECONDS, left), schema)
                 except Exception as e:             # timeout, network or API error: never show the key
                     status = getattr(e, "code", None)
                     if status not in RETRY_STATUS:

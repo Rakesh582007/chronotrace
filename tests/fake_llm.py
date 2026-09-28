@@ -37,7 +37,7 @@ class FakeLLM:
         self.answers = list(answers)
         self.prompts = []
 
-    def generate(self, system, prompt):
+    def generate(self, system, prompt, schema=None):
         self.prompts.append(prompt)
         answer = self.answers.pop(0)
         if isinstance(answer, Exception):
@@ -49,3 +49,11 @@ def use_llm(app, llm_dep, fake):
     """Make the API's summary endpoint use `fake`."""
     app.dependency_overrides[llm_dep] = lambda: (lambda: fake)
     return fake
+
+
+# An answer to "Why is the kidney card amber?" for the whole-history facts of K. Selvam (R1-R10).
+CHAT_VALID = {"answer": [
+    {"text": "eGFR fell by 7.1 mL/min/1.73 m² per year from October 2024 to March 2026, faster than the KDIGO "
+             "threshold of 5 per year.", "report_ids": ["R7", "R8", "R9", "R10"]},
+    {"text": "Each single step stayed within the 20% change threshold; the slope over 4 results crossed it.",
+     "report_ids": ["R7", "R10"]}], "in_facts": True}

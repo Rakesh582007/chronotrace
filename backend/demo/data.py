@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from data import validate_analytes as va
 
 PATIENT = {"name": "K. Selvam", "sex": "male", "birth_year": 1968,
-           "conditions": ["type 2 diabetes", "chronic kidney disease"]}
+           "conditions": ["type 2 diabetes", "chronic kidney disease"], "weight_kg": 72}
 
 # Lab layouts: A = ASTERLANE (column header, method/specimen lines), B = Kestrelline (no column header),
 # C = a synthetic-generator layout.

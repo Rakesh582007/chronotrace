@@ -17,6 +17,9 @@
 # target (optional): the guideline goal a change is compared with, to say whether a result moved toward
 # or away from it (never whether it is good). low and/or high; `source` names the guideline.
 #
+# test_interval (optional): how often a guideline lists the test, to show the time since the last result
+# against it (a fact with a source, never a reminder of what to do).
+#
 # RCV (reference change value, two-sided, 95%):
 #   percent = 1.96 * sqrt(2) * sqrt(cv_i^2 + cv_a^2)
 #   cv_i = within-subject biological variation, cv_a = analytical CV (both in %).
@@ -54,6 +57,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 4.0, high: 5.6}
     reference_range_source: ADA Standards of Care 2025, section 2 (normal < 5.7%; 5.7-6.4% prediabetes; >= 6.5% diabetes)
+    test_interval: {months: 6, label: "at least twice a year (4 times a year after a therapy change or when not at goal)", status: verified, source: "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c at least twice a year in people meeting goals, quarterly after a change in therapy or when not meeting goals"}
     target: {high: 7.0, label: "< 7%", status: verified, source: "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised"}
     rcv:
       percent: 6.3
@@ -123,6 +127,7 @@ analytes:
       - {sex: male, low: 0.7, high: 1.3}
       - {sex: female, low: 0.6, high: 1.1}
     reference_range_source: Typical Indian lab range for IDMS-traceable enzymatic/Jaffe assays; lab-specific
+    test_interval: {months: 12, label: "at least once a year in diabetes or CKD (with eGFR)", status: verified, source: "ADA Standards of Care in Diabetes 2025, section 11 (CKD): eGFR (from serum creatinine) at least once a year"}
     rcv: {percent: 15.0, cv_i: 4.5, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
   - id: urea
@@ -179,6 +184,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 90, high: null}
     reference_range_source: "KDIGO 2024 CKD guideline, GFR categories (G1 >= 90; G3a starts < 60)"
+    test_interval: {months: 12, label: "at least once a year in diabetes or CKD (more often at higher KDIGO risk)", status: verified, source: "ADA Standards of Care in Diabetes 2025, section 11 (CKD): eGFR and UACR at least once a year; KDIGO 2024 CKD guideline: frequency rises with the KDIGO risk category"}
     target: {low: 60, label: "≥ 60", status: verified, source: "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60"}
     rcv:
       # Before: 15.4%, propagated from the creatinine RCV (1 - (1 + RCV_creatinine)^-1.200, Scr above
@@ -207,6 +213,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: null, high: 30}
     reference_range_source: "KDIGO 2024 CKD guideline, albuminuria categories (A1 < 30 mg/g; A2 30-300; A3 > 300)"
+    test_interval: {months: 12, label: "at least once a year in diabetes or CKD", status: verified, source: "ADA Standards of Care in Diabetes 2025, section 11 (CKD): UACR and eGFR at least once a year"}
     target: {high: 30, label: "< 30 mg/g", status: verified, source: "KDIGO 2024 CKD guideline, albuminuria categories: A1 is ACR < 30 mg/g"}
     rcv:
       percent: 87.0
@@ -266,6 +273,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: 0.4, high: 4.0}
     reference_range_source: Typical adult range; assay- and lab-specific (NHANES III reference population about 0.45-4.12 mIU/L)
+    test_interval: {months: 12, label: "about once a year once the dose is stable", status: unverified, source: "ATA 2014 hypothyroidism guideline (Jonklaas et al., Thyroid 2014;24:1670-1751): TSH at intervals once stable; interval not checked this session"}
     target: {low: 0.4, high: 4.0, label: "0.4–4.0 mIU/L", status: unverified, source: "ATA 2014 hypothyroidism guideline (Jonklaas et al., Thyroid 2014;24:1670-1751): treatment aims for TSH within the reference range; range is lab-specific"}
     rcv: {percent: 51.0, cv_i: 17.7, cv_a: 5.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 
@@ -323,6 +331,7 @@ analytes:
     reference_ranges:
       - {sex: any, low: null, high: 100}
     reference_range_source: NCEP ATP III (optimal < 100 mg/dL); treatment targets are patient-specific
+    test_interval: {months: 12, label: "about once a year in diabetes", status: unverified, source: "ADA Standards of Care 2025, section 10: lipid profile at diagnosis and periodically; interval not checked this session"}
     target: {high: 100, label: "< 100 mg/dL", status: unverified, source: "ADA Standards of Care 2025, section 10 (general LDL goal < 100 mg/dL; lower goals for higher risk)"}
     rcv: {percent: 24.5, cv_i: 8.3, cv_a: 3.0, status: unverified, source: "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV"}
 

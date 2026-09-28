@@ -14,6 +14,7 @@ import Parameter from "./pages/Parameter";
 import Medications from "./pages/Medications";
 import Documents from "./pages/Documents";
 import SummaryPage from "./pages/Summary";
+import ClinicalPage from "./pages/Clinical";
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -41,6 +42,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="medications" element={<Medications />} />
                 <Route path="documents" element={<Documents />} />
                 <Route path="summary" element={<SummaryPage />} />
+                <Route path="clinical" element={<ClinicalPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/patients" replace />} />
             </Routes>

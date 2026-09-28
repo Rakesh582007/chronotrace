@@ -204,7 +204,8 @@ Response `201`:
     "type 2 diabetes",
     "CKD stage 3"
   ],
-  "has_photo": false
+  "has_photo": false,
+  "weight_kg": null
 }
 ```
 
@@ -237,7 +238,8 @@ Response `200`:
     "expected_flags": 2,
     "latest_report_date": "2026-03-02",
     "report_count": 10,
-    "lab_count": 3
+    "lab_count": 3,
+    "weight_kg": 72.0
   },
   {
     "id": 1,
@@ -255,7 +257,8 @@ Response `200`:
     "expected_flags": 0,
     "latest_report_date": "2024-04-11",
     "report_count": 2,
-    "lab_count": 1
+    "lab_count": 1,
+    "weight_kg": null
   },
   {
     "id": 2,
@@ -273,7 +276,8 @@ Response `200`:
     "expected_flags": 0,
     "latest_report_date": null,
     "report_count": 0,
-    "lab_count": 0
+    "lab_count": 0,
+    "weight_kg": null
   }
 ]
 ```
@@ -295,7 +299,8 @@ Returns the patient with `has_photo: true`.
     "type 2 diabetes",
     "CKD stage 3"
   ],
-  "has_photo": true
+  "has_photo": true,
+  "weight_kg": null
 }
 ```
 
@@ -1487,7 +1492,8 @@ confirmation. The point keeps `"comparator": ">"` (the true value is above 300):
       "type 2 diabetes",
       "CKD stage 3"
     ],
-    "has_photo": false
+    "has_photo": false,
+    "weight_kg": null
   },
   "analytes": [
     {
@@ -1918,7 +1924,8 @@ ramipril and empagliflozin starts), after the latest report:
       "type 2 diabetes",
       "chronic kidney disease"
     ],
-    "has_photo": false
+    "has_photo": false,
+    "weight_kg": 72.0
   },
   "analytes": [
     {
@@ -2135,6 +2142,16 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "< 7%",
         "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised",
         "status": "verified"
+      },
+      "projection": null,
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 6,
+        "label": "at least twice a year (4 times a year after a therapy change or when not at goal)",
+        "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c at least twice a year in people meeting goals, quarterly after a change in therapy or when not meeting goals",
+        "status": "verified",
+        "longer_than_interval": true
       }
     },
     {
@@ -2326,7 +2343,9 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "80–130 mg/dL",
         "source": "ADA Standards of Care in Diabetes 2025, section 6: preprandial capillary glucose 80–130 mg/dL for many non-pregnant adults; goals are individualised",
         "status": "verified"
-      }
+      },
+      "projection": null,
+      "last_test": null
     },
     {
       "analyte_id": "creatinine",
@@ -2552,7 +2571,17 @@ ramipril and empagliflozin starts), after the latest report:
         ],
         "status": "ok"
       },
-      "target": null
+      "target": null,
+      "projection": null,
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 12,
+        "label": "at least once a year in diabetes or CKD (with eGFR)",
+        "source": "ADA Standards of Care in Diabetes 2025, section 11 (CKD): eGFR (from serum creatinine) at least once a year",
+        "status": "verified",
+        "longer_than_interval": false
+      }
     },
     {
       "analyte_id": "egfr",
@@ -2784,6 +2813,31 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "≥ 60",
         "source": "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60",
         "status": "verified"
+      },
+      "projection": {
+        "threshold": 45.0,
+        "category": "G3b",
+        "category_range": "30–44",
+        "from_date": "2026-03-02",
+        "from_value": 54.28,
+        "per_year": -7.081,
+        "per_year_low": -8.296,
+        "per_year_high": -5.866,
+        "date": "2027-06-23",
+        "date_earliest": "2027-04-14",
+        "date_latest": "2027-10-01",
+        "n_points": 4,
+        "note": "At the current slope (-7.08 per year over 4 results), eGFR would reach 45, the start of KDIGO category G3b (30–44), around Jun 2027 (95% range Apr 2027 to Oct 2027). A straight-line projection of past results, not a forecast.",
+        "source": "KDIGO 2024 CKD guideline, GFR categories G1–G5"
+      },
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 12,
+        "label": "at least once a year in diabetes or CKD (more often at higher KDIGO risk)",
+        "source": "ADA Standards of Care in Diabetes 2025, section 11 (CKD): eGFR and UACR at least once a year; KDIGO 2024 CKD guideline: frequency rises with the KDIGO risk category",
+        "status": "verified",
+        "longer_than_interval": false
       }
     },
     {
@@ -2975,6 +3029,16 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "< 30 mg/g",
         "source": "KDIGO 2024 CKD guideline, albuminuria categories: A1 is ACR < 30 mg/g",
         "status": "verified"
+      },
+      "projection": null,
+      "last_test": {
+        "date": "2026-03-02",
+        "days_since": 210,
+        "interval_months": 12,
+        "label": "at least once a year in diabetes or CKD",
+        "source": "ADA Standards of Care in Diabetes 2025, section 11 (CKD): UACR and eGFR at least once a year",
+        "status": "verified",
+        "longer_than_interval": false
       }
     },
     {
@@ -3199,7 +3263,9 @@ ramipril and empagliflozin starts), after the latest report:
         "label": "3.5–5.0 mmol/L",
         "source": "Usual adult reference interval; lab-specific",
         "status": "unverified"
-      }
+      },
+      "projection": null,
+      "last_test": null
     }
   ]
 }
@@ -5057,6 +5123,451 @@ Fields added to existing responses (no new endpoints):
   catalogue marks `size: small`), `not seen` (within the reference change value), `opposite` (the other way,
   beyond it), `above expected` (beyond the class's `max_expected_percent`). `null` when the entry was not
   assessed or the event is not a start.
+
+- `projection` on the eGFR trend (null otherwise): when the slope is `ok` and falling, the straight line is
+  extended from its value at the last result to the next KDIGO GFR category boundary (90, 60, 45, 30, 15):
+  `threshold`, `category`, `date`, and a 95% range (`date_earliest`, `date_latest`, from the slope's
+  t-interval; `date_latest` is null when that range includes no fall). Show `note` as is: a projection of
+  past results, not a forecast.
+- `last_test` on each trend (`GET /patients/{id}/trends` only; null in other responses and when the analyte
+  has no `test_interval`): the latest result's `date`, `days_since` (from today), the guideline's usual
+  `interval_months`, `label`, `source`, `status`, and `longer_than_interval`. A fact with its source, never a
+  reminder of what to do.
+
+## Clinical support (step 9c)
+
+### `PATCH /patients/{patient_id}`: set the weight or the recorded conditions
+
+Both fields are optional; only the fields sent are changed. `weight_kg` (0–400) is used only for per-kg
+guideline nutrition figures.
+
+<!-- example: update-patient request -->
+```json
+{
+  "weight_kg": 74
+}
+```
+
+<!-- example: update-patient response 200 -->
+```json
+{
+  "id": 3,
+  "patient_code": "CT-0003",
+  "name": "K. Selvam",
+  "sex": "male",
+  "birth_year": 1968,
+  "conditions": [
+    "type 2 diabetes",
+    "chronic kidney disease"
+  ],
+  "has_photo": false,
+  "weight_kg": 74.0
+}
+```
+
+### `GET /patients/{patient_id}/clinical`: KDIGO grid, guideline criteria, codes and nutrition figures
+
+Computed on read from the confirmed results (`backend/clinical`). Nothing here is a diagnosis:
+
+- `kdigo`: the patient's KDIGO GFR (G1–G5) and albuminuria (A1–A3) category for every eGFR
+  result (paired with the latest urine ACR up to a year before it), `current` = the latest.
+- `criteria`: which published definitions the results meet (`met`, `not met`, `not enough data`): CKD
+  (KDIGO: eGFR < 60 or ACR ≥ 30 for more than 3 months), diabetes or the prediabetes range (ADA), thyroid
+  patterns (ATA), potassium above 5.0. Each has its `evidence` (values and dates), `report_ids`, `source`,
+  `recorded` (already in the patient's conditions) and suggested `codes` for the doctor to confirm.
+- `codes`: ICD-10 and SNOMED CT for each recorded condition (`data/conditions.yaml`, status unverified) and
+  LOINC for each test with results.
+- `nutrition`: guideline figures for the patient's computed category (KDIGO protein 0.8 g/kg/day in G3–G5,
+  sodium < 2 g/day with CKD, ADA individualised nutrition), with `per_day` from the recorded weight.
+
+<!-- example: clinical response 200 -->
+```json
+{
+  "patient_id": 3,
+  "kdigo": {
+    "current": {
+      "date": "2026-03-02",
+      "g": "G3a",
+      "a": "A2",
+      "egfr": {
+        "date": "2026-03-02",
+        "value": 54.06,
+        "report_id": 14
+      },
+      "uacr": {
+        "date": "2026-03-02",
+        "value": 172.0,
+        "report_id": 14
+      }
+    },
+    "history": [
+      {
+        "date": "2023-06-12",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2023-06-12",
+          "value": 79.28,
+          "report_id": 5
+        },
+        "uacr": {
+          "date": "2023-06-12",
+          "value": 118.0,
+          "report_id": 5
+        }
+      },
+      {
+        "date": "2023-09-14",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2023-09-14",
+          "value": 76.76,
+          "report_id": 6
+        },
+        "uacr": {
+          "date": "2023-09-14",
+          "value": 126.0,
+          "report_id": 6
+        }
+      },
+      {
+        "date": "2023-11-16",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2023-11-16",
+          "value": 78.42,
+          "report_id": 7
+        },
+        "uacr": {
+          "date": "2023-11-16",
+          "value": 122.0,
+          "report_id": 7
+        }
+      },
+      {
+        "date": "2024-02-15",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2024-02-15",
+          "value": 77.94,
+          "report_id": 8
+        },
+        "uacr": {
+          "date": "2024-02-15",
+          "value": 131.0,
+          "report_id": 8
+        }
+      },
+      {
+        "date": "2024-04-01",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2024-04-01",
+          "value": 65.08,
+          "report_id": 9
+        },
+        "uacr": {
+          "date": "2024-04-01",
+          "value": 148.0,
+          "report_id": 9
+        }
+      },
+      {
+        "date": "2024-06-10",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2024-06-10",
+          "value": 61.62,
+          "report_id": 10
+        },
+        "uacr": {
+          "date": "2024-06-10",
+          "value": 142.0,
+          "report_id": 10
+        }
+      },
+      {
+        "date": "2024-10-15",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2024-10-15",
+          "value": 63.88,
+          "report_id": 11
+        },
+        "uacr": {
+          "date": "2024-10-15",
+          "value": 139.0,
+          "report_id": 11
+        }
+      },
+      {
+        "date": "2025-03-10",
+        "g": "G2",
+        "a": "A2",
+        "egfr": {
+          "date": "2025-03-10",
+          "value": 61.24,
+          "report_id": 12
+        },
+        "uacr": {
+          "date": "2025-03-10",
+          "value": 151.0,
+          "report_id": 12
+        }
+      },
+      {
+        "date": "2025-09-01",
+        "g": "G3a",
+        "a": "A2",
+        "egfr": {
+          "date": "2025-09-01",
+          "value": 58.12,
+          "report_id": 13
+        },
+        "uacr": {
+          "date": "2025-09-01",
+          "value": 160.0,
+          "report_id": 13
+        }
+      },
+      {
+        "date": "2026-03-02",
+        "g": "G3a",
+        "a": "A2",
+        "egfr": {
+          "date": "2026-03-02",
+          "value": 54.06,
+          "report_id": 14
+        },
+        "uacr": {
+          "date": "2026-03-02",
+          "value": 172.0,
+          "report_id": 14
+        }
+      }
+    ],
+    "source": "KDIGO 2024 CKD guideline: GFR categories G1–G5 and albuminuria categories A1–A3"
+  },
+  "criteria": [
+    {
+      "id": "ckd_kdigo",
+      "title": "CKD (KDIGO definition)",
+      "status": "met",
+      "evidence": "eGFR below 60 from 58.12 on 01 Sep 2025 to 54.06 on 02 Mar 2026 (182 days); urine ACR at or above 30 mg/g from 118 mg/g on 12 Jun 2023 to 172 mg/g on 02 Mar 2026 (994 days).",
+      "report_ids": [
+        5,
+        13,
+        14
+      ],
+      "source": "KDIGO 2024 CKD guideline, definition: abnormalities of kidney structure or function present for more than 3 months (eGFR < 60 mL/min/1.73 m², or albuminuria with ACR ≥ 30 mg/g)",
+      "recorded": true,
+      "codes": [
+        {
+          "system": "ICD-10-CM",
+          "code": "N18.31",
+          "title": "Chronic kidney disease, stage 3a",
+          "why": "KDIGO category G3a from the latest eGFR (54.06 on 02 Mar 2026)"
+        },
+        {
+          "system": "SNOMED CT",
+          "code": "709044004",
+          "title": "Chronic kidney disease",
+          "why": "condition"
+        }
+      ]
+    },
+    {
+      "id": "diabetes_ada",
+      "title": "Diabetes (ADA criteria)",
+      "status": "met",
+      "evidence": "HbA1c at or above the ADA cut-off on 10 results, first 8.9% on 12 Jun 2023 and 8.7% on 14 Sep 2023. The type (1 or 2) is not in the lab data.",
+      "report_ids": [
+        5,
+        6
+      ],
+      "source": "ADA Standards of Care in Diabetes 2025, section 2: HbA1c ≥ 6.5% or fasting plasma glucose ≥ 126 mg/dL, confirmed on a second result; HbA1c 5.7–6.4% is the prediabetes range",
+      "recorded": true,
+      "codes": [
+        {
+          "system": "ICD-10",
+          "code": "E11",
+          "title": "Type 2 diabetes mellitus",
+          "why": "if type 2 is confirmed"
+        },
+        {
+          "system": "SNOMED CT",
+          "code": "44054006",
+          "title": "Diabetes mellitus type 2",
+          "why": "if type 2 is confirmed"
+        }
+      ]
+    }
+  ],
+  "codes": {
+    "conditions": [
+      {
+        "text": "type 2 diabetes",
+        "icd10": "E11",
+        "icd10_title": "Type 2 diabetes mellitus",
+        "snomed": "44054006",
+        "snomed_term": "Diabetes mellitus type 2",
+        "status": "unverified"
+      },
+      {
+        "text": "chronic kidney disease",
+        "icd10": "N18",
+        "icd10_title": "Chronic kidney disease",
+        "snomed": "709044004",
+        "snomed_term": "Chronic kidney disease",
+        "status": "unverified"
+      }
+    ],
+    "tests": [
+      {
+        "analyte_id": "hba1c",
+        "name": "HbA1c",
+        "loinc": "4548-4",
+        "loinc_name": "Hemoglobin A1c/Hemoglobin.total in Blood"
+      },
+      {
+        "analyte_id": "fasting_glucose",
+        "name": "Fasting Plasma Glucose",
+        "loinc": "1558-6",
+        "loinc_name": "Fasting glucose [Mass/volume] in Serum or Plasma"
+      },
+      {
+        "analyte_id": "creatinine",
+        "name": "Serum Creatinine",
+        "loinc": "2160-0",
+        "loinc_name": "Creatinine [Mass/volume] in Serum or Plasma"
+      },
+      {
+        "analyte_id": "egfr",
+        "name": "eGFR (CKD-EPI 2021)",
+        "loinc": "98979-8",
+        "loinc_name": "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI 2021)/1.73 sq M"
+      },
+      {
+        "analyte_id": "uacr",
+        "name": "Urine Albumin/Creatinine Ratio",
+        "loinc": "9318-7",
+        "loinc_name": "Albumin/Creatinine [Mass Ratio] in Urine"
+      },
+      {
+        "analyte_id": "potassium",
+        "name": "Serum Potassium",
+        "loinc": "2823-3",
+        "loinc_name": "Potassium [Moles/volume] in Serum or Plasma"
+      }
+    ],
+    "note": "Codes for the doctor to confirm. ICD-10 (WHO), ICD-10-CM stage codes, SNOMED CT International Edition (free in India through NRCeS), LOINC for each test."
+  },
+  "nutrition": [
+    {
+      "id": "protein_ckd",
+      "title": "Protein",
+      "figure": "0.8 g per kg body weight per day",
+      "per_day": 59.0,
+      "unit": "g/day",
+      "applies_because": "KDIGO category G3a from the latest eGFR (G3–G5, not on dialysis)",
+      "source": "KDIGO 2024 CKD guideline, Recommendation 3.3.1.1",
+      "status": "unverified"
+    },
+    {
+      "id": "sodium_ckd",
+      "title": "Sodium",
+      "figure": "less than 2 g of sodium per day (less than 5 g of salt)",
+      "per_day": 2.0,
+      "unit": "g sodium/day (upper limit)",
+      "applies_because": "the KDIGO CKD criterion is met",
+      "source": "KDIGO 2024 CKD guideline, Recommendation 3.3.2.1",
+      "status": "unverified"
+    },
+    {
+      "id": "mnt_diabetes",
+      "title": "Carbohydrate, fat and protein",
+      "figure": "no single ideal split; individualised medical nutrition therapy",
+      "per_day": null,
+      "unit": "",
+      "applies_because": "the ADA diabetes criteria are met",
+      "source": "ADA Standards of Care in Diabetes 2025, section 5",
+      "status": "unverified"
+    }
+  ],
+  "weight_kg": 74.0
+}
+```
+
+### `POST /patients/{patient_id}/ask`: ask about this patient
+
+`question` (1–500 characters). The model is given the whole-history summary facts plus the clinical-support
+results (KDIGO category, guideline criteria, eGFR projection); no name, no PDF, no report text. The answer
+passes the summary checks (numbers in the facts, cited reports exist, no advice, diagnosis or causal wording),
+with one retry; then `502 {"detail"}` (`503` when the LLM is not configured). `in_facts` is false when the
+facts do not hold the answer or the question asked for a decision. Nothing is stored. The example was
+written by a fixed test answer.
+
+<!-- example: ask request -->
+```json
+{
+  "question": "Why is the kidney card amber?"
+}
+```
+
+<!-- example: ask response 200 -->
+```json
+{
+  "question": "Why is the kidney card amber?",
+  "answer": [
+    {
+      "text": "eGFR fell by 7.1 mL/min/1.73 m² per year from October 2024 to March 2026, faster than the KDIGO threshold of 5 per year.",
+      "report_ids": [
+        11,
+        12,
+        13,
+        14
+      ]
+    },
+    {
+      "text": "Each single step stayed within the 20% change threshold; the slope over 4 results crossed it.",
+      "report_ids": [
+        11,
+        14
+      ]
+    }
+  ],
+  "in_facts": true,
+  "reports": [
+    {
+      "report_id": 11,
+      "label": "R7",
+      "date": "2024-10-15"
+    },
+    {
+      "report_id": 12,
+      "label": "R8",
+      "date": "2025-03-10"
+    },
+    {
+      "report_id": 13,
+      "label": "R9",
+      "date": "2025-09-01"
+    },
+    {
+      "report_id": 14,
+      "label": "R10",
+      "date": "2026-03-02"
+    }
+  ],
+  "model": "fake-llm"
+}
+```
 
 ## Errors
 

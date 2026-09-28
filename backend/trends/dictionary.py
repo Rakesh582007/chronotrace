@@ -6,7 +6,7 @@ from functools import lru_cache
 
 from data import validate_analytes as va
 
-from .engine import AnalyteInfo, Target
+from .engine import AnalyteInfo, Interval, Target
 
 
 @lru_cache(maxsize=1)
@@ -19,7 +19,9 @@ def analyte_infos() -> tuple[AnalyteInfo, ...]:
         target = Target(t.get("low"), t.get("high"), t["label"], " ".join(t["source"].split()), t["status"]) if t else None
         out.append(AnalyteInfo(a["id"], a["canonical_name"], a["canonical_unit"], rcv.get("percent"),
                                rcv.get("status", "not_established").replace("_", " "),
-                               " ".join(str(rcv.get("source") or "").split()), target))
+                               " ".join(str(rcv.get("source") or "").split()), target,
+                               Interval(i["months"], i["label"], " ".join(i["source"].split()), i["status"])
+                               if (i := a.get("test_interval")) else None))
     return tuple(out)
 
 

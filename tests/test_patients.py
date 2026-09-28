@@ -121,7 +121,7 @@ def test_sort_orders(ward):
 
 def test_needs_review_ranks_guideline_then_change_then_latest_report():
     def item(i, g, ch, d):
-        return PatientListItem(id=i, patient_code=f"CT-{i:04d}", name=str(i), sex="male", birth_year=1970,
+        return PatientListItem(id=i, patient_code=f"CT-{i:04d}", name=str(i), sex="male", birth_year=1970, weight_kg=None,
                                conditions=[], has_photo=False, guideline_flags=g, change_flags=ch, expected_flags=0,
                                latest_report_date=d, report_count=0, lab_count=0)
     items = [item(1, 0, 5, dt.date(2025, 1, 1)), item(2, 1, 0, None), item(3, 0, 5, dt.date(2025, 6, 1)),

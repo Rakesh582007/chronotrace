@@ -13,6 +13,7 @@ class PatientIn(BaseModel):
     sex: Literal["male", "female"]
     birth_year: int = Field(ge=1900)
     conditions: list[str] = []
+    weight_kg: float | None = Field(default=None, gt=0, le=400)
 
     @field_validator("birth_year")
     @classmethod
@@ -30,6 +31,7 @@ class PatientOut(BaseModel):
     birth_year: int
     conditions: list[str]
     has_photo: bool
+    weight_kg: float | None
 
 
 class PatientListItem(PatientOut):
@@ -329,6 +331,33 @@ class Slope(BaseModel):
     status: str                       # "ok" | "not enough span" | "not enough points"
 
 
+class Projection(BaseModel):
+    threshold: float                  # next KDIGO GFR category boundary below the line's current value
+    category: str                     # "G3b"
+    category_range: str               # "30–44"
+    from_date: dt.date                # the line's last result
+    from_value: float                 # the line's value there
+    per_year: float
+    per_year_low: float               # 95% range of the slope (t, n-2 degrees of freedom)
+    per_year_high: float
+    date: dt.date                     # when the straight line reaches the threshold
+    date_earliest: dt.date
+    date_latest: dt.date | None       # None when the slope's range includes no fall
+    n_points: int
+    note: str
+    source: str
+
+
+class LastTest(BaseModel):
+    date: dt.date
+    days_since: int
+    interval_months: int
+    label: str                        # "at least twice a year ..."
+    source: str
+    status: str
+    longer_than_interval: bool
+
+
 class AnalyteTrend(BaseModel):
     analyte_id: str
     name: str
@@ -343,6 +372,8 @@ class AnalyteTrend(BaseModel):
     points: list[TrendPoint]
     slope: Slope | None
     target: Target | None
+    projection: Projection | None     # eGFR only
+    last_test: LastTest | None        # /trends only (needs today's date)
 
 
 class Trends(BaseModel):
@@ -507,3 +538,107 @@ class MedicationResponse(BaseModel):
     note: str | None
     caveat: str | None                # on every drug start: regression to the mean, adherence not recorded
     analytes: list[ResponseEntry]
+
+
+# ---------------------------------------------------------------- clinical support (step 9c)
+
+class PatientUpdate(BaseModel):
+    weight_kg: float | None = Field(default=None, gt=0, le=400)
+    conditions: list[str] | None = None
+
+
+class KdigoRef(BaseModel):
+    date: dt.date
+    value: float
+    report_id: int
+
+
+class KdigoPosition(BaseModel):
+    date: dt.date
+    g: str                            # G1 .. G5
+    a: str | None                     # A1 .. A3 (None without a urine ACR in the year before)
+    egfr: KdigoRef
+    uacr: KdigoRef | None
+
+
+class Kdigo(BaseModel):
+    current: KdigoPosition | None
+    history: list[KdigoPosition]
+    source: str
+
+
+class SuggestedCode(BaseModel):
+    system: str                       # ICD-10 | ICD-10-CM | SNOMED CT
+    code: str
+    title: str
+    why: str
+
+
+class Criterion(BaseModel):
+    id: str
+    title: str
+    status: str                       # met | not met | not enough data
+    evidence: str
+    report_ids: list[int]
+    source: str
+    recorded: bool                    # the condition is already in the patient's recorded conditions
+    codes: list[SuggestedCode]
+
+
+class ConditionCode(BaseModel):
+    text: str
+    icd10: str | None
+    icd10_title: str | None
+    snomed: str | None
+    snomed_term: str | None
+    status: str
+
+
+class TestCode(BaseModel):
+    analyte_id: str
+    name: str
+    loinc: str
+    loinc_name: str
+
+
+class Codes(BaseModel):
+    conditions: list[ConditionCode]
+    tests: list[TestCode]
+    note: str
+
+
+class NutritionFigure(BaseModel):
+    id: str
+    title: str
+    figure: str
+    per_day: float | None             # per-kg figures times the recorded weight; None without a weight
+    unit: str
+    applies_because: str
+    source: str
+    status: str
+
+
+class Clinical(BaseModel):
+    patient_id: int
+    kdigo: Kdigo
+    criteria: list[Criterion]
+    codes: Codes
+    nutrition: list[NutritionFigure]
+    weight_kg: float | None
+
+
+class AskIn(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+
+
+class AskCited(BaseModel):
+    text: str
+    report_ids: list[int]
+
+
+class AskOut(BaseModel):
+    question: str
+    answer: list[AskCited]
+    in_facts: bool                    # false: the facts do not hold the answer, or it asked for a decision
+    reports: list[dict]               # {"report_id", "label", "date"} for the chips
+    model: str

@@ -1,9 +1,13 @@
 import { NavLink, Navigate, Outlet, useOutletContext, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import AskPanel from "../components/AskPanel";
+import { api } from "../api/client";
 import type { PatientCard, TrendsResponse } from "../api/types";
 import { AppHeader } from "../components/shell";
 import { Avatar, ConditionChip, ErrorBanner, Icon, PrimaryLink, QuietLink, Skeleton } from "../components/ui";
 import { age, capitalise, fmtMonth, sexLabel } from "../lib/format";
-import { reportIndex, usePatient, useTrends, type ReportRef } from "../lib/patient";
+import { reportIndex, useFlags, usePatient, useTrends, type ReportRef } from "../lib/patient";
 
 export interface PatientCtx {
   patient: PatientCard;
@@ -17,6 +21,9 @@ export default function PatientLayout() {
   const { code } = useParams();
   const { patient, isLoading, error, refetch, notFound } = usePatient(code);
   const trends = useTrends(patient?.id);
+  const [asking, setAsking] = useState(false);
+  const flags = useFlags(patient?.id);
+  const clinical = useQuery({ queryKey: ["clinical", patient?.id ?? 0], queryFn: () => api.clinical(patient!.id), enabled: !!patient });
   if (notFound) return <Navigate to="/patients" replace />;
   const reports = reportIndex(trends.data);
   const base = `/patients/${code}`;
@@ -44,7 +51,16 @@ export default function PatientLayout() {
               </div>
               <div className="flex flex-wrap items-center gap-2.5 text-sm text-ink-3">
                 <span>{sexLabel(patient.sex)} · {age(patient.birth_year)} (born {patient.birth_year})</span>
-                {patient.conditions.map((c) => <ConditionChip key={c}>{capitalise(c)}</ConditionChip>)}
+                {patient.conditions.map((c) => {
+                  const code = clinical.data?.codes.conditions.find((k) => k.text === c);
+                  return (
+                    <ConditionChip key={c}>
+                      <span title={code?.icd10 ? `ICD-10 ${code.icd10} ${code.icd10_title ?? ""} · SNOMED CT ${code.snomed ?? ""}` : undefined}>
+                        {capitalise(c)}{code?.icd10 && <span className="ml-1.5 font-mono text-[11px] text-ink-3">{code.icd10}</span>}
+                      </span>
+                    </ConditionChip>
+                  );
+                })}
               </div>
             </div>
             <div className="ml-auto flex flex-wrap items-center justify-end gap-x-8 gap-y-4">
@@ -60,7 +76,7 @@ export default function PatientLayout() {
             </div>
           </section>
           <nav aria-label="Patient sections" className="no-print mx-4 mt-[22px] flex gap-7 overflow-x-auto border-b border-line sm:mx-8 lg:mx-14">
-            {([["", "Trends", true], ["medications", "Medications", false], ["documents", "Documents", false], ["summary", "Summary", false]] as const)
+            {([["", "Trends", true], ["clinical", "Clinical", false], ["medications", "Medications", false], ["documents", "Documents", false], ["summary", "Summary", false]] as const)
               .map(([to, label, end]) => (
                 <NavLink key={label} to={to ? `${base}/${to}` : base} end={end}
                   className={({ isActive }) => `plain -mb-px whitespace-nowrap border-b-2 px-0.5 py-3 text-[15px] ${isActive || (label === "Trends" && isTrendsChild()) ? "border-blue font-semibold text-ink" : "border-transparent font-medium text-ink-3"}`}>
@@ -69,6 +85,14 @@ export default function PatientLayout() {
               ))}
           </nav>
           <Outlet context={{ patient, trends: trends.data, reports, base } satisfies PatientCtx} />
+          {!asking && (
+            <button type="button" onClick={() => setAsking(true)} data-testid="ask-open"
+              className="no-print fixed bottom-6 right-6 z-30 flex h-12 items-center gap-2 rounded-full bg-ink px-5 text-[15px] font-semibold text-card shadow-panel hover:bg-ink-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
+              Ask about {patient.name}
+            </button>
+          )}
+          {asking && <AskPanel patientId={patient.id} name={patient.name} flags={flags.data?.flags ?? []} onClose={() => setAsking(false)} />}
         </>
       )}
     </div>

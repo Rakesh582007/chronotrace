@@ -29,7 +29,9 @@ export default function Parameter() {
   if (!trends) return <main className="px-4 py-8 sm:px-8 lg:px-14"><Skeleton className="h-[480px] rounded-[18px]" /></main>;
   if (!t) return <main className="px-4 py-8 text-ink-3 sm:px-8 lg:px-14">No confirmed results for this parameter. <Link to={base}>Back to trends</Link></main>;
 
-  const axis = makeAxis([...reports.list.map((r) => r.date), ...(meds.data ?? []).map((m) => m.date)]);
+  const proj = trends.analytes.find((a) => a.analyte_id === "egfr")?.projection;
+  const axis = makeAxis([...reports.list.map((r) => r.date), ...(meds.data ?? []).map((m) => m.date),
+    ...(proj && (t.analyte_id === "egfr") ? [proj.date_latest ?? proj.date] : [])]);
   const props = chartProps(t, reports.byId, meds.data ?? [], windows, all);
   const excluded = t.slope?.excluded_points ?? [];
   const excludedForDrug = excluded.filter((e) => /window/.test(e.reason));
@@ -52,13 +54,14 @@ export default function Parameter() {
         <div className="flex min-w-0 flex-col gap-5">
           <section aria-label={`${shortName(t.name)} chart`} className="flex flex-col gap-3.5 rounded-[18px] border border-line bg-card px-6 pb-[18px] pt-[22px]">
             <TrendChart {...props} axis={axis} onOpenReport={open} />
-            <Legend slope={props.slope ? labelRuns(t.slope?.observation_ids.length ? t.points.filter((p) => t.slope!.observation_ids.includes(p.observation_id)).map((p) => p.report_id) : [], reports.byId).join(", ") : null} hasWindows={props.windows.length > 0} />
+            <Legend noise={!!props.noisePercent} projection={props.projection ? `Straight line to ${props.projection.threshold} (${props.projection.category})` : null} slope={props.slope ? labelRuns(t.slope?.observation_ids.length ? t.points.filter((p) => t.slope!.observation_ids.includes(p.observation_id)).map((p) => p.report_id) : [], reports.byId).join(", ") : null} hasWindows={props.windows.length > 0} />
           </section>
           <ResultsTable t={t} reports={reports.byId} creat={egfr ? creat : undefined} onOpen={open} inTrend={new Set(props.points.filter((p) => p.inTrend).map((p) => p.reportId))} />
         </div>
         <aside className="flex flex-col gap-4">
           {flags.error && <ErrorBanner error={flags.error} onRetry={() => flags.refetch()} />}
           {guideline && <GuidelinePanel f={guideline} t={t} all={all} reports={reports.byId} trends={trends.analytes} />}
+          {t.projection && <ProjectionPanel p={t.projection} />}
           {excludedForDrug.length > 0 && t.slope && (
             <section className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card px-[22px] py-[18px]">
               <h3 className="m-0 font-serif text-xl font-medium">Why the early {t.slope.per_year < 0 ? "drop" : "change"} is not in the trend</h3>
@@ -85,13 +88,15 @@ export default function Parameter() {
   );
 }
 
-function Legend({ slope, hasWindows }: { slope: string | null; hasWindows: boolean }) {
+function Legend({ slope, hasWindows, noise, projection }: { slope: string | null; hasWindows: boolean; noise: boolean; projection: string | null }) {
   return (
     <div className="flex flex-wrap gap-5 border-t border-paper-2 pt-2.5 text-[13px] text-ink-2">
       <span className="flex items-center gap-[7px]"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#2F6DA3" /></svg>Used in the trend</span>
       <span className="flex items-center gap-[7px]"><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="#FFFDF9" stroke="#6A7280" strokeWidth="1.5" /></svg>Before or inside a drug window</span>
       {hasWindows && <span className="flex items-center gap-[7px]"><svg width="16" height="12" aria-hidden="true"><rect width="16" height="12" fill="#EFE7D6" /></svg>Expected-effect window</span>}
       {slope && <span className="flex items-center gap-[7px]"><svg width="24" height="6" aria-hidden="true"><line x1="0" y1="3" x2="24" y2="3" stroke="#C8741F" strokeWidth="2.5" strokeDasharray="7 5" /></svg>Slope {slope}</span>}
+      {noise && <span className="flex items-center gap-[7px]"><svg width="16" height="12" aria-hidden="true"><rect width="16" height="12" fill="#1D2733" opacity="0.1" /></svg>Range from lab and biological noise alone</span>}
+      {projection && <span className="flex items-center gap-[7px]"><svg width="24" height="6" aria-hidden="true"><line x1="0" y1="3" x2="24" y2="3" stroke="#C8741F" strokeWidth="1.6" strokeDasharray="2 4" /></svg>{projection}</span>}
     </div>
   );
 }
@@ -198,4 +203,22 @@ function targetDir(t: Trend, a: number, b: number): "toward" | "away" | "within"
   if (d0 === 0 && d1 === 0) return "within";
   if (Math.abs(d1 - d0) < 1e-9) return "unchanged";
   return d1 < d0 ? "toward" : "away";
+}
+
+function ProjectionPanel({ p }: { p: NonNullable<Trend["projection"]> }) {
+  return (
+    <section className="flex flex-col gap-2.5 rounded-[18px] border border-amber-line bg-card px-[22px] py-[18px]" data-testid="projection">
+      <span className="text-xs font-semibold uppercase tracking-[0.08em] text-amber-ink">Straight-line projection</span>
+      <div className="flex items-baseline gap-2">
+        <span className="num font-serif text-[34px] font-medium leading-none">{fmtMonth(p.date)}</span>
+        <span className="text-sm text-ink-2">reaches {p.threshold} · KDIGO {p.category}</span>
+      </div>
+      <dl className="m-0 grid grid-cols-[110px_1fr] gap-y-1.5 text-[13px]">
+        <dt className="text-ink-3">95% range</dt><dd className="m-0">{fmtMonth(p.date_earliest)} – {p.date_latest ? fmtMonth(p.date_latest) : "no latest date"}</dd>
+        <dt className="text-ink-3">From</dt><dd className="num m-0">{fmtNum(p.from_value)} on {fmtDate(p.from_date)} · {fmtNum(p.per_year)} per year over {p.n_points} results</dd>
+        <dt className="text-ink-3">Category</dt><dd className="m-0">{p.category}: eGFR {p.category_range} · {p.source}</dd>
+      </dl>
+      <p className="m-0 text-xs leading-normal text-ink-3">A straight line through past results, extended. It assumes nothing changes and is not a forecast.</p>
+    </section>
+  );
 }
