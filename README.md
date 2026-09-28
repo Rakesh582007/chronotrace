@@ -95,6 +95,24 @@ python ml/evaluate_pipeline.py --real --pages 3-5              # -> ml/results/s
 python tests/fixtures/make_fixtures.py                         # rebuild the test-fixture PDFs
 ```
 
+## Frontend (doctor UI)
+
+```bash
+cd frontend
+cp .env.example .env                                         # VITE_API_URL=http://localhost:8000
+npm install
+npm run dev                                                  # http://localhost:5173 (the only origin CORS allows)
+npm run build && npm run lint                                # type check, bundle, ESLint
+npx playwright test                                          # smoke test of the demo path (needs a fresh seed)
+```
+
+Vite + React 18 + TypeScript, React Router, TanStack Query and Tailwind with the tokens from
+`docs/design/README.md` (the default Tailwind palette is switched off). Fonts are self-hosted with
+`@fontsource`, so the demo runs without internet. The smoke test signs in with `DEMO_DOCTOR_USER` /
+`DEMO_DOCTOR_PASSWORD` from the environment, uploads R10 from `backend/demo/generated/` (`R10_PDF` to
+override), checks that the KDIGO card appears and saves screenshots to `frontend/screenshots/`
+(git-ignored). Run it right after `python -m backend.demo.seed --reset`: it confirms R10.
+
 ## Status
 
 - [x] Step 1 – Analyte dictionary
