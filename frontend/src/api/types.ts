@@ -347,12 +347,17 @@ export interface Criterion {
   source: string; recorded: boolean; codes: SuggestedCode[];
 }
 export interface ConditionCode { text: string; icd10: string | null; icd10_title: string | null; snomed: string | null; snomed_term: string | null; status: string }
-export interface NutritionFigure { id: string; title: string; figure: string; per_day: number | null; unit: string; applies_because: string; source: string; status: string }
+export interface NutritionItem {
+  id: string; title: string; figure: string; amount: number | null; amount_high: number | null; unit: string;
+  applies_because: string; report_ids: number[]; note: string | null; superseded_by: string | null; source: string; status: string;
+}
+export interface NutritionGroup { id: string; label: string; recorded: boolean; basis: string; report_ids: number[]; items: NutritionItem[] }
+export interface Nutrition { weight_kg: number | null; groups: NutritionGroup[]; note: string }
 export interface Clinical {
   patient_id: number;
   kdigo: { current: KdigoPosition | null; history: KdigoPosition[]; source: string };
   criteria: Criterion[];
   codes: { conditions: ConditionCode[]; tests: { analyte_id: string; name: string; loinc: string; loinc_name: string }[]; note: string };
-  nutrition: NutritionFigure[];
+  nutrition: Nutrition;
   weight_kg: number | null;
 }

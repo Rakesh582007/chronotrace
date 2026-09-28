@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import type { Clinical, Criterion, KdigoPosition } from "../api/types";
+import type { Clinical, Criterion, KdigoPosition, NutritionGroup, NutritionItem } from "../api/types";
 import { useToast } from "../components/shell";
 import { ErrorBanner, Icon, ReportChip, Skeleton, Spinner } from "../components/ui";
 import { capitalise, fmtDate, fmtMonth, fmtNum } from "../lib/format";
@@ -33,8 +33,8 @@ export default function ClinicalPage() {
         </div>
         {c.criteria.length === 0 && <p className="m-0 text-sm text-ink-3">No criteria apply to the tests in these reports.</p>}
         {c.criteria.map((cr) => <CriterionCard key={cr.id} c={cr} reports={reports.byId} />)}
-        <Nutrition c={c} />
       </aside>
+      <Nutrition c={c} reports={reports.byId} />
     </main>
   );
 }
@@ -211,7 +211,10 @@ function CodesTable({ c }: { c: Clinical }) {
   );
 }
 
-function Nutrition({ c }: { c: Clinical }) {
+const amountFmt = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+const GROUP_ORDER: Record<string, string> = { kidney: "Kidney", glucose: "Diabetes", pressure: "Blood pressure", lipids: "Lipids", thyroid: "Thyroid" };
+
+function Nutrition({ c, reports }: { c: Clinical; reports: Map<number, ReportRef> }) {
   const { patient } = usePatientCtx();
   const qc = useQueryClient();
   const toast = useToast();
@@ -222,34 +225,100 @@ function Nutrition({ c }: { c: Clinical }) {
     onError: (e) => toast((e as Error).message, "amber"),
   });
   const submit = (e: FormEvent) => { e.preventDefault(); m.mutate(); };
+  const groups = c.nutrition.groups;
+  const labels = Object.fromEntries(groups.map((g) => [g.id, GROUP_ORDER[g.id] ?? g.label]));
   return (
-    <section aria-labelledby="nut-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card px-[22px] py-5" data-testid="nutrition">
-      <div className="flex items-baseline gap-2">
-        <h2 id="nut-h" className="m-0 font-serif text-[22px] font-medium">Nutrition figures</h2>
-        <div className="grow" />
-        <span className="text-[13px] text-ink-3">from guidelines</span>
-      </div>
-      <form onSubmit={submit} className="flex items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs text-ink-2">Weight (kg)
-          <input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value.replace(/[^\d.]/g, ""))} className="field h-9 w-24 rounded-lg border border-field-line bg-white px-2 text-sm" />
-        </label>
-        <button type="submit" disabled={m.isPending} className="flex h-9 items-center gap-1.5 rounded-lg border border-blue-line-2 bg-blue-tint-2 px-3 text-sm font-semibold text-blue-ink">
-          {m.isPending ? <Spinner /> : Icon.check}Save
-        </button>
-      </form>
-      {c.nutrition.length === 0 && <p className="m-0 text-sm text-ink-3">No guideline nutrition figure applies to this patient's categories.</p>}
-      {c.nutrition.map((n) => (
-        <div key={n.id} className="flex flex-col gap-1 border-t border-paper-2 pt-3">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-[15px] font-semibold">{n.title}</span>
-            <span className="text-sm">{n.figure}</span>
-            <div className="grow" />
-            {n.per_day !== null && n.id === "protein_ckd" && <span className="num font-serif text-2xl">{fmtNum(n.per_day)} <span className="font-sans text-xs text-ink-3">g/day at {c.weight_kg} kg</span></span>}
-          </div>
-          <span className="text-xs text-ink-3">Because {n.applies_because} · {n.source}{n.status !== "verified" ? " (wording not yet verified)" : ""}</span>
+    <section aria-labelledby="nut-h" className="flex flex-col gap-5 min-[1100px]:col-span-2" data-testid="nutrition">
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-t border-line pt-7">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h2 id="nut-h" className="m-0 font-serif text-[26px] font-medium">Nutrition figures for {patient.name}</h2>
+          <p className="m-0 max-w-[68ch] text-sm text-ink-3">
+            Grouped by this patient's conditions and tied to their own results and medicines
+            {c.weight_kg ? <> · amounts at <span className="num">{amountFmt.format(c.weight_kg)}</span> kg</> : " · add a weight for daily amounts"}.
+          </p>
         </div>
-      ))}
-      <p className="m-0 text-xs leading-normal text-ink-3">Guideline figures for the doctor or dietitian, not a meal plan.</p>
+        <div className="grow" />
+        <form onSubmit={submit} className="flex items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs text-ink-2">Weight (kg)
+            <input inputMode="decimal" value={w} onChange={(e) => setW(e.target.value.replace(/[^\d.]/g, ""))} className="field num h-9 w-24 rounded-lg border border-field-line bg-white px-2 text-sm" />
+          </label>
+          <button type="submit" disabled={m.isPending} className="flex h-9 items-center gap-1.5 rounded-lg border border-blue-line-2 bg-blue-tint-2 px-3 text-sm font-semibold text-blue-ink">
+            {m.isPending ? <Spinner /> : Icon.check}Save
+          </button>
+        </form>
+      </div>
+      {groups.length === 0 ? (
+        <p className="m-0 rounded-[14px] border border-dashed border-dash px-5 py-4 text-sm text-ink-3">
+          No recorded condition or met criterion has a guideline nutrition figure yet.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+          {groups.map((g) => <NutritionCard key={g.id} g={g} reports={reports} labels={labels} />)}
+        </div>
+      )}
+      <p className="m-0 text-xs leading-normal text-ink-3">{c.nutrition.note} Not a meal plan. Figures are marked unverified until checked against the cited guideline.</p>
     </section>
+  );
+}
+
+function NutritionCard({ g, reports, labels }: { g: NutritionGroup; reports: Map<number, ReportRef>; labels: Record<string, string> }) {
+  return (
+    <article className="flex flex-col rounded-[18px] border border-line bg-card" data-testid={`nutrition-${g.id}`}>
+      <header className="flex flex-col gap-2 border-b border-paper-2 px-5 pb-4 pt-5">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="m-0 font-serif text-[22px] font-medium">{g.label}</h3>
+          <div className="grow" />
+          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${g.recorded ? "border-stable-line bg-stable text-ink-2" : "border-amber-line bg-amber-soft text-amber-ink"}`}>
+            {g.recorded ? "Recorded condition" : "From results, not recorded"}
+          </span>
+        </div>
+        <p className="m-0 text-[13px] leading-normal text-ink-2">{g.basis}</p>
+        {g.report_ids.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">{labelRuns(g.report_ids, reports).map((l) => <ReportChip key={l} label={l} />)}</div>
+        )}
+      </header>
+      <ul className="m-0 flex list-none flex-col p-0">
+        {g.items.map((n) => <NutritionRow key={n.id} n={n} reports={reports} labels={labels} />)}
+      </ul>
+    </article>
+  );
+}
+
+function Amount({ n }: { n: NutritionItem }) {
+  if (n.amount === null) return null;
+  const v = n.amount_high !== null ? `${amountFmt.format(n.amount)}–${amountFmt.format(n.amount_high)}` : amountFmt.format(n.amount);
+  const [unit, qualifier] = n.unit.split(" (");
+  return (
+    <span className="flex shrink-0 flex-col items-end leading-tight">
+      <span className="num font-serif text-[22px]">{v} <span className="font-sans text-xs text-ink-3">{unit}</span></span>
+      {qualifier && <span className="text-[11px] text-ink-3">{qualifier.replace(/\)$/, "")}</span>}
+    </span>
+  );
+}
+
+function NutritionRow({ n, reports, labels }: { n: NutritionItem; reports: Map<number, ReportRef>; labels: Record<string, string> }) {
+  const off = !!n.superseded_by;
+  return (
+    <li className={`flex flex-col gap-2 border-t border-paper-2 px-5 py-4 first:border-t-0 ${off ? "bg-paper/40" : ""}`} data-testid={`nutrition-item-${n.id}`}>
+      <div className="flex items-start gap-4">
+        <div className={`flex min-w-0 grow flex-col gap-0.5 ${off ? "opacity-60" : ""}`}>
+          <span className="text-[15px] font-semibold">{n.title}</span>
+          <span className="text-sm leading-snug">{capitalise(n.figure)}</span>
+        </div>
+        {off
+          ? <span className="shrink-0 rounded-full border border-blue-line bg-blue-tint-2 px-2.5 py-0.5 text-xs font-semibold text-blue-ink">{labels[n.superseded_by!] ?? n.superseded_by} figure applies</span>
+          : <Amount n={n} />}
+      </div>
+      <p className="m-0 text-[13px] leading-normal text-ink-2">
+        <span className="font-medium text-ink">For this patient: </span>{n.applies_because}
+        {n.report_ids.length > 0 && (
+          <span className="ml-1.5 inline-flex gap-1 align-middle">{labelRuns(n.report_ids, reports).map((l) => <ReportChip key={l} label={l} />)}</span>
+        )}
+      </p>
+      {n.note && (
+        <p className="m-0 rounded-[10px] border border-blue-line bg-blue-tint-2 px-3 py-2 text-[13px] leading-normal text-blue-ink">{n.note}</p>
+      )}
+      <span className="text-[11px] leading-normal text-ink-3">{n.source}{n.status !== "verified" ? " · not yet verified" : ""}</span>
+    </li>
   );
 }
