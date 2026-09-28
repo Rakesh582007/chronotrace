@@ -10,7 +10,7 @@ from backend.demo.reports import write_pdf
 from backend.demo.seed import seed
 from backend.main import app
 from backend.summaries import guard
-from backend.summaries.llm import LLMError
+from backend.summaries.llm import LLMError, LLMUnavailable
 from backend.trends.dictionary import infos_by_id
 from backend.trends.wording import offending
 from tests import fake_llm
@@ -132,6 +132,16 @@ def test_timeout_is_502_with_the_last_saved_summary(selvam):
     assert r.status_code == 502 and len(fake.prompts) == 2
     assert "timed out" in r.json()["detail"] and r.json()["last_saved"] == first
     assert saved(c, pid).json() == first                     # the saved version stays
+
+
+def test_unavailable_models_are_not_asked_a_second_time(selvam):
+    c, pid = selvam
+    use_llm(FakeLLM(VALID))
+    first = generate(c, pid).json()
+    fake = use_llm(FakeLLM(LLMUnavailable("every model was unavailable (429/503): m 503"), VALID))
+    r = generate(c, pid)
+    assert r.status_code == 502 and len(fake.prompts) == 1      # no second retry-and-fallback round
+    assert "unavailable" in r.json()["detail"] and r.json()["last_saved"] == first
 
 
 def test_not_configured_is_503_with_the_last_saved_summary(selvam):

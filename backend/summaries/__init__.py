@@ -10,7 +10,7 @@ import json
 
 from .facts import Facts
 from .guard import LLMSummary, check_text
-from .llm import LLM, LLMError
+from .llm import LLM, LLMError, LLMUnavailable
 
 SYSTEM = """You write a short lab-trend summary of one patient for their doctor, from the JSON facts you are
 given. The facts were computed by ChronoTrace's trend engine. You see no report and no patient name.
@@ -74,6 +74,8 @@ def write_summary(llm: LLM, facts: Facts) -> LLMSummary:
     for _ in range(2):
         try:
             answer = llm.generate(SYSTEM, prompt)
+        except LLMUnavailable as e:                  # already retried and fell back: don't run it all again
+            raise SummaryFailed([f"the model call failed: {e}"]) from None
         except LLMError as e:
             answer, errors = "", [f"the model call failed: {e}"]
         else:
