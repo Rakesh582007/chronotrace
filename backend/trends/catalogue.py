@@ -16,6 +16,7 @@ class Effect:
     direction: str                 # "rise" | "fall"
     note: str
     max_expected_percent: float | None
+    size: str | None = None        # "small": a change within noise in the expected direction still counts
 
 
 @dataclass(frozen=True)
@@ -42,7 +43,7 @@ def catalogue() -> dict:
 def classes() -> dict[str, DrugClass]:
     out = {}
     for c in catalogue()["classes"]:
-        effects = tuple(Effect(e["analyte"], e["direction"], e["note"], e.get("max_expected_percent"))
+        effects = tuple(Effect(e["analyte"], e["direction"], e["note"], e.get("max_expected_percent"), e.get("size"))
                         for e in c["effects"])
         out[c["id"]] = DrugClass(c["id"], c["name"], c.get("short_name") or c["name"], c["window_days"][0],
                                  c["window_days"][1], effects,

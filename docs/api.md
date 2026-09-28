@@ -2128,6 +2128,13 @@ ramipril and empagliflozin starts), after the latest report:
           }
         ],
         "status": "ok"
+      },
+      "target": {
+        "low": null,
+        "high": 7.0,
+        "label": "< 7%",
+        "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised",
+        "status": "verified"
       }
     },
     {
@@ -2312,6 +2319,13 @@ ramipril and empagliflozin starts), after the latest report:
         ],
         "excluded_points": [],
         "status": "ok"
+      },
+      "target": {
+        "low": 80.0,
+        "high": 130.0,
+        "label": "80–130 mg/dL",
+        "source": "ADA Standards of Care in Diabetes 2025, section 6: preprandial capillary glucose 80–130 mg/dL for many non-pregnant adults; goals are individualised",
+        "status": "verified"
       }
     },
     {
@@ -2537,7 +2551,8 @@ ramipril and empagliflozin starts), after the latest report:
           }
         ],
         "status": "ok"
-      }
+      },
+      "target": null
     },
     {
       "analyte_id": "egfr",
@@ -2762,6 +2777,13 @@ ramipril and empagliflozin starts), after the latest report:
           }
         ],
         "status": "ok"
+      },
+      "target": {
+        "low": 60.0,
+        "high": null,
+        "label": "≥ 60",
+        "source": "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60",
+        "status": "verified"
       }
     },
     {
@@ -2946,6 +2968,13 @@ ramipril and empagliflozin starts), after the latest report:
         ],
         "excluded_points": [],
         "status": "ok"
+      },
+      "target": {
+        "low": null,
+        "high": 30.0,
+        "label": "< 30 mg/g",
+        "source": "KDIGO 2024 CKD guideline, albuminuria categories: A1 is ACR < 30 mg/g",
+        "status": "verified"
       }
     },
     {
@@ -3163,6 +3192,13 @@ ramipril and empagliflozin starts), after the latest report:
           }
         ],
         "status": "ok"
+      },
+      "target": {
+        "low": 3.5,
+        "high": 5.0,
+        "label": "3.5–5.0 mmol/L",
+        "source": "Usual adult reference interval; lab-specific",
+        "status": "unverified"
       }
     }
   ]
@@ -3264,7 +3300,16 @@ alternate between three labs, so every comparison here is `cross_lab`:
       ],
       "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed",
       "cross_lab": true,
-      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "target": {
+        "low": null,
+        "high": 7.0,
+        "label": "< 7%",
+        "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised",
+        "status": "verified"
+      },
+      "target_direction": "toward",
+      "lab_change": null
     },
     {
       "id": "RCV_BASELINE:egfr:2026-03-02",
@@ -3360,7 +3405,16 @@ alternate between three labs, so every comparison here is `cross_lab`:
       ],
       "source": "KDIGO 2024 CKD guideline, Practice Point 2.1.3: \"For people with CKD, a change in eGFR of >20% on a subsequent test exceeds the expected variability and warrants evaluation.\"",
       "cross_lab": true,
-      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "target": {
+        "low": 60.0,
+        "high": null,
+        "label": "≥ 60",
+        "source": "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60",
+        "status": "verified"
+      },
+      "target_direction": "away",
+      "lab_change": null
     },
     {
       "id": "RCV_BASELINE:creatinine:2026-03-02",
@@ -3456,7 +3510,10 @@ alternate between three labs, so every comparison here is `cross_lab`:
       ],
       "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV",
       "cross_lab": true,
-      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "target": null,
+      "target_direction": null,
+      "lab_change": null
     },
     {
       "id": "KDIGO_RAPID_EGFR:egfr:2026-03-02",
@@ -3508,7 +3565,16 @@ alternate between three labs, so every comparison here is `cross_lab`:
       "drug_events_since_baseline": [],
       "source": "KDIGO 2012 definition of rapid progression (> 5 mL/min/1.73 m²/yr)",
       "cross_lab": true,
-      "cross_lab_note": "values from different labs; between-lab variation adds uncertainty to the slope"
+      "cross_lab_note": "values from different labs; between-lab variation adds uncertainty to the slope",
+      "target": {
+        "low": 60.0,
+        "high": null,
+        "label": "≥ 60",
+        "source": "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60",
+        "status": "verified"
+      },
+      "target_direction": "away",
+      "lab_change": null
     },
     {
       "id": "RCV_PREV:creatinine:2024-04-01",
@@ -3586,7 +3652,18 @@ alternate between three labs, so every comparison here is `cross_lab`:
       "drug_events_since_baseline": [],
       "source": "CVi: EFLM Biological Variation Database (not checked this session); CVa: assumed, replace with lab IQC CV",
       "cross_lab": true,
-      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "target": null,
+      "target_direction": null,
+      "lab_change": {
+        "from_lab": "Varnika Clinical Labs",
+        "to_lab": "ASTERLANE DIAGNOSTICS",
+        "same_lab_agrees": false,
+        "same_lab_report_ids": [
+          7
+        ],
+        "note": "This change coincides with a change of lab, from Varnika Clinical Labs to ASTERLANE DIAGNOSTICS. Results from ASTERLANE DIAGNOSTICS alone show a change as well (2023-11-16: 1.11)."
+      }
     },
     {
       "id": "RCV_PREV:hba1c:2024-02-15",
@@ -3664,7 +3741,24 @@ alternate between three labs, so every comparison here is `cross_lab`:
       "drug_events_since_baseline": [],
       "source": "Median CVi in healthy subjects 1.7% (IQR 1.3–2.2), systematic review of 111 studies, PLOS ONE 2023, https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0289085; CVa assumed",
       "cross_lab": true,
-      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes"
+      "cross_lab_note": "values from different labs; between-lab variation is larger than the RCV assumes",
+      "target": {
+        "low": null,
+        "high": 7.0,
+        "label": "< 7%",
+        "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised",
+        "status": "verified"
+      },
+      "target_direction": "toward",
+      "lab_change": {
+        "from_lab": "ASTERLANE DIAGNOSTICS",
+        "to_lab": "Varnika Clinical Labs",
+        "same_lab_agrees": false,
+        "same_lab_report_ids": [
+          9
+        ],
+        "note": "This change coincides with a change of lab, from ASTERLANE DIAGNOSTICS to Varnika Clinical Labs. Results from ASTERLANE DIAGNOSTICS alone show a change as well (2024-04-01: 7.2)."
+      }
     }
   ]
 }
@@ -3790,7 +3884,10 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
           "days_from_event": -63
         }
       ],
-      "status": "assessed"
+      "status": "assessed",
+      "target_direction": "within",
+      "verdict": "seen",
+      "verdict_note": "Expected fall seen: eGFR (CKD-EPI 2021) fell 5.3% (a small change is expected)."
     },
     {
       "analyte_id": "creatinine",
@@ -3881,7 +3978,10 @@ Example: empagliflozin, where ramipril had been started 63 days earlier:
           "days_from_event": -63
         }
       ],
-      "status": "assessed"
+      "status": "assessed",
+      "target_direction": null,
+      "verdict": "seen",
+      "verdict_note": "Expected rise seen: Serum Creatinine rose 4.7% (a small change is expected)."
     }
   ]
 }
@@ -3984,7 +4084,15 @@ count), in card order, computed from the same trends and flags as `/trends` and 
             }
           ],
           "status": "ok"
-        }
+        },
+        "target": {
+          "low": 60.0,
+          "high": null,
+          "label": "≥ 60",
+          "source": "KDIGO 2024 CKD guideline, GFR categories: G1–G2 are eGFR ≥ 60 mL/min/1.73 m²; G3a–G5 are below 60",
+          "status": "verified"
+        },
+        "target_direction": "away"
       },
       "analytes_with_data": [
         {
@@ -4071,7 +4179,15 @@ count), in card order, computed from the same trends and flags as `/trends` and 
             }
           ],
           "status": "ok"
-        }
+        },
+        "target": {
+          "low": null,
+          "high": 7.0,
+          "label": "< 7%",
+          "source": "ADA Standards of Care in Diabetes 2025, section 6 (Glycemic Goals): HbA1c goal < 7% for many non-pregnant adults; goals are individualised",
+          "status": "verified"
+        },
+        "target_direction": "toward"
       },
       "analytes_with_data": [
         {
@@ -4160,7 +4276,15 @@ count), in card order, computed from the same trends and flags as `/trends` and 
             }
           ],
           "status": "ok"
-        }
+        },
+        "target": {
+          "low": 3.5,
+          "high": 5.0,
+          "label": "3.5–5.0 mmol/L",
+          "source": "Usual adult reference interval; lab-specific",
+          "status": "unverified"
+        },
+        "target_direction": "within"
       },
       "analytes_with_data": [
         {
@@ -4186,7 +4310,15 @@ count), in card order, computed from the same trends and flags as `/trends` and 
         "latest": null,
         "baseline": null,
         "change_vs_baseline_percent": null,
-        "slope": null
+        "slope": null,
+        "target": {
+          "low": null,
+          "high": 100.0,
+          "label": "< 100 mg/dL",
+          "source": "ADA Standards of Care 2025, section 10 (general LDL goal < 100 mg/dL; lower goals for higher risk)",
+          "status": "unverified"
+        },
+        "target_direction": null
       },
       "analytes_with_data": [],
       "flag_counts": {
@@ -4207,7 +4339,9 @@ count), in card order, computed from the same trends and flags as `/trends` and 
         "latest": null,
         "baseline": null,
         "change_vs_baseline_percent": null,
-        "slope": null
+        "slope": null,
+        "target": null,
+        "target_direction": null
       },
       "analytes_with_data": [],
       "flag_counts": {
@@ -4228,7 +4362,15 @@ count), in card order, computed from the same trends and flags as `/trends` and 
         "latest": null,
         "baseline": null,
         "change_vs_baseline_percent": null,
-        "slope": null
+        "slope": null,
+        "target": {
+          "low": 0.4,
+          "high": 4.0,
+          "label": "0.4–4.0 mIU/L",
+          "source": "ATA 2014 hypothyroidism guideline (Jonklaas et al., Thyroid 2014;24:1670-1751): treatment aims for TSH within the reference range; range is lab-specific",
+          "status": "unverified"
+        },
+        "target_direction": null
       },
       "analytes_with_data": [],
       "flag_counts": {
@@ -4249,7 +4391,9 @@ count), in card order, computed from the same trends and flags as `/trends` and 
         "latest": null,
         "baseline": null,
         "change_vs_baseline_percent": null,
-        "slope": null
+        "slope": null,
+        "target": null,
+        "target_direction": null
       },
       "analytes_with_data": [],
       "flag_counts": {
@@ -4892,6 +5036,27 @@ A period without confirmed reports:
   }
 }
 ```
+
+## Targets, expected-vs-observed and changes of lab (step 9)
+
+Fields added to existing responses (no new endpoints):
+
+- `target` on each trend, flag and system headline: the analyte's guideline goal from `data/analytes.yaml`
+  (`low` and/or `high`, `label` such as `"< 7%"`, `source`, `status`), or `null` when the analyte has none
+  (creatinine, for example). It is context, like the reference range; flags still come from the baseline.
+- `target_direction` on flags, system headlines and medication responses: `toward`, `away`, `within` or
+  `unchanged`: whether the later value is closer to the target range than the earlier one. It describes
+  position against a guideline goal, never whether a change is good; the UI shows it with an arrow and the
+  target's label and source.
+- `lab_change` on `RCV_PREV` flags whose two results come from different labs: `from_lab`, `to_lab`,
+  `same_lab_agrees` (a result from the same lab on the other side of the step is within the reference change
+  value of the earlier one: the change may reflect the labs rather than the patient), `same_lab_report_ids`
+  and a `note` to show as is. `null` otherwise.
+- `verdict` and `verdict_note` on each medication response entry (drug starts that were assessed):
+  `seen` (the expected direction, beyond the reference change value, or any change that way for an effect the
+  catalogue marks `size: small`), `not seen` (within the reference change value), `opposite` (the other way,
+  beyond it), `above expected` (beyond the class's `max_expected_percent`). `null` when the entry was not
+  assessed or the event is not a start.
 
 ## Errors
 

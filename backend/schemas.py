@@ -258,6 +258,22 @@ class ExpectedEffect(BaseModel):
     window: DateWindow
 
 
+class Target(BaseModel):
+    low: float | None                 # guideline goal range (one bound may be open)
+    high: float | None
+    label: str                        # "< 7%"
+    source: str
+    status: str                       # verified | unverified
+
+
+class LabChange(BaseModel):
+    from_lab: str
+    to_lab: str
+    same_lab_agrees: bool | None      # a same-lab result on the other side agrees within the RCV
+    same_lab_report_ids: list[int]
+    note: str
+
+
 class Flag(BaseModel):
     id: str
     rule_id: str                      # RCV_PREV | RCV_BASELINE | KDIGO_RAPID_EGFR
@@ -280,6 +296,9 @@ class Flag(BaseModel):
     source: str | None
     cross_lab: bool                   # the compared values come from different labs
     cross_lab_note: str | None
+    target: Target | None             # the analyte's guideline goal, if it has one
+    target_direction: str | None      # toward | away | within | unchanged (position against the target)
+    lab_change: LabChange | None      # RCV_PREV across two labs
 
 
 class Flags(BaseModel):
@@ -323,6 +342,7 @@ class AnalyteTrend(BaseModel):
     baseline_observation_ids: list[int]
     points: list[TrendPoint]
     slope: Slope | None
+    target: Target | None
 
 
 class Trends(BaseModel):
@@ -347,6 +367,8 @@ class SystemHeadline(BaseModel):
     baseline: float | None
     change_vs_baseline_percent: float | None     # latest vs baseline, as RCV_BASELINE compares them
     slope: Slope | None
+    target: Target | None
+    target_direction: str | None      # baseline -> latest against the target
 
 
 class AnalyteName(BaseModel):
@@ -469,6 +491,9 @@ class ResponseEntry(BaseModel):
     expected_effect: ExpectedEffect | None
     confounders: list[Confounder]
     status: str                       # assessed | too early to assess | no baseline | no result in window
+    target_direction: str | None      # before -> after against the analyte's target
+    verdict: str | None               # seen | not seen | opposite | above expected (drug starts, assessed)
+    verdict_note: str | None
 
 
 class ResponseEvent(EventRef):
