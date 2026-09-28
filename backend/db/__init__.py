@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -10,14 +9,20 @@ from sqlalchemy import inspect
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
+from ..config import setting
 from .models import (Doctor, Document, MedicationEvent, Observation, Patient,  # noqa: F401  (register tables)
                      Report, Summary)
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "chronotrace.db"    # git-ignored (*.db)
 
 
+def database_url(url: str | None = None) -> str:
+    """The given URL, else CHRONOTRACE_DB (environment, then .env), else the git-ignored demo file."""
+    return url or setting("CHRONOTRACE_DB") or f"sqlite:///{DEFAULT_DB}"
+
+
 def make_engine(url: str | None = None):
-    url = url or os.environ.get("CHRONOTRACE_DB") or f"sqlite:///{DEFAULT_DB}"
+    url = database_url(url)
     kwargs: dict = {"connect_args": {"check_same_thread": False}}
     if url in ("sqlite://", "sqlite:///:memory:"):
         kwargs["poolclass"] = StaticPool

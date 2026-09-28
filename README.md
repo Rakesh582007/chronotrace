@@ -77,7 +77,7 @@ Required in `.env` (see `.env.example`): `DEMO_DOCTOR_NAME`, `DEMO_DOCTOR_USER`,
 | Variable | Default |
 | --- | --- |
 | `CHRONOTRACE_MODEL` | `ml/models/chronotrace-ner` if present, else the Hub model `Rip-Shadw/chronotrace-report-ner` |
-| `CHRONOTRACE_DB` | `sqlite:///backend/chronotrace.db` (git-ignored) |
+| `CHRONOTRACE_DB` | `sqlite:///backend/chronotrace.db` (git-ignored); also read from `.env` |
 | `CHRONOTRACE_UPLOADS` | `backend/uploads/` (git-ignored): report PDFs, prescriptions, notes, photos, page images |
 
 How a report is read: pdfplumber rows (the same code that built the training data, `shared/pdf_rows.py`)
