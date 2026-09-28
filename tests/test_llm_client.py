@@ -132,5 +132,5 @@ def test_endpoint_all_models_503_is_502_with_last_saved(selvam):  # noqa: F811
     r = generate(c, pid)
     assert r.status_code == 502
     assert "every model was unavailable" in r.json()["detail"] and r.json()["last_saved"] == first
-    assert len(fake.calls) == 2 * 9                                  # the guard retry asks once more
+    assert len(fake.calls) == 9                                      # one retry-and-fallback round, not two
     assert saved(c, pid).json() == first

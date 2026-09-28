@@ -1,0 +1,147 @@
+@import "@fontsource/newsreader/400.css";
+@import "@fontsource/newsreader/500.css";
+@import "@fontsource/newsreader/600.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "tailwindcss";
+
+/* Design tokens from docs/design/README.md. The default Tailwind palette is switched off. */
+@theme {
+  --color-*: initial;
+  --color-paper: #f4eee2;
+  --color-paper-2: #ede5d5;
+  --color-chip: #efe7d6;
+  --color-card: #fffdf9;
+  --color-white: #ffffff;
+  --color-line: #e3d9c6;
+  --color-field-line: #d9cfbb;
+  --color-dash: #cfc5b2;
+  --color-ink: #1d2733;
+  --color-ink-2: #3f4855;
+  --color-ink-3: #4a5563;
+  --color-muted-mark: #6a7280;
+  --color-baseline: #9aa3af;
+  --color-blue: #2f6da3;
+  --color-blue-hover: #255c8c;
+  --color-blue-ink: #1f5282;
+  --color-blue-tint: #e4eef8;
+  --color-blue-tint-2: #eaf3fb;
+  --color-blue-line: #bfd5ec;
+  --color-blue-line-2: #9dbfe0;
+  --color-focus: #d4e4f4;
+  --color-amber-fill: #fbebd3;
+  --color-amber-soft: #fff7ea;
+  --color-amber-line: #ebc48e;
+  --color-amber-ink: #8a4507;
+  --color-amber-deep: #3f2a12;
+  --color-amber-mark: #c8741f;
+  --color-stable: #efe9dc;
+  --color-stable-line: #e0d6c3;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --shadow-panel: 0 30px 60px -40px rgba(29, 39, 51, 0.45);
+  --shadow-lift: 0 18px 36px -24px rgba(31, 82, 130, 0.45);
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--color-blue);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--color-blue-ink);
+    text-decoration: underline;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 1px;
+    border-radius: 6px;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+@utility plain {
+  color: inherit;
+  &:hover {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+@utility lift {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  &:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-blue-line-2);
+    box-shadow: var(--shadow-lift);
+  }
+}
+@utility field {
+  &:focus {
+    outline: none;
+    border-color: var(--color-blue);
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+}
+@utility ledger {
+  background-image: radial-gradient(rgba(29, 39, 51, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ede5d5 0%, #f4eee2 50%, #ede5d5 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 10px;
+}
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@keyframes arrive {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+.arrive {
+  animation: arrive 400ms ease-out both;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arrive, .skeleton, .lift { animation: none !important; transition: none !important; }
+}
+
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .print-article { box-shadow: none !important; border: 0 !important; margin: 0 !important; width: 100% !important; }
+  @page { size: A4; margin: 16mm; }
+}
+.print-only { display: none; }

@@ -30,6 +30,10 @@ class LLMError(RuntimeError):
     """The model call failed (timeout, network, API error, or every model unavailable)."""
 
 
+class LLMUnavailable(LLMError):
+    """Every model still answered 429/503 (or time ran out): a second attempt right away would not help."""
+
+
 class LLMConfigError(RuntimeError):
     """The LLM settings are missing or name an unsupported provider."""
 
@@ -79,7 +83,7 @@ class GeminiLLM:
                     self._sleep(wait)
                 left = deadline - self._clock()
                 if left < MIN_REQUEST_SECONDS:
-                    raise LLMError(f"no answer within {TOTAL_SECONDS} s: " + "; ".join(unavailable))
+                    raise LLMUnavailable(f"no answer within {TOTAL_SECONDS} s: " + "; ".join(unavailable))
                 try:
                     text = self._request(model, system, prompt, min(TIMEOUT_SECONDS, left))
                 except Exception as e:             # timeout, network or API error: never show the key
@@ -90,7 +94,7 @@ class GeminiLLM:
                     continue
                 self.model = model
                 return text
-        raise LLMError("every model was unavailable (429/503): " + "; ".join(unavailable))
+        raise LLMUnavailable("every model was unavailable (429/503): " + "; ".join(unavailable))
 
 
 def get_llm() -> LLM:
