@@ -27,6 +27,8 @@ class Doctor(SQLModel, table=True):
 class Patient(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     doctor_id: int = Field(foreign_key="doctor.id", index=True)
+    patient_code: str = Field(unique=True, index=True)     # CT-0001, CT-0002, ... (shown in the UI)
+    photo_path: str | None = None                          # file under the uploads folder
     name: str
     sex: str                                   # "male" | "female"
     birth_year: int

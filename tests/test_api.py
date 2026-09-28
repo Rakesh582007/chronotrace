@@ -26,8 +26,9 @@ def by_test(detail):
 
 def test_create_and_list_patients(client):
     p = new_patient(client)
-    assert p == {"id": p["id"], **DEMO}
-    assert client.get("/patients").json() == [p]
+    assert p == {"id": p["id"], "patient_code": "CT-0001", "has_photo": False, **DEMO}
+    listed = client.get("/patients").json()
+    assert [{k: item[k] for k in p} for item in listed] == [p]
 
 
 @pytest.mark.parametrize("body", [

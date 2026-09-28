@@ -73,11 +73,14 @@ def rule_tagger() -> RuleTagger:
     return RuleTagger()
 
 
-def use_fresh_database():
-    """A new in-memory database for every request of the app, with the rule tagger instead of the model."""
+def use_fresh_database(uploads=None):
+    """A new in-memory database (and uploads folder) for the app, with the rule tagger instead of the model."""
+    import tempfile
+
     from backend import db
     from backend.main import app, tagger_dep
 
+    os.environ["CHRONOTRACE_UPLOADS"] = str(uploads or tempfile.mkdtemp(prefix="chronotrace-uploads-"))
     engine = db.make_engine("sqlite://")
     db.set_engine(engine)
     app.dependency_overrides.pop(db.get_session, None)
@@ -107,11 +110,11 @@ def signed_in_client(username: str = "dr.a", name: str = "Dr A", password: str =
 
 
 @pytest.fixture
-def client():
-    """API client signed in as a doctor, on a fresh in-memory database, with the rule tagger."""
+def client(tmp_path):
+    """API client signed in as a doctor, on a fresh in-memory database and uploads folder, with the rule tagger."""
     from backend.main import app
 
-    use_fresh_database()
+    use_fresh_database(tmp_path / "uploads")
     c = signed_in_client()
     yield c
     app.dependency_overrides.clear()

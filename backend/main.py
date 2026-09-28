@@ -16,13 +16,17 @@ from collections import Counter
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
+from typing import Literal
+
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pdfplumber.utils.exceptions import PdfminerException
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from . import normalise as nm
+from . import storage
 from .auth import current_doctor, ensure_demo_doctor
 from .auth import router as auth_router
 from .config import check_auth_settings
@@ -34,10 +38,11 @@ from .normalise.names import name_index
 from .trends import catalogue, engine
 from .trends.dictionary import analyte_infos, infos_by_id
 from .schemas import (ConfirmIn, Counts, Flags, MedicationIn, MedicationOut, MedicationResponse, ObservationOut,
-                      PatientIn, PatientOut, ReportDetail, ReportOut, Trends,
+                      PatientIn, PatientListItem, PatientOut, ReportDetail, ReportOut, Trends,
                       SkippedOut, Timeline, TimelinePoint, TimelineSeries)
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+MAX_PHOTO_BYTES = 5 * 1024 * 1024
 ENTERED_BY_DOCTOR = "Entered by doctor"
 UNREADABLE_PDF = "could not read this PDF: it is damaged or password-protected"
 
@@ -92,7 +97,14 @@ def _medication_or_404(session: Session, medication_id: int, doctor: Doctor) -> 
 
 
 def _patient_out(p: Patient) -> PatientOut:
-    return PatientOut(id=p.id, name=p.name, sex=p.sex, birth_year=p.birth_year, conditions=list(p.conditions))
+    return PatientOut(id=p.id, patient_code=p.patient_code, name=p.name, sex=p.sex, birth_year=p.birth_year,
+                      conditions=list(p.conditions), has_photo=bool(p.photo_path))
+
+
+def _next_patient_code(session: Session) -> str:
+    codes = session.exec(select(Patient.patient_code)).all()
+    n = max((int(c.split("-")[1]) for c in codes if c and c.startswith("CT-")), default=0)
+    return f"CT-{n + 1:04d}"
 
 
 def _analyte_name(analyte_id: str | None) -> str | None:
@@ -140,18 +152,75 @@ def _copy_back(src: nm.Observation, dst: Observation) -> None:
 @app.post("/patients", response_model=PatientOut, status_code=201)
 def create_patient(body: PatientIn, session: Session = Depends(get_session),
                    doctor: Doctor = Depends(current_doctor)) -> PatientOut:
-    p = Patient(doctor_id=doctor.id, name=body.name.strip(), sex=body.sex, birth_year=body.birth_year,
-                conditions=[c.strip() for c in body.conditions if c.strip()])
+    p = Patient(doctor_id=doctor.id, patient_code=_next_patient_code(session), name=body.name.strip(), sex=body.sex,
+                birth_year=body.birth_year, conditions=[c.strip() for c in body.conditions if c.strip()])
     session.add(p)
     session.commit()
     session.refresh(p)
     return _patient_out(p)
 
 
-@app.get("/patients", response_model=list[PatientOut])
-def list_patients(session: Session = Depends(get_session), doctor: Doctor = Depends(current_doctor)) -> list[PatientOut]:
-    return [_patient_out(p) for p in session.exec(select(Patient).where(Patient.doctor_id == doctor.id)
-                                                  .order_by(Patient.id)).all()]
+def _list_item(session: Session, p: Patient) -> PatientListItem:
+    points = _confirmed_points(session, p.id)
+    _, flags = engine.analyse_patient(list(analyte_infos()), points, _events(session, p.id))
+    reports = session.exec(select(Report).where(Report.patient_id == p.id, Report.status == "confirmed")).all()
+    change = [f for f in flags if f["level"] == "change"]
+    return PatientListItem(
+        **_patient_out(p).model_dump(),
+        guideline_flags=sum(f["level"] == "guideline" for f in flags),
+        change_flags=sum(f["expected_effect"] is None for f in change),
+        expected_flags=sum(f["expected_effect"] is not None for f in change),
+        latest_report_date=max((r.collected_at for r in reports if r.collected_at), default=None),
+        report_count=len(reports), lab_count=len({r.lab for r in reports if r.lab}))
+
+
+def needs_review_key(i: PatientListItem) -> tuple:
+    """Sort key (descending): guideline flags, then change flags, then the latest report; ties by the older id."""
+    return i.guideline_flags, i.change_flags, i.latest_report_date or dt.date.min, -i.id
+
+
+@app.get("/patients", response_model=list[PatientListItem])
+def list_patients(sort: Literal["needs_review", "name", "latest_report"] = Query("needs_review"),
+                  session: Session = Depends(get_session),
+                  doctor: Doctor = Depends(current_doctor)) -> list[PatientListItem]:
+    """The doctor's patients with their flag counts. needs_review: guideline flags, then change flags, then the
+    latest report first; name: A-Z; latest_report: newest first."""
+    items = [_list_item(session, p) for p in session.exec(select(Patient).where(Patient.doctor_id == doctor.id)
+                                                          .order_by(Patient.id)).all()]
+    if sort == "name":
+        items.sort(key=lambda i: (i.name.casefold(), i.id))
+    elif sort == "latest_report":
+        items.sort(key=lambda i: (i.latest_report_date or dt.date.min, -i.id), reverse=True)
+    else:
+        items.sort(key=needs_review_key, reverse=True)
+    return items
+
+
+@app.post("/patients/{patient_id}/photo", response_model=PatientOut)
+def upload_photo(patient_id: int, file: UploadFile = File(...), session: Session = Depends(get_session),
+                 doctor: Doctor = Depends(current_doctor)) -> PatientOut:
+    patient = _patient_or_404(session, patient_id, doctor)
+    data = file.file.read(MAX_PHOTO_BYTES + 1)
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(413, "photo is larger than 5 MB")
+    kind = storage.file_type(data, ("jpg", "png"))
+    if kind is None:
+        raise HTTPException(415, "the photo must be a JPG or PNG image")
+    storage.remove(patient.photo_path)
+    patient.photo_path = storage.save(f"photos/patient-{patient.id}.{kind}", data)
+    session.add(patient)
+    session.commit()
+    session.refresh(patient)
+    return _patient_out(patient)
+
+
+@app.get("/patients/{patient_id}/photo", response_class=FileResponse)
+def get_photo(patient_id: int, session: Session = Depends(get_session),
+              doctor: Doctor = Depends(current_doctor)) -> FileResponse:
+    patient = _patient_or_404(session, patient_id, doctor)
+    if not patient.photo_path or not storage.absolute(patient.photo_path).exists():
+        raise HTTPException(404, "no photo for this patient")
+    return FileResponse(storage.absolute(patient.photo_path), media_type=storage.media_type(patient.photo_path))
 
 
 # ---------------------------------------------------------------- reports

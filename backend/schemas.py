@@ -24,10 +24,22 @@ class PatientIn(BaseModel):
 
 class PatientOut(BaseModel):
     id: int
+    patient_code: str                 # "CT-0001": what the UI shows; routes take the id
     name: str
     sex: str
     birth_year: int
     conditions: list[str]
+    has_photo: bool
+
+
+class PatientListItem(PatientOut):
+    """A patient card: the flag counts come from the same engine as GET /patients/{id}/flags."""
+    guideline_flags: int
+    change_flags: int                 # change flags without an expected drug effect
+    expected_flags: int               # change flags explained by an expected drug effect
+    latest_report_date: dt.date | None
+    report_count: int                 # confirmed reports
+    lab_count: int                    # distinct labs among them
 
 
 class ReportOut(BaseModel):
