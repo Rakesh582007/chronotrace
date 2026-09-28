@@ -1,5 +1,6 @@
 """Demo login, signed tokens and per-doctor data scoping."""
 
+import os
 import re
 import time
 
@@ -135,3 +136,15 @@ def test_cors_allows_only_the_frontend(client):
     bad = client.options("/patients", headers={"Origin": "http://evil.example", "Access-Control-Request-Method": "GET"})
     assert ok.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert "access-control-allow-origin" not in bad.headers
+
+
+def test_dotenv_values_stay_out_of_the_process_environment(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text('# comment\nCT_TEST_KEY="from-file"\nCT_TEST_OTHER=x\n', encoding="utf-8")
+    monkeypatch.delenv("CT_TEST_KEY", raising=False)
+    read = config.load_dotenv
+    monkeypatch.setattr(config, "load_dotenv", lambda *a, **k: read(env))
+    assert config.setting("CT_TEST_KEY") == "from-file"
+    assert "CT_TEST_KEY" not in os.environ and "CT_TEST_OTHER" not in os.environ   # keys never leak into tracebacks
+    monkeypatch.setenv("CT_TEST_KEY", "from-env")
+    assert config.setting("CT_TEST_KEY") == "from-env"                              # the real environment wins

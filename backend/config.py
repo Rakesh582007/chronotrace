@@ -18,10 +18,12 @@ class ConfigError(RuntimeError):
     pass
 
 
-def load_dotenv(path: Path = ROOT / ".env") -> None:
-    """KEY=VALUE lines into os.environ, without overriding variables that are already set."""
+def load_dotenv(path: Path = ROOT / ".env") -> dict[str, str]:
+    """KEY=VALUE lines of .env. They are returned, not copied into os.environ, so that API keys in .env
+    never show up in a subprocess or in a traceback that prints the environment."""
+    values: dict[str, str] = {}
     if not path.exists():
-        return
+        return values
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -30,12 +32,15 @@ def load_dotenv(path: Path = ROOT / ".env") -> None:
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
             value = value[1:-1]
-        os.environ.setdefault(key.strip(), value)
+        values[key.strip()] = value
+    return values
 
 
 def setting(key: str, default: str = "") -> str:
-    load_dotenv()
-    return os.environ.get(key, default).strip()
+    """A real environment variable (even an empty one) wins over .env."""
+    if key in os.environ:
+        return os.environ[key].strip()
+    return (load_dotenv() or {}).get(key, default).strip()
 
 
 def check_auth_settings() -> None:
